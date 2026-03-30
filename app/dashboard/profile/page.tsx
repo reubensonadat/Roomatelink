@@ -46,6 +46,7 @@ export default function ProfilePage() {
   const [phone, setPhone] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const router = useRouter();
 
   const STORAGE_KEY = 'roommate_profile_data';
@@ -53,6 +54,7 @@ export default function ProfilePage() {
 
   // Load saved state from Database
   useEffect(() => {
+    setMounted(true);
     const fetchProfile = async () => {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
@@ -159,8 +161,10 @@ export default function ProfilePage() {
     }
   };
 
+  if (!mounted) return null;
+
   return (
-    <>
+    <div className="flex flex-col w-full min-h-screen bg-background pb-32">
       <div className="flex flex-col px-5 pt-8 pb-32 w-full md:max-w-3xl lg:max-w-4xl mx-auto overflow-y-auto">
 
         <header className="flex items-center gap-4 mb-10">
@@ -655,6 +659,6 @@ export default function ProfilePage() {
           </div>
         )}
       </AnimatePresence>
-    </>
+    </div>
   );
 }

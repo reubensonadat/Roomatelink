@@ -67,6 +67,7 @@ function getScoreLabel(score: number) {
 export default function MatchesDashboard() {
   // In production: fetched from users.has_paid
   const [hasPaid, setHasPaid] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState<MatchProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [profileStatus, setProfileStatus] = useState<{
@@ -122,6 +123,10 @@ export default function MatchesDashboard() {
 
   // Real user email for Paystack config
   const [userEmail, setUserEmail] = useState('student@stu.ucc.edu.gh');
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     const checkProfile = async () => {
@@ -443,6 +448,9 @@ export default function MatchesDashboard() {
 
     initializePayment({ onSuccess, onClose });
   };
+
+  // ── SSR Guard ──
+  if (!mounted) return null;
 
   return (
     <div className="flex flex-col w-full min-h-screen bg-background relative overflow-x-hidden">

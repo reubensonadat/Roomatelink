@@ -105,9 +105,10 @@ export default function SettingsPage() {
     });
   };
 
+  if (!mounted) return null;
 
   return (
-    <div className="flex flex-col px-5 pt-8 pb-32 w-full md:max-w-3xl lg:max-w-4xl mx-auto">
+    <div className="flex flex-col w-full min-h-screen bg-background pb-32 px-5 pt-8 md:max-w-3xl lg:max-w-4xl mx-auto">
 
       <header className="flex items-center gap-4 mb-10">
         <button

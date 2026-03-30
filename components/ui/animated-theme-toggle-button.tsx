@@ -15,14 +15,18 @@ type AnimatedThemeToggleButtonProps = {
 }
 
 function useThemeState() {
-  const [darkMode, setDarkMode] = useState(
-    () =>
-      typeof window !== "undefined"
-        ? document.documentElement.classList.contains("dark")
-        : false
-  )
+  const [darkMode, setDarkMode] = useState(false)
+
+  // Initialize theme on mount to prevent SSR mismatch
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setDarkMode(document.documentElement.classList.contains("dark"))
+    }
+  }, [])
 
   useEffect(() => {
+    if (typeof window === "undefined") return
+
     const sync = () => setDarkMode(document.documentElement.classList.contains("dark"))
     const observer = new MutationObserver(sync)
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] })
@@ -33,6 +37,8 @@ function useThemeState() {
 }
 
 function triggerThemeTransition(type: ThemeTransitionType) {
+  if (typeof window === "undefined" || typeof document === "undefined") return
+
   if (type === "horizontal") {
     document.documentElement.animate(
       {
