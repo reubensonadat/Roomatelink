@@ -1,0 +1,3 @@
+name = "roomatelink"
+compatibility_flags = [ "nodejs_compat" ]
+pages_build_config = { build_command = "npm run pages:build", destination_dir = ".next" }
