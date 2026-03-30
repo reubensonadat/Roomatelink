@@ -26,7 +26,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const secretKey = process.env.NODE_ENV === 'production' && process.env.PAYSTACK_LIVE_SECRET_KEY
+    const secretKey = process.env.PAYSTACK_LIVE_SECRET_KEY
       ? process.env.PAYSTACK_LIVE_SECRET_KEY
       : process.env.PAYSTACK_TEST_SECRET_KEY;
 

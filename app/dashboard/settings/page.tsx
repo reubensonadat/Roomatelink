@@ -7,7 +7,7 @@ import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { signOut, deleteAccount } from '@/lib/auth-actions';
+import { signOut, deleteAccount, sendPasswordReset, verifyUniversityEmail } from '@/lib/auth-actions';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -22,6 +22,9 @@ export default function SettingsPage() {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [deleteInput, setDeleteInput] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
+
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -57,6 +60,32 @@ export default function SettingsPage() {
     } finally {
       setIsDeleting(false);
       setIsDeleteOpen(false);
+    }
+  };
+
+  const handlePasswordReset = async () => {
+    setIsResetting(true);
+    const result = await sendPasswordReset();
+    setIsResetting(false);
+    if (result.success) {
+      toast.success('Reset link sent! Check your email.', {
+        icon: <Check className="w-4 h-4 text-white" />
+      });
+    } else {
+      toast.error(result.error || 'Failed to send reset email');
+    }
+  };
+
+  const handleVerifyEmail = async () => {
+    setIsVerifying(true);
+    const result = await verifyUniversityEmail();
+    setIsVerifying(false);
+    if (result.success) {
+      toast.success(`Verified! Welcome, ${result.university} student.`, {
+        icon: <GraduationCap className="w-5 h-5 text-white" />
+      });
+    } else {
+      toast.error(result.error || 'Verification failed');
     }
   };
 
@@ -106,16 +135,17 @@ export default function SettingsPage() {
             </button>
 
             <button 
-              onClick={() => showToast('Check your student email for a verification link.')}
-              className="flex items-center justify-between p-3 rounded-3xl hover:bg-muted/50 transition-colors text-left group"
+              onClick={handleVerifyEmail}
+              disabled={isVerifying}
+              className="flex items-center justify-between p-3 rounded-3xl hover:bg-muted/50 transition-colors text-left group disabled:opacity-50"
             >
               <div className="flex items-center gap-4">
                 <div className="w-10 h-10 rounded-2xl bg-muted flex items-center justify-center group-hover:bg-muted/80 transition-colors">
-                  <GraduationCap className="w-5 h-5 text-foreground" />
+                  {isVerifying ? <Loader2 className="w-5 h-5 animate-spin" /> : <GraduationCap className="w-5 h-5 text-foreground" />}
                 </div>
                 <div className="flex flex-col">
                   <span className="font-bold text-[15px] text-foreground">Student Email</span>
-                  <span className="text-[13px] font-medium text-primary">Add student email</span>
+                  <span className="text-[13px] font-medium text-primary">Verify & whitebox identity</span>
                 </div>
               </div>
               <ChevronRight className="w-4 h-4 text-muted-foreground/50 mr-2" />
@@ -138,16 +168,17 @@ export default function SettingsPage() {
             </button>
 
             <button 
-              onClick={() => showToast('Security settings mock opened.')}
-              className="flex items-center justify-between p-3 rounded-3xl hover:bg-muted/50 transition-colors text-left group"
+              onClick={handlePasswordReset}
+              disabled={isResetting}
+              className="flex items-center justify-between p-3 rounded-3xl hover:bg-muted/50 transition-colors text-left group disabled:opacity-50"
             >
               <div className="flex items-center gap-4">
                 <div className="w-10 h-10 rounded-2xl bg-muted flex items-center justify-center group-hover:bg-muted/80 transition-colors">
-                  <Lock className="w-5 h-5 text-foreground" />
+                  {isResetting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Lock className="w-5 h-5 text-foreground" />}
                 </div>
                 <div className="flex flex-col">
                   <span className="font-bold text-[15px] text-foreground">Security</span>
-                  <span className="text-[13px] font-medium text-muted-foreground">Password & Auth</span>
+                  <span className="text-[13px] font-medium text-muted-foreground">Change Password</span>
                 </div>
               </div>
               <ChevronRight className="w-4 h-4 text-muted-foreground/50 mr-2" />

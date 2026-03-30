@@ -178,11 +178,11 @@ export default function MatchesDashboard() {
               avatar: m.roommate.avatar_url,
               bio: m.roommate.bio || "No bio yet.",
               trait: m.cross_category_flags?.[0]?.description || "Potential Roommate",
-              lifestyle: [], // We can populate this from their questionnaire later
+              lifestyle: [], 
               tags: [m.roommate.course, `Level ${m.roommate.level}`],
               sharedTraits: [],
               tensions: (m.cross_category_flags || []).map((f: any) => f.description),
-              categoryScores: [] // Mapped from your category breakdown logic if needed
+              categoryScores: m.category_scores || [] // ✅ Pull real scores from DB
             }));
             setMatches(mappedMatches);
           }
@@ -386,10 +386,10 @@ export default function MatchesDashboard() {
   };
 
   // Paystack Configuration
-  // Automatically use LIVE key in production, otherwise use TEST key
-  const paystackKey = process.env.NODE_ENV === 'production' && process.env.NEXT_PUBLIC_PAYSTACK_LIVE_KEY
-    ? process.env.NEXT_PUBLIC_PAYSTACK_LIVE_KEY
-    : process.env.NEXT_PUBLIC_PAYSTACK_TEST_KEY || '';
+  // PRIORITIZE LIVE KEY. Only use test key if live is missing (local dev)
+  const paystackKey = process.env.NEXT_PUBLIC_PAYSTACK_LIVE_KEY 
+    ? process.env.NEXT_PUBLIC_PAYSTACK_LIVE_KEY 
+    : (process.env.NEXT_PUBLIC_PAYSTACK_TEST_KEY || '');
 
   const config = {
     reference: (new Date()).getTime().toString() + Math.floor(Math.random() * 1000000),

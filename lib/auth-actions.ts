@@ -150,7 +150,7 @@ export async function updateProfile(data: {
       avatar_url: data.avatarUrl,
       gender: data.gender === 'M' ? 'MALE' : 'FEMALE',
       gender_pref: data.matchPref === 'same' ? 'SAME_GENDER' : 'ANY_GENDER',
-      status: data.matchingStatus,
+      status: data.matchingStatus, // ACTIVE, HIDDEN, or COMPLETED
     })
     .eq('auth_id', user.id)
 
@@ -234,6 +234,11 @@ export async function generateMatches() {
         total_penalty: result.totalPenalty,
         consistency_modifier: result.consistencyModifier,
         cross_category_flags: result.patternFlags,
+        category_scores: result.categoryBreakdown.map(cat => ({
+          name: cat.categoryName,
+          score: Math.round(cat.weightedScore * 100 / cat.maxWeightedScore),
+          insight: getInsightForCategory(cat.categoryName, Math.round(cat.weightedScore * 100 / cat.maxWeightedScore))
+        })),
         calculated_at: new Date().toISOString()
       })
     }
@@ -380,8 +385,74 @@ export async function saveQuestionnaireResponses(answers: Record<string, string>
 
   if (saveError) {
     console.error('Save answers error:', saveError)
-    return { error: saveError.message }
+    return { error: 'Failed to save answers. Try again.' }
   }
 
   return { success: true }
+}
+
+/** 
+ * HELPER: Simple insights based on category and score 
+ */
+function getInsightForCategory(name: string, score: number): string {
+  if (score >= 90) return `Exceptional alignment in ${name.toLowerCase()}.`;
+  if (score >= 75) return `Strong shared values regarding ${name.toLowerCase()}.`;
+  if (score >= 60) return `Good common ground on ${name.toLowerCase()}.`;
+  return `Potential for compromise in ${name.toLowerCase()}.`;
+}
+
+/**
+ * SEND PASSWORD RESET
+ * Triggers a real reset email via Supabase Auth
+ */
+export async function sendPasswordReset() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user?.email) return { error: 'No email found for this account' };
+
+  const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
+    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/reset-password`,
+  });
+
+  if (error) return { error: error.message };
+  return { success: true };
+}
+
+/**
+ * VERIFY UNIVERSITY EMAIL
+ * Checks the user's current email domain against the university_domains table
+ */
+export async function verifyUniversityEmail() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user?.email) return { error: 'No email found' };
+
+  const domain = user.email.split('@')[1];
+  if (!domain) return { error: 'Invalid email format' };
+
+  // Check against our whitelist table
+  const { data: university, error: domainError } = await supabase
+    .from('university_domains')
+    .select('id, university_name')
+    .eq('email_domain', domain)
+    .single();
+
+  if (domainError || !university) {
+    return { error: `The domain @${domain} is not currently a recognized University domain on our platform.` };
+  }
+
+  // Domain matches! Update user profile
+  const { error: updateError } = await supabase
+    .from('users')
+    .update({ 
+      is_student_verified: true,
+      university_id: university.id 
+    })
+    .eq('auth_id', user.id);
+
+  if (updateError) return { error: 'Failed to update verification status' };
+
+  return { success: true, university: university.university_name };
 }
