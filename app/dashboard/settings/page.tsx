@@ -7,7 +7,6 @@ import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { signOut, deleteAccount, sendPasswordReset, verifyUniversityEmail } from '@/lib/auth-actions';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -38,9 +37,19 @@ export default function SettingsPage() {
   const handleLogout = async () => {
     setIsLoggingOut(true);
     try {
-      await signOut();
+      const response = await fetch('/api/auth/signout', {
+        method: 'POST'
+      });
+      const result = await response.json();
+      
+      if (result.success) {
+        router.push('/auth');
+      } else {
+        toast.error(result.error || 'Failed to sign out');
+      }
     } catch {
-      // signOut calls redirect(), which throws — this is expected
+      // Handle any errors
+      toast.error('Failed to sign out');
     } finally {
       setIsLoggingOut(false);
       setIsLogoutOpen(false);
@@ -50,15 +59,22 @@ export default function SettingsPage() {
   const handleDeleteAccount = async () => {
     setIsDeleting(true);
     try {
-      const result = await deleteAccount();
-      if (result?.error) {
+      const response = await fetch('/api/auth/delete-account', {
+        method: 'POST'
+      });
+      const result = await response.json();
+      
+      if (result.error) {
         toast.error(result.error);
         setIsDeleting(false);
         setIsDeleteOpen(false);
+      } else {
+        // Success - redirect to auth
+        router.push('/auth');
       }
-      // If successful, deleteAccount calls redirect() which throws
     } catch {
-      // redirect() throws — this is expected behavior
+      // Handle any errors
+      toast.error('Failed to delete account');
     } finally {
       setIsDeleting(false);
       setIsDeleteOpen(false);
@@ -67,14 +83,23 @@ export default function SettingsPage() {
 
   const handlePasswordReset = async () => {
     setIsResetting(true);
-    const result = await sendPasswordReset();
-    setIsResetting(false);
-    if (result.success) {
-      toast.success('Reset link sent! Check your email.', {
-        icon: <Check className="w-4 h-4 text-white" />
+    try {
+      const response = await fetch('/api/auth/reset-password', {
+        method: 'POST'
       });
-    } else {
-      toast.error(result.error || 'Failed to send reset email');
+      const result = await response.json();
+      
+      if (result.success) {
+        toast.success('Reset link sent! Check your email.', {
+          icon: <Check className="w-4 h-4 text-white" />
+        });
+      } else {
+        toast.error(result.error || 'Failed to send reset email');
+      }
+    } catch {
+      toast.error('Failed to send reset email');
+    } finally {
+      setIsResetting(false);
     }
   };
 
@@ -85,17 +110,27 @@ export default function SettingsPage() {
     }
 
     setIsVerifying(true);
-    const result = await verifyUniversityEmail(manualEmail);
-    setIsVerifying(false);
-    
-    if (result.success) {
-      toast.success(`Verified! Welcome, ${result.university} student.`, {
-        icon: <GraduationCap className="w-5 h-5 text-white" />
+    try {
+      const response = await fetch('/api/auth/verify-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: manualEmail })
       });
-      setIsVerifyModalOpen(false);
-      setManualEmail('');
-    } else {
-      toast.error(result.error || 'Verification failed');
+      const result = await response.json();
+      
+      if (result.success) {
+        toast.success(`Verified! Welcome, ${result.university} student.`, {
+          icon: <GraduationCap className="w-5 h-5 text-white" />
+        });
+        setIsVerifyModalOpen(false);
+        setManualEmail('');
+      } else {
+        toast.error(result.error || 'Verification failed');
+      }
+    } catch {
+      toast.error('Verification failed');
+    } finally {
+      setIsVerifying(false);
     }
   };
 

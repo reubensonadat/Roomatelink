@@ -4,7 +4,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { Check, Loader2 } from 'lucide-react';
 import { questions as sourceQuestions, Question } from '@/lib/questions';
-import { saveQuestionnaireResponses, generateMatches } from '@/lib/auth-actions';
 import { toast } from 'sonner';
 
 // Fisher-Yates shuffle
@@ -89,15 +88,34 @@ export default function QuestionnairePage() {
       } else {
         // Final question answered! Save to DB chip chop.
         setIsSubmitting(true);
-        const result = await saveQuestionnaireResponses(nextAnswers);
-        
-        if (result.error) {
-          toast.error(result.error);
+        try {
+          const response = await fetch('/api/questionnaire/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ answers: nextAnswers })
+          });
+          const result = await response.json();
+          
+          if (result.error) {
+            toast.error(result.error);
+            setIsSubmitting(false);
+          } else {
+            // Answers saved! Now generate matches chip chop.
+            const matchResponse = await fetch('/api/matches/generate', {
+              method: 'POST'
+            });
+            const matchResult = await matchResponse.json();
+            
+            if (matchResult.error) {
+              toast.error(matchResult.error);
+              setIsSubmitting(false);
+            } else {
+              router.push('/questionnaire/calculation');
+            }
+          }
+        } catch {
+          toast.error('Failed to save answers');
           setIsSubmitting(false);
-        } else {
-          // Answers saved! Now generate matches chip chop.
-          await generateMatches();
-          router.push('/questionnaire/calculation');
         }
       }
     }, 550);

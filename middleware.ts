@@ -3,8 +3,8 @@ import { type NextRequest } from 'next/server'
 import { updateSession } from '@/utils/supabase/middleware'
 
 export async function middleware(request: NextRequest) {
-  // TODO: Middleware tasks in-progress
-  // Let the Supabase interceptor refresh cookies and check route access rules
+  // Use the standard URL object to ensure redirects use the actual host the user is visiting
+  const url = request.nextUrl.clone();
   return await updateSession(request)
 }
 
@@ -21,3 +21,4 @@ export const config = {
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$|api).*)',
   ],
 }
+

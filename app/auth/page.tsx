@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2, Mail, Lock, ChevronRight, ShieldCheck, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
-import { signInWithEmail, signUpWithEmail } from '@/lib/auth-actions';
 
 const GoogleIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-[18px] h-[18px]">
@@ -88,33 +87,42 @@ export default function AuthPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isLoading || isGoogleLoading || !email || password.length < 6) return;
-
+    
     setIsLoading(true);
     setErrorMessage('');
     setSuccessMessage('');
-
-    const formData = new FormData();
-    formData.append('email', email);
-    formData.append('password', password);
-
+    
     try {
       if (mode === 'signin') {
-        const result = await signInWithEmail(formData);
-        // If we get here (no redirect), there was an error
-        if (result?.error) {
-          setErrorMessage(result.error);
+        const response = await fetch('/api/auth/signin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+          // Success - redirect to dashboard
+          window.location.href = '/dashboard';
+        } else {
+          setErrorMessage(result.error || 'Failed to sign in');
         }
       } else {
-        const result = await signUpWithEmail(formData);
-        if (result?.error) {
-          setErrorMessage(result.error);
-        } else if (result?.success) {
+        const response = await fetch('/api/auth/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const result = await response.json();
+        
+        if (result.success) {
           setSuccessMessage(result.success);
+        } else {
+          setErrorMessage(result.error || 'Failed to sign up');
         }
       }
     } catch {
-      // signInWithEmail calls redirect() on success, which throws
-      // We can safely ignore this
+      setErrorMessage('Something went wrong. Please try again.');
     } finally {
       setIsLoading(false);
     }

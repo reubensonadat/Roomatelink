@@ -6,7 +6,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import Link from 'next/link';
 import { toast } from 'sonner';
-import { updateProfile } from '@/lib/auth-actions';
 import { createClient } from '@/utils/supabase/client';
 
 const avatars = {
@@ -137,27 +136,37 @@ export default function ProfilePage() {
     if (!isComplete || isSaving) return;
     
     setIsSaving(true);
-    const result = await updateProfile({
-      fullName: displayName,
-      phone,
-      course,
-      level: level || '100',
-      bio,
-      avatarUrl: selectedAvatar || '',
-      gender: gender || 'M',
-      matchPref: matchPref || 'any',
-      matchingStatus
-    });
-
-    setIsSaving(false);
-
-    if (result.error) {
-      toast.error(result.error);
-    } else {
-      toast.success('Profile saved to database!', {
-        icon: <Check className="w-5 h-5 text-white" />
+    try {
+      const response = await fetch('/api/profile/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fullName: displayName,
+          phone,
+          course,
+          level: level || '100',
+          bio,
+          avatarUrl: selectedAvatar || '',
+          gender: gender || 'M',
+          matchPref: matchPref || 'any',
+          matchingStatus
+        })
       });
-      router.push('/profile/review');
+      
+      const result = await response.json();
+
+      if (result.error) {
+        toast.error(result.error);
+      } else {
+        toast.success('Profile saved to database!', {
+          icon: <Check className="w-5 h-5 text-white" />
+        });
+        router.push('/profile/review');
+      }
+    } catch (error) {
+      toast.error('Failed to save profile. Please try again.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
