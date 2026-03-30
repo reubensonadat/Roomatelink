@@ -6,8 +6,9 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { PullToRefresh } from '@/components/pull-to-refresh';
 import { ReportModal } from '@/components/ui/report-modal';
-// @ts-ignore - react-paystack doesn't have official TS types
-import { usePaystackPayment } from 'react-paystack';
+import dynamic from 'next/dynamic';
+
+const PaystackPaymentButton = dynamic(() => import('@/components/paystack-payment-button'), { ssr: false });
 import { FoundRoommateModal } from '@/components/ui/found-roommate-modal';
 import { toast } from 'sonner';
 import { createClient } from '@/utils/supabase/client';
@@ -388,65 +389,6 @@ export default function MatchesDashboard() {
     setDiscountApplied(false);
     setDiscountError('');
     setFinalPrice(25);
-  };
-
-  // Paystack Configuration
-  // PRIORITIZE LIVE KEY. Only use test key if live is missing (local dev)
-  const paystackKey = process.env.NEXT_PUBLIC_PAYSTACK_LIVE_KEY 
-    ? process.env.NEXT_PUBLIC_PAYSTACK_LIVE_KEY 
-    : (process.env.NEXT_PUBLIC_PAYSTACK_TEST_KEY || '');
-
-  const config = {
-    reference: (new Date()).getTime().toString() + Math.floor(Math.random() * 1000000),
-    email: userEmail, // ✅ Real student email from database
-    amount: finalPrice * 100, // Paystack requires amount in pesewas
-    currency: 'GHS',
-    publicKey: paystackKey,
-  };
-
-  const initializePayment = usePaystackPayment(config);
-
-  const handleConfirmPayment = () => {
-    if (!config.publicKey) {
-      toast.error('Payment gateway missing public key configuration.');
-      return;
-    }
-
-    const onSuccess = (reference: any) => {
-      // Start the verification overlay + countdown
-      setIsPaymentModalOpen(false);
-      setIsVerifyingPayment(true);
-
-      fetch('/api/paystack/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reference: reference.reference, email: config.email, amount: finalPrice })
-      })
-        .then(res => res.json())
-        .then(data => {
-          setIsVerifyingPayment(false);
-          if (data.success) {
-            toast.success('Identity verified! Unlocking profiles...', { id: 'verify-toast' });
-            setHasPaid(true);
-            localStorage.setItem('roommate_has_paid', 'true');
-            setIsUnlocking(true);
-            setUnlockedCount(0);
-          } else {
-            toast.error(data.error || 'Verification failed on server', { id: 'verify-toast' });
-          }
-        })
-        .catch(err => {
-          setIsVerifyingPayment(false);
-          toast.error('Network error during verification. Please use the button below.', { id: 'verify-toast' });
-          console.error('Verification error:', err);
-        });
-    };
-
-    const onClose = () => {
-      toast.info('Payment process cancelled.', { duration: 2000 });
-    };
-
-    initializePayment({ onSuccess, onClose });
   };
 
   // ── SSR Guard ──
@@ -881,12 +823,49 @@ export default function MatchesDashboard() {
 
                   {/* Final Button */}
                   <div className="space-y-4">
-                    <button
-                      onClick={handleConfirmPayment}
+                    <PaystackPaymentButton
+                      email={userEmail}
+                      amount={finalPrice}
+                      onSuccess={(reference: any) => {
+                        // Start the verification overlay + countdown
+                        setIsPaymentModalOpen(false);
+                        setIsVerifyingPayment(true);
+
+                        fetch('/api/paystack/verify', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ 
+                            reference: reference.reference, 
+                            email: userEmail, 
+                            amount: finalPrice 
+                          })
+                        })
+                          .then(res => res.json())
+                          .then(data => {
+                            setIsVerifyingPayment(false);
+                            if (data.success) {
+                              toast.success('Identity verified! Unlocking profiles...', { id: 'verify-toast' });
+                              setHasPaid(true);
+                              localStorage.setItem('roommate_has_paid', 'true');
+                              setIsUnlocking(true);
+                              setUnlockedCount(0);
+                            } else {
+                              toast.error(data.error || 'Verification failed on server', { id: 'verify-toast' });
+                            }
+                          })
+                          .catch(err => {
+                            setIsVerifyingPayment(false);
+                            toast.error('Network error during verification. Please use the button below.', { id: 'verify-toast' });
+                            console.error('Verification error:', err);
+                          });
+                      }}
+                      onClose={() => {
+                        toast.info('Payment process cancelled.', { duration: 2000 });
+                      }}
                       className="w-full py-5 bg-foreground text-background font-black rounded-2xl shadow-xl shadow-foreground/10 hover:shadow-2xl transition-all active:scale-[0.98] text-[16px] flex items-center justify-center gap-3 border border-white/10"
                     >
                       Complete Verification <ChevronRight className="w-5 h-5" />
-                    </button>
+                    </PaystackPaymentButton>
                     <button
                       onClick={() => setIsPaymentModalOpen(false)}
                       className="w-full py-4 text-[13px] font-bold text-muted-foreground hover:text-foreground transition-colors"
