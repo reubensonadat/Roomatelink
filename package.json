@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "pages:build": "npx @cloudflare/next-on-pages",
+    "preview": "npm run pages:build && wrangler pages dev .next-showcase",
     "start": "next start",
     "lint": "eslint"
   },
@@ -30,6 +32,8 @@
     "@tailwindcss/postcss": "^4",
     "eslint": "^9",
     "eslint-config-next": "16.2.1",
-    "tailwindcss": "^4"
+    "@cloudflare/next-on-pages": "^1.11.0",
+    "tailwindcss": "^4",
+    "wrangler": "^3.57.1"
   }
 }

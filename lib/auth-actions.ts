@@ -421,15 +421,20 @@ export async function sendPasswordReset() {
 
 /**
  * VERIFY UNIVERSITY EMAIL
- * Checks the user's current email domain against the university_domains table
+ * Now supports manual entry for users who signed up with Gmail.
+ * Checks the provided email domain against the university_domains table.
  */
-export async function verifyUniversityEmail() {
+export async function verifyUniversityEmail(manualEmail?: string) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user?.email) return { error: 'No email found' };
+  if (!user) return { error: 'Not authenticated' };
 
-  const domain = user.email.split('@')[1];
+  // Use the manual email if provided, otherwise fallback to their login email
+  const targetEmail = manualEmail || user.email;
+  if (!targetEmail) return { error: 'No email found to verify' };
+
+  const domain = targetEmail.split('@')[1];
   if (!domain) return { error: 'Invalid email format' };
 
   // Check against our whitelist table
@@ -448,6 +453,7 @@ export async function verifyUniversityEmail() {
     .from('users')
     .update({ 
       is_student_verified: true,
+      student_email: targetEmail, // Store the verified student email
       university_id: university.id 
     })
     .eq('auth_id', user.id);

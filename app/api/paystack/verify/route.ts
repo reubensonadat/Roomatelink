@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { createClient as createSupabaseClient } from '@/utils/supabase/server';
+
+export const runtime = 'edge';
 
 // Admin client — bypasses RLS so we can always update has_paid regardless of policies
 function createAdminClient() {

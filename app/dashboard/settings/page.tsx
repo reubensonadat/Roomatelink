@@ -23,6 +23,8 @@ export default function SettingsPage() {
   const [deleteInput, setDeleteInput] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
 
+  const [isVerifyModalOpen, setIsVerifyModalOpen] = useState(false);
+  const [manualEmail, setManualEmail] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
 
@@ -77,13 +79,21 @@ export default function SettingsPage() {
   };
 
   const handleVerifyEmail = async () => {
+    if (!manualEmail.includes('@')) {
+      toast.error('Please enter a valid university email address.');
+      return;
+    }
+
     setIsVerifying(true);
-    const result = await verifyUniversityEmail();
+    const result = await verifyUniversityEmail(manualEmail);
     setIsVerifying(false);
+    
     if (result.success) {
       toast.success(`Verified! Welcome, ${result.university} student.`, {
         icon: <GraduationCap className="w-5 h-5 text-white" />
       });
+      setIsVerifyModalOpen(false);
+      setManualEmail('');
     } else {
       toast.error(result.error || 'Verification failed');
     }
@@ -135,9 +145,8 @@ export default function SettingsPage() {
             </button>
 
             <button 
-              onClick={handleVerifyEmail}
-              disabled={isVerifying}
-              className="flex items-center justify-between p-3 rounded-3xl hover:bg-muted/50 transition-colors text-left group disabled:opacity-50"
+              onClick={() => setIsVerifyModalOpen(true)}
+              className="flex items-center justify-between p-3 rounded-3xl hover:bg-muted/50 transition-colors text-left group"
             >
               <div className="flex items-center gap-4">
                 <div className="w-10 h-10 rounded-2xl bg-muted flex items-center justify-center group-hover:bg-muted/80 transition-colors">
@@ -268,6 +277,63 @@ export default function SettingsPage() {
 
       {/* --- MODALS --- */}
       <AnimatePresence>
+        {isVerifyModalOpen && (
+          <div className="fixed inset-0 z-100 flex items-center justify-center px-4">
+            <motion.div 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }} 
+              className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+              onClick={() => !isVerifying && setIsVerifyModalOpen(false)}
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="relative w-full max-w-sm bg-card border border-border p-6 rounded-[2.5rem] shadow-2xl"
+            >
+              <div className="flex flex-col items-center text-center">
+                <div className="w-16 h-16 rounded-3xl bg-primary/10 flex items-center justify-center mb-4">
+                  <GraduationCap className="w-8 h-8 text-primary" />
+                </div>
+                <h3 className="text-xl font-black text-foreground mb-2">Student Verification</h3>
+                <p className="text-[14px] font-medium text-muted-foreground mb-6">
+                  Type your official university email below to verify your student status.
+                </p>
+
+                <div className="w-full space-y-4">
+                  <div className="relative group">
+                    <input
+                      type="email"
+                      value={manualEmail}
+                      onChange={(e) => setManualEmail(e.target.value)}
+                      placeholder="e.g. name@stu.ucc.edu.gh"
+                      className="w-full px-5 py-4 rounded-2xl bg-muted/50 border border-border focus:border-primary/50 focus:ring-4 focus:ring-primary/10 outline-none transition-all font-medium text-[15px] group-hover:bg-muted"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-2 pt-2">
+                    <button
+                      onClick={handleVerifyEmail}
+                      disabled={isVerifying || !manualEmail}
+                      className="w-full py-4 rounded-full bg-primary text-primary-foreground font-black text-[15px] shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      {isVerifying ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Verify Identity'}
+                    </button>
+                    <button
+                      onClick={() => setIsVerifyModalOpen(false)}
+                      disabled={isVerifying}
+                      className="w-full py-4 rounded-full bg-muted text-muted-foreground font-bold text-[14px] hover:bg-muted/80 transition-all active:scale-[0.98]"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
         {isLogoutOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
             <motion.div 

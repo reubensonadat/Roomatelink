@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { calculateMatchesForUser, AnswerVector } from '@/lib/matching-algorithm';
 
+export const runtime = 'edge';
+
 // Replace with your actual database client logic (e.g. Supabase Server Client)
 // import { createClient } from '@supabase/supabase-js'
 

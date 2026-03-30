@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
-import crypto from 'crypto';
+import { createClient } from '@supabase/supabase-js';
+
+export const runtime = 'edge';
 
 /**
  * Paystack Webhook Handler
@@ -14,23 +16,35 @@ export async function POST(req: Request) {
   try {
     const rawBody = await req.text();
     const signature = req.headers.get('x-paystack-signature');
-    const secretKey = process.env.NODE_ENV === 'production' && process.env.PAYSTACK_LIVE_SECRET_KEY
-      ? process.env.PAYSTACK_LIVE_SECRET_KEY
-      : process.env.PAYSTACK_TEST_SECRET_KEY;
+    const secretKey = process.env.PAYSTACK_LIVE_SECRET_KEY 
+      ? process.env.PAYSTACK_LIVE_SECRET_KEY 
+      : (process.env.PAYSTACK_TEST_SECRET_KEY || '');
 
-    if (!secretKey) {
-       console.error("Webhook Error: Secret Key Missing");
-       return NextResponse.json({ status: 'ignored' }, { status: 500 });
+    if (!secretKey || !signature) {
+       console.error("Webhook Error: Secret Key or Signature Missing");
+       return NextResponse.json({ status: 'ignored' }, { status: 400 });
     }
 
-    // 1. VERIFY THE SIGNATURE (Security Check)
-    // We must hash the body with our secret key and compare it to the signature from Paystack.
-    // This proves the incoming request actually came from Paystack and not a hacker.
-    const hash = crypto.createHmac('sha512', secretKey).update(rawBody).digest('hex');
+    // 1. VERIFY THE SIGNATURE (Security Check using Web Crypto)
+    const encoder = new TextEncoder();
+    const keyData = encoder.encode(secretKey);
+    const bodyData = encoder.encode(rawBody);
+
+    const hmacKey = await crypto.subtle.importKey(
+      'raw',
+      keyData,
+      { name: 'HMAC', hash: 'SHA-512' },
+      false,
+      ['sign']
+    );
+
+    const signatureBuffer = await crypto.subtle.sign('HMAC', hmacKey, bodyData);
+    const hash = Array.from(new Uint8Array(signatureBuffer))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
     
     if (hash !== signature) {
        console.error("Webhook Error: Invalid Signature");
-       // Return 400 so Paystack knows we rejected it
        return NextResponse.json({ status: 'unauthorized' }, { status: 400 });
     }
 
