@@ -10,21 +10,32 @@ Buttons in production (Save to Profile, Logout, Delete Account, etc.) were not w
 ### Solution Implemented
 Converted all Server Actions to API Routes, which work on Cloudflare Pages.
 
+### Critical Fix: Node.js Runtime
+Each API route now includes `export const runtime = 'nodejs'` to override the middleware's Edge Runtime. This is required because:
+- Middleware uses `export const runtime = 'experimental-edge'` for route protection
+- API routes need Node.js runtime to access Supabase and perform database operations
+- Without this override, API routes would inherit Edge Runtime and fail to work
+
+This configuration ensures:
+- Middleware runs on Edge Runtime (fast, global)
+- API routes run on Node.js Runtime (full Supabase support)
+- Both work together seamlessly
+
 ---
 
 ## API Routes Created
 
-| # | API Route | File | Purpose |
-|---|-------------|------|---------|
-| 1 | `/api/profile/update` | `app/api/profile/update/route.ts` | Save user profile data |
-| 2 | `/api/auth/signout` | `app/api/auth/signout/route.ts` | Sign out user |
-| 3 | `/api/auth/delete-account` | `app/api/auth/delete-account/route.ts` | Delete user account |
-| 4 | `/api/auth/signin` | `app/api/auth/signin/route.ts` | Sign in with email/password |
-| 5 | `/api/auth/signup` | `app/api/auth/signup/route.ts` | Sign up new user |
-| 6 | `/api/matches/generate` | `app/api/matches/generate/route.ts` | Generate roommate matches |
-| 7 | `/api/questionnaire/save` | `app/api/questionnaire/save/route.ts` | Save questionnaire answers |
-| 8 | `/api/auth/reset-password` | `app/api/auth/reset-password/route.ts` | Send password reset email |
-| 9 | `/api/auth/verify-email` | `app/api/auth/verify-email/route.ts` | Verify university email |
+| # | API Route | File | Purpose | Runtime |
+|---|-------------|------|---------|----------|
+| 1 | `/api/profile/update` | `app/api/profile/update/route.ts` | Save user profile data | Node.js |
+| 2 | `/api/auth/signout` | `app/api/auth/signout/route.ts` | Sign out user | Node.js |
+| 3 | `/api/auth/delete-account` | `app/api/auth/delete-account/route.ts` | Delete user account | Node.js |
+| 4 | `/api/auth/signin` | `app/api/auth/signin/route.ts` | Sign in with email/password | Node.js |
+| 5 | `/api/auth/signup` | `app/api/auth/signup/route.ts` | Sign up new user | Node.js |
+| 6 | `/api/matches/generate` | `app/api/matches/generate/route.ts` | Generate roommate matches | Node.js |
+| 7 | `/api/questionnaire/save` | `app/api/questionnaire/save/route.ts` | Save questionnaire answers | Node.js |
+| 8 | `/api/auth/reset-password` | `app/api/auth/reset-password/route.ts` | Send password reset email | Node.js |
+| 9 | `/api/auth/verify-email` | `app/api/auth/verify-email/route.ts` | Verify university email | Node.js |
 
 ---
 
@@ -55,20 +66,20 @@ Converted all Server Actions to API Routes, which work on Cloudflare Pages.
 Before deploying to production, test locally:
 
 - [ ] **Profile Page:**
-  - [tick ] Navigate to `/dashboard/profile`
-  - [tick ] Fill in all required fields
-  - [tick ] Click "Complete Profile" button
-  - [tick ] Verify success message appears
-  - [tick ] Verify redirect to `/profile/review`
+  - [ ] Navigate to `/dashboard/profile`
+  - [ ] Fill in all required fields
+  - [ ] Click "Complete Profile" button
+  - [ ] Verify success message appears
+  - [ ] Verify redirect to `/profile/review`
 
 - [ ] **Settings Page - Logout:**
-  - [tick ] Navigate to `/dashboard/settings`
-  - [tick ] Click "Log Out" button
-  - [tick ] Confirm logout modal
-  - [tick ] Verify redirect to `/auth`
+  - [ ] Navigate to `/dashboard/settings`
+  - [ ] Click "Log Out" button
+  - [ ] Confirm logout modal
+  - [ ] Verify redirect to `/auth`
 
 - [ ] **Settings Page - Delete Account:**
-  - [ tick] Navigate to `/dashboard/settings`
+  - [ ] Navigate to `/dashboard/settings`
   - [ ] Click "Delete Account" button
   - [ ] Type confirmation
   - [ ] Verify account is deleted
@@ -122,7 +133,7 @@ npm run preview
 npm run deploy
 ```
 
-Or use GitHub integration for automatic deployment.
+Or use GitHub integration for automatic deployments.
 
 ---
 
@@ -134,6 +145,15 @@ Make sure these are set in Cloudflare Pages Dashboard:
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY` (for admin operations like delete account)
 - `NEXT_PUBLIC_SITE_URL` (for email redirects)
+
+### Important: Runtime Configuration
+
+The middleware uses `export const runtime = 'experimental-edge'` for route protection. Each API route includes `export const runtime = 'nodejs'` to override this and ensure proper functionality with Supabase.
+
+This configuration ensures:
+- Middleware runs on Edge Runtime (fast, global)
+- API routes run on Node.js Runtime (full Supabase support)
+- Both work together seamlessly
 
 ---
 
@@ -192,6 +212,8 @@ const result = await updateProfile(data)
 ### After (API Routes)
 ```typescript
 // app/api/profile/update/route.ts
+export const runtime = 'nodejs'
+
 export async function POST(request: NextRequest) {
   // Logic runs on server
 }
@@ -274,9 +296,10 @@ If you encounter issues:
 ## Version History
 
 - **v1.0** - Initial conversion from Server Actions to API Routes
+- **v1.1** - Added `export const runtime = 'nodejs'` to all API routes to override Edge Runtime
 - **Date:** 2026-03-30
 - **Status:** Ready for testing and deployment
 
 ---
 
-> **Remember:** All your business logic, database queries, and matching algorithm remain unchanged. Only the way the client calls the backend has changed from direct function calls to HTTP requests via fetch().
+> **Remember:** All your business logic, database queries, and matching algorithm remain unchanged. Only the way client calls the backend has changed from direct function calls to HTTP requests via fetch().
