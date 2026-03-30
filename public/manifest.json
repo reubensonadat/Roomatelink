@@ -1,0 +1,36 @@
+{
+  "name": "Roommate Link | Find Your Perfect University Roommate",
+  "short_name": "RoommateLink",
+  "description": "Connect with highly compatible students using our proprietary behavioral matching engine.",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#000000",
+  "orientation": "portrait",
+  "scope": "/",
+  "start_url": "/dashboard",
+  "categories": ["education", "lifestyle", "productivity"],
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/logo.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Roommate Link Dashboard"
+    }
+  ]
+}
+
