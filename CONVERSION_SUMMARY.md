@@ -10,16 +10,22 @@ Buttons in production (Save to Profile, Logout, Delete Account, etc.) were not w
 ### Solution Implemented
 Converted all Server Actions to API Routes, which work on Cloudflare Pages.
 
-### Critical Fix: Node.js Runtime
-Each API route now includes `export const runtime = 'nodejs'` to override the middleware's Edge Runtime. This is required because:
-- Middleware uses `export const runtime = 'experimental-edge'` for route protection
-- API routes need Node.js runtime to access Supabase and perform database operations
-- Without this override, API routes would inherit Edge Runtime and fail to work
+### Critical Fix: Runtime Configuration
+
+**Middleware:** Removed `export const runtime = 'experimental-edge'` from middleware.ts
+
+**API Routes:** Each includes `export const runtime = 'nodejs'` to ensure Node.js runtime
 
 This configuration ensures:
-- Middleware runs on Edge Runtime (fast, global)
+- Middleware runs on Edge Runtime (fast, global) - NO LONGER APPLIED TO ALL ROUTES
 - API routes run on Node.js Runtime (full Supabase support)
-- Both work together seamlessly
+- Both work together seamlessly without runtime conflicts
+
+### Build Warning (Expected)
+
+You may see a warning about `serverActions` in lib/auth-actions.ts during build. This is expected and safe to ignore - the old Server Actions file is still present but no longer used by client components.
+
+**Note:** You can safely delete `lib/auth-actions.ts` after confirming everything works in production.
 
 ---
 
