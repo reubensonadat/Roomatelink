@@ -1,7 +1,9 @@
+export const runtime = 'edge';
 import { type NextRequest } from 'next/server'
 import { updateSession } from '@/utils/supabase/middleware'
 
 export async function proxy(request: NextRequest) {
+  // TODO: Middleware tasks in-progress
   // Let the Supabase interceptor refresh cookies and check route access rules
   return await updateSession(request)
 }

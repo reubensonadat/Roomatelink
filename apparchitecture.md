@@ -782,6 +782,27 @@ admin_notes	text, nullable
 8. Technology Stack
 
 Layer	Technology & Rationale
+Frontend / Application	Next.js 16.2.1 — React framework with built-in PWA support, edge-compatible middleware and dynamic routes
+PWA Configuration	next-pwa package — Service worker, offline caching, home screen installation
+Database	Supabase PostgreSQL — Relational queries essential for compatibility algorithm.
+Authentication	Supabase Auth — Built-in email verification with domain checking
+Real-time Chat	Supabase Realtime WebSockets — Native integration with existing database
+Matching Algorithm	Supabase Edge Functions (Deno) — Serverless, triggers on questionnaire completion
+Deployment	Cloudflare Pages — Native Next.js deployment via @cloudflare/next-on-pages
+Edge Runtime	Mandatory opt-in (export const runtime = 'edge') for all dynamic routes and middleware
+Logic Isolation	Browser-libraries (e.g. react-paystack) must be dynamically imported with { ssr: false }
+
+---
+
+## 🏗️ Project Structure (Cleaned)
+/app                — Next.js App Router (Client & Server code)
+/components         — Reusable UI components
+/docs               — Product architecture, guides, and specifications
+/supabase           — Database schemas and /migrations
+/tests              — Dev scripts, algorithm benchmarks, and error logs
+/middleware.ts      — Main auth bouncer and session logic (Edge Runtime)
+
+Layer	Technology & Rationale
 Frontend / Application	Next.js — React framework with built-in PWA support, server-side rendering, and excellent Supabase SDK integration
 PWA Configuration	next-pwa package — Service worker, offline caching, home screen installation, standalone display mode
 Database	Supabase PostgreSQL — Relational queries essential for compatibility algorithm. NoSQL would make weighted vector comparisons significantly harder.
