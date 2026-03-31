@@ -7,12 +7,12 @@ import Link from 'next/link';
 import { PullToRefresh } from '@/components/pull-to-refresh';
 import { ReportModal } from '@/components/ui/report-modal';
 import dynamic from 'next/dynamic';
+import { claimPioneerAccess } from '@/lib/auth-actions';
 
 const PaystackPaymentButton = dynamic(() => import('@/components/paystack-payment-button'), { ssr: false });
 import { FoundRoommateModal } from '@/components/ui/found-roommate-modal';
 import { toast } from 'sonner';
 import { createClient } from '@/utils/supabase/client';
-import { checkPioneerStatus, claimPioneerAccess } from '@/lib/auth-actions';
 
 // ─── Mock Data with Compatibility Breakdown ────────────────────
 // In production this comes from the matches table + algorithm output
@@ -203,9 +203,15 @@ export default function MatchesDashboard() {
   // Check Pioneer eligibility on mount (only if not already paid)
   useEffect(() => {
     if (hasPaid) return; // Already unlocked, skip
-    checkPioneerStatus().then(({ isPioneer }) => {
-      setIsPioneerUser(isPioneer);
-    });
+    
+    fetch('/api/pioneer/check-status')
+      .then(res => res.json())
+      .then(({ isPioneer }) => {
+        setIsPioneerUser(isPioneer);
+      })
+      .catch(err => {
+        console.error('Failed to check pioneer status:', err);
+      });
   }, [hasPaid]);
 
   // Load persisted unlock state
@@ -626,7 +632,7 @@ export default function MatchesDashboard() {
               onClick={() => {
                 setIsPioneerModalOpen(false);
                 setHasPaid(true);
-                setUnlockedCount(MATCHES.length);
+                setUnlockedCount(matches.length);
                 localStorage.setItem('roommate_has_paid', 'true');
                 toast.success('Premium Unlocked Permanently!');
               }}

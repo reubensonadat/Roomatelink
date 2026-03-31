@@ -21,12 +21,6 @@ This configuration ensures:
 - API routes run on Node.js Runtime (full Supabase support)
 - Both work together seamlessly without runtime conflicts
 
-### Build Warning (Expected)
-
-You may see a warning about `serverActions` in lib/auth-actions.ts during build. This is expected and safe to ignore - the old Server Actions file is still present but no longer used by client components.
-
-**Note:** You can safely delete `lib/auth-actions.ts` after confirming everything works in production.
-
 ---
 
 ## API Routes Created
