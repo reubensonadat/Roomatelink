@@ -26,17 +26,17 @@ export async function POST(request: NextRequest) {
     // 1. Get user from Supabase Auth
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    
+
     if (!user) {
       return NextResponse.json(
         { error: 'Not authenticated' },
         { status: 401 }
       )
     }
-    
+
     // 2. Parse request body
     const body = await request.json()
-    
+
     // 3. Validate required fields
     if (!body.fullName || !body.phone) {
       return NextResponse.json(
@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
-    
+
     // 4. Update profile in database
     const { error } = await supabase
       .from('users')
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
         status: body.matchingStatus, // ACTIVE, HIDDEN, or COMPLETED
       })
       .eq('auth_id', user.id)
-    
+
     if (error) {
       console.error('Profile update error:', error)
       return NextResponse.json(
@@ -68,10 +68,10 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
-    
+
     // 5. Return success response
     return NextResponse.json({ success: true })
-    
+
   } catch (error) {
     console.error('API Error:', error)
     return NextResponse.json(
