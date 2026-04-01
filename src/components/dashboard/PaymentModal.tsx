@@ -176,7 +176,7 @@ export function PaymentModal({
               <div className="space-y-4 mb-10 md:mb-12">
                 <div className="flex justify-between items-center text-[15px] font-bold text-muted-foreground px-1">
                   <span>Premium Access</span>
-                  <span>GHS 25.00</span>
+                  <span>GHS {amount.toFixed(2)}</span>
                 </div>
                 {discountApplied && (
                   <div className="flex justify-between items-center text-[15px] font-bold text-emerald-600 px-1">

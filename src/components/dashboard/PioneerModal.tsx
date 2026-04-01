@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import { Sparkles, Check } from 'lucide-react'
+import { Sparkles } from 'lucide-react'
 
 interface PioneerModalProps {
   isOpen: boolean

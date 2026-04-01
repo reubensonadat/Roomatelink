@@ -5,12 +5,11 @@ import { MatchCard } from './MatchCard'
 interface MatchFeedProps {
   matches: any[]
   hasPaid: boolean
-  isPioneerUser: boolean
   onSelectMatch: (match: any) => void
   isLoading: boolean
 }
 
-export function MatchFeed({ matches, hasPaid, isPioneerUser, onSelectMatch, isLoading }: MatchFeedProps) {
+export function MatchFeed({ matches, hasPaid, onSelectMatch, isLoading }: MatchFeedProps) {
   const [visibleCount, setVisibleCount] = useState(10)
 
   const loadMore = () => {
@@ -61,7 +60,6 @@ export function MatchFeed({ matches, hasPaid, isPioneerUser, onSelectMatch, isLo
             key={match.id}
             match={match}
             isLocked={!hasPaid}
-            isPioneerUser={isPioneerUser}
             onSelect={() => onSelectMatch(match)}
           />
         ))}

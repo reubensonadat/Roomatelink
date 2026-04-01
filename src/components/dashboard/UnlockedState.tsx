@@ -1,4 +1,4 @@
- import { MessageSquare, ChevronRight } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 
 interface UnlockedStateProps {
   matchPercentage: number

@@ -1,11 +1,10 @@
 import { Inbox } from 'lucide-react'
 
 interface EmptyStateProps {
-  hasQuestionnaire: boolean
   onRefresh: () => void
 }
 
-export function EmptyState({ hasQuestionnaire, onRefresh }: EmptyStateProps) {
+export function EmptyState({ onRefresh }: EmptyStateProps) {
   return (
     <div className="flex flex-col items-center justify-center py-20">
       <div className="w-24 h-24 rounded-full bg-muted/20 flex items-center justify-center mb-6">

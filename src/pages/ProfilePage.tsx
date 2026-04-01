@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { User, Upload, Sparkles, Check, GraduationCap, Users, AlignLeft, X, ArrowLeft, ChevronRight, Flame, PauseCircle } from 'lucide-react'
+import { User, Upload, Sparkles, Check, Users, X, ChevronRight, Flame, PauseCircle } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
@@ -45,7 +45,6 @@ export function ProfilePage() {
   const [answeredCount, setAnsweredCount] = useState(0)
   const [phone, setPhone] = useState('')
   const [isSaving, setIsSaving] = useState(false)
-  const [isUploading, setIsUploading] = useState(false)
   const [mounted, setMounted] = useState(false)
 
   const STORAGE_KEY = 'roommate_profile_data'
@@ -205,11 +204,11 @@ export function ProfilePage() {
       return
     }
 
-    setIsUploading(true)
+    setIsSaving(true)
     try {
       // Read and compress image
       const reader = new FileReader()
-      reader.onload = async (event) => {
+      reader.onload = async () => {
         const img = new Image()
         img.onload = async () => {
           const MAX_WIDTH = 400
@@ -240,11 +239,11 @@ export function ProfilePage() {
             canvas.toBlob(async (blob) => {
               if (!blob) return
 
-              setIsUploading(true)
+              setIsSaving(true)
               const fileName = `${user.id}/${Date.now()}.jpg`
 
               // Upload to Supabase Storage
-              const { data: uploadData, error: uploadError } = await supabase
+              const { error: uploadError } = await supabase
                 .storage
                 .from('avatars')
                 .upload(fileName, blob, {
@@ -255,7 +254,7 @@ export function ProfilePage() {
               if (uploadError) {
                 console.error("Upload error:", uploadError)
                 toast.error("Failed to upload photo to storage")
-                setIsUploading(false)
+                setIsSaving(false)
                 return
               }
 
@@ -267,7 +266,7 @@ export function ProfilePage() {
 
               if (publicUrl) {
                 setSelectedAvatar(publicUrl)
-                setIsUploading(false)
+                setIsSaving(false)
                 toast.success('Avatar uploaded successfully!')
               }
             }, 'image/jpeg', 0.85)
@@ -278,7 +277,7 @@ export function ProfilePage() {
     } catch (error) {
       console.error('Avatar upload error:', error)
       toast.error('Failed to upload avatar')
-      setIsUploading(false)
+      setIsSaving(false)
     }
   }
 

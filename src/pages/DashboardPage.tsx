@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Sparkles, Check, X, Lock, Unlock, Flame, UserCheck, ShieldCheck, ChevronRight, MessageSquare, Heart, ArrowRight } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { Sparkles, Check, X, Lock, Flame, UserCheck, ShieldCheck, ChevronRight, Heart, ArrowRight } from 'lucide-react'
+import { motion } from 'framer-motion'
 import { useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
@@ -610,7 +610,6 @@ export function DashboardPage() {
               <MatchFeed
                 matches={matches}
                 hasPaid={hasPaid}
-                isPioneerUser={isPioneerUser}
                 onSelectMatch={handleSelectMatch}
                 isLoading={isLoading}
               />

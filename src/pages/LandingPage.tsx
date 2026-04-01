@@ -133,7 +133,7 @@ export function LandingPage() {
 
 
                     <motion.h1 variants={fadeUp} className="text-5xl sm:text-[6rem] leading-[1.05] font-extrabold tracking-tight mb-8 text-foreground transition-colors duration-300">
-                        Don't gamble on your roommate before you ever meet them.
+                        Don&apos;t leave your living situation to chance.
                     </motion.h1>
 
                     <motion.p variants={fadeUp} className="text-lg sm:text-xl font-medium text-muted-foreground max-w-2xl mb-12 leading-relaxed transition-colors duration-300">

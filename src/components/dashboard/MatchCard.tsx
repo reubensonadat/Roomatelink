@@ -1,13 +1,12 @@
-import { ChevronRight, Lock, ShieldCheck, Heart, MessageSquare } from 'lucide-react'
+import { ChevronRight, Lock, ShieldCheck, MessageSquare } from 'lucide-react'
 
 interface MatchCardProps {
   match: any
   isLocked: boolean
-  isPioneerUser: boolean
   onSelect: () => void
 }
 
-export function MatchCard({ match, isLocked, isPioneerUser, onSelect }: MatchCardProps) {
+export function MatchCard({ match, isLocked, onSelect }: MatchCardProps) {
   return (
     <div 
       onClick={onSelect}
