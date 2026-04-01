@@ -1,5 +1,4 @@
 import { useEffect } from 'react'
-import { toast } from 'sonner'
 
 interface PullToRefreshProps {
   children: React.ReactNode

@@ -1,5 +1,18 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+// ═══════════════════════════════════════════════════════════════════
+// ROOMMATE LINK — MATCH CALCULATE EDGE FUNCTION
+// ═══════════════════════════════════════════════════════════════════
+// Implements the "Bouncer & Judge" architecture:
+//   - Bouncer: PostgreSQL query filters users BEFORE math runs
+//   - Judge: Pure TypeScript logic calculates compatibility
+//
+// This ensures scalability by eliminating incompatible candidates
+// at the database level rather than in memory.
+// ═══════════════════════════════════════════════════════════════════
+
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import type { AnswerVector, MatchResult } from './types.ts';
+import { encodeAnswers, calculateMatchesForUser, VISIBILITY_THRESHOLD } from './judge.ts';
 
 // @ts-ignore - Deno types for Edge Functions
 declare const Deno: {
@@ -8,123 +21,187 @@ declare const Deno: {
   }
 }
 
-const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   auth: { autoRefreshToken: false, persistSession: false }
-})
+});
 
-// ─── Constants from Blueprint ───────────────────────────────────────
-
-const CATEGORIES: Record<number, { name: string; questions: string[]; weight: number }> = {
-  1:  { name: 'Conflict Style',             questions: ['q1','q2','q3','q4'],       weight: 5 },
-  2:  { name: 'Sleep & Study Schedule',     questions: ['q5','q6','q7','q8'],       weight: 3 },
-  3:  { name: 'Cleanliness & Organisation', questions: ['q9','q10','q11','q12'],    weight: 3 },
-  4:  { name: 'Social Habits',              questions: ['q13','q14','q15','q16'],   weight: 3 },
-  5:  { name: 'Roommate Relationship',      questions: ['q17','q18','q19','q20'],   weight: 5 },
-  6:  { name: 'Lifestyle & Maturity',       questions: ['q21','q22','q23','q24'],   weight: 1 },
-  7:  { name: 'Lifestyle Imposition',       questions: ['q25','q26','q27','q28'],   weight: 5 },
-  8:  { name: 'Romantic Life',              questions: ['q29','q30','q31','q32'],   weight: 3 },
-  9:  { name: 'Food & Cooking',             questions: ['q33','q34','q35','q36'],   weight: 1 },
-  10: { name: 'Shared Resources',           questions: ['q37','q38','q39','q40'],   weight: 1 },
-}
-
-const MAX_WEIGHTED_SCORE = Object.values(CATEGORIES).reduce((sum, c) => sum + c.weight, 0)
-const VISIBILITY_THRESHOLD = 60
-
-// ─── Implementation ───────────────────────────────────────────────
-
-function calculateCompatibility(userA: any, userB: any) {
-  let totalWeighted = 0
-  const flags: string[] = []
-  const ENCODING: any = { 'A': 1, 'B': 2, 'C': 3, 'D': 4 }
-
-  // LAYER 1: Weighted Base Score
-  for (const [idx, cat] of Object.entries(CATEGORIES)) {
-    let catSimilarity = 0
-    let catQuestions = 0
-    
-    for (const qId of cat.questions) {
-      const aVal = ENCODING[userA[qId]?.toUpperCase()]
-      const bVal = ENCODING[userB[qId]?.toUpperCase()]
-      if (aVal && bVal) {
-        catSimilarity += (4 - Math.abs(aVal - bVal)) / 4
-        catQuestions++
-      }
-    }
-    
-    const meanSimilarity = catQuestions > 0 ? catSimilarity / catQuestions : 0
-    totalWeighted += meanSimilarity * cat.weight
-  }
-
-  const rawScore = totalWeighted / MAX_WEIGHTED_SCORE
-
-  // LAYER 2: Cross-Category Penalties
-  let totalPenalty = 0
-  
-  // MESSY_UNAPOLOGETIC
-  if (userA.q11 === 'D' && userA.q4 === 'D') {
-    const isClean = userB.q9 === 'A' || userB.q11 === 'A'
-    totalPenalty += isClean ? 20 : 12
-    flags.push('MESSY_UNAPOLOGETIC')
-  }
-  
-  // DUAL_IMPOSER
-  if (userA.q28 === 'D' && userA.q26 === 'C' && userB.q28 === 'D' && userB.q26 === 'C') {
-    totalPenalty += 20
-    flags.push('DUAL_IMPOSER')
-  }
-
-  // LAYER 3: Consistency Check (all-A suspicion)
-  const aAnswers = Object.values(userA)
-  const allACount = aAnswers.filter(v => v === 'A').length
-  let consistencyModifier = 0
-  if (allACount === 40) consistencyModifier = -15
-  else if (allACount >= 36) consistencyModifier = -8
-
-  const finalPercent = Math.max(0, Math.min(100, Math.round((rawScore * 100) - totalPenalty + consistencyModifier)))
-  
-  return { score: finalPercent, flags }
-}
+// ═══════════════════════════════════════════════════════════════════
+// REQUEST HANDLER
+// ═══════════════════════════════════════════════════════════════════
 
 serve(async (req: Request) => {
-  if (req.method !== 'POST') return new Response('Method Not Allowed', { status: 405 })
+  if (req.method !== 'POST') {
+    return new Response('Method Not Allowed', { status: 405 });
+  }
 
   try {
-    const { userId } = await req.json()
-    const { data: profile } = await supabase.from('users').select('*').eq('id', userId).single()
-    const { data: userResp } = await supabase.from('questionnaire_responses').select('answers').eq('user_id', userId).single()
-    
-    // THE BOUNCER: Filter for ACTIVE users AT THE SOURCE
-    const { data: allResp } = await supabase
+    const body = await req.json();
+    const { userId } = body;
+
+    if (!userId) {
+      return new Response(JSON.stringify({ error: 'userId is required' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    // ── STEP 1: Fetch the new user's profile and answers ─────────────────
+    const { data: userProfile, error: profileError } = await supabase
+      .from('users')
+      .select('id, gender, gender_preference, has_paid')
+      .eq('id', userId)
+      .single();
+
+    if (profileError || !userProfile) {
+      return new Response(JSON.stringify({ error: 'User profile not found' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    const { data: userResponses } = await supabase
       .from('questionnaire_responses')
-      .select('user_id, answers, users!inner(status, gender)')
-      .eq('users.status', 'ACTIVE')
-      .neq('user_id', userId)
+      .select('answers')
+      .eq('user_id', userId)
+      .single();
 
-    if (!userResp || !allResp) throw new Error('Missing responses')
+    if (!userResponses || !userResponses.answers) {
+      return new Response(JSON.stringify({ error: 'Questionnaire responses not found' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
 
-    const matches = []
-    for (const other of allResp) {
-      const { score, flags } = calculateCompatibility(userResp.answers, other.answers)
-      if (score >= VISIBILITY_THRESHOLD) {
-        matches.push({
-          id: crypto.randomUUID(),
-          user_a_id: userId,
-          user_b_id: other.user_id,
-          match_percentage: score,
-          cross_category_flags: flags,
-          calculated_at: new Date().toISOString()
-        })
+    // Encode letter answers to numeric values
+    const newUserAnswers: AnswerVector = encodeAnswers(userResponses.answers);
+
+    // ── STEP 2: THE BOUNCER — Filter at DATABASE level ───────────────
+    // The database is infinitely faster at filtering than TypeScript code.
+    // We eliminate anyone who fails strict dealbreakers BEFORE any math happens.
+
+    // Build the gender filter based on user's preference
+    let genderFilter = {};
+    if (userProfile.gender_preference === 'SAME_GENDER') {
+      genderFilter = { gender: userProfile.gender };
+    }
+    // If gender_preference is 'ANY_GENDER', no filter applied
+
+    // Fetch only ACTIVE, PAID users who match gender preference
+    // This is the critical scalability optimization
+    const { data: activeCandidates, error: candidatesError } = await supabase
+      .from('users')
+      .select('id, gender, has_paid')
+      .eq('status', 'ACTIVE')
+      .eq('has_paid', true)
+      .neq('id', userId)
+      // Apply gender filter if needed
+      .match(genderFilter);
+
+    if (candidatesError) {
+      throw new Error(`Failed to fetch candidates: ${candidatesError.message}`);
+    }
+
+    if (!activeCandidates || activeCandidates.length === 0) {
+      // No eligible candidates - return early
+      return new Response(JSON.stringify({
+        matches: [],
+        message: 'No eligible candidates found. Check back later.',
+        candidatesFound: 0
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Fetch questionnaire answers for all filtered candidates
+    const candidateIds = activeCandidates.map(u => u.id);
+    const { data: candidateResponses, error: responsesError } = await supabase
+      .from('questionnaire_responses')
+      .select('user_id, answers')
+      .in('user_id', candidateIds);
+
+    if (responsesError) {
+      throw new Error(`Failed to fetch candidate responses: ${responsesError.message}`);
+    }
+
+    // Merge candidate data
+    const candidates = candidateResponses?.map(resp => ({
+      userId: resp.user_id,
+      answers: encodeAnswers(resp.answers)
+    })) || [];
+
+    // ── STEP 3: THE JUDGE — Run the matching algorithm ─────────────
+    // Now we have a small, highly qualified list of candidates.
+    // The Judge (pure TypeScript math) processes this efficiently.
+
+    const matches = calculateMatchesForUser(
+      { userId, answers: newUserAnswers },
+      candidates
+    );
+
+    // ── STEP 4: Store matches in database ───────────────────────────────
+    // Delete old matches for this user first
+    const { error: deleteError } = await supabase
+      .from('matches')
+      .delete()
+      .eq('user_a_id', userId);
+
+    if (deleteError) {
+      throw new Error(`Failed to delete old matches: ${deleteError.message}`);
+    }
+
+    // Insert new matches
+    if (matches.length > 0) {
+      const matchesToInsert = matches.map(match => ({
+        user_a_id: userId,
+        user_b_id: match.userId,
+        match_percentage: match.result.matchPercentage,
+        raw_score: match.result.rawScore,
+        cross_category_flags: match.result.patternFlags,
+        consistency_modifier: match.result.consistencyModifier,
+        category_scores: match.result.categoryBreakdown,
+        calculated_at: new Date().toISOString()
+      }));
+
+      const { error: insertError } = await supabase
+        .from('matches')
+        .insert(matchesToInsert);
+
+      if (insertError) {
+        throw new Error(`Failed to insert matches: ${insertError.message}`);
       }
     }
 
-    await supabase.from('matches').delete().eq('user_a_id', userId)
-    if (matches.length > 0) await supabase.from('matches').insert(matches)
+    // ── STEP 5: Return response ───────────────────────────────────────────
+    return new Response(JSON.stringify({
+      success: true,
+      matchesCount: matches.length,
+      matches: matches.map(m => ({
+        userId: m.userId,
+        matchPercentage: m.result.matchPercentage,
+        tier: m.result.tier,
+        isVisible: m.result.isVisible,
+        categoryBreakdown: m.result.categoryBreakdown,
+        patternFlags: m.result.patternFlags
+      })),
+      candidatesEvaluated: candidates.length,
+      threshold: VISIBILITY_THRESHOLD
+    }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
 
-    return new Response(JSON.stringify({ matches: matches.length }), { headers: { 'Content-Type': 'application/json' } })
-  } catch (err: any) {
-    return new Response(JSON.stringify({ error: err.message }), { status: 500 })
+  } catch (error: any) {
+    console.error('Match calculation error:', error);
+    return new Response(JSON.stringify({
+      error: error.message || 'Internal server error',
+      timestamp: new Date().toISOString()
+    }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
-})
+});
