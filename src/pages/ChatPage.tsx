@@ -42,7 +42,7 @@ export function ChatPage() {
         .order('created_at', { ascending: true })
 
       if (history) {
-        setMessages(history.map(m => ({
+        setMessages(history.map((m: any) => ({
           id: m.id,
           text: m.content,
           sender: m.sender_id === me.id ? 'me' : 'them',
@@ -59,7 +59,7 @@ export function ChatPage() {
           schema: 'public', 
           table: 'messages',
           filter: `receiver_id=eq.${me.id}`
-        }, (payload) => {
+        }, (payload: any) => {
           if (payload.new.sender_id === them.id) {
             setMessages(prev => [...prev, {
               id: payload.new.id,

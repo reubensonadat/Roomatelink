@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Sparkles, Check, X, Lock, Unlock, Flame, UserCheck, ShieldCheck, ChevronRight, MessageSquare, Heart, ArrowRight, Crown, Eye } from 'lucide-react'
+import { Sparkles, Check, X, Lock, Unlock, Flame, UserCheck, ShieldCheck, ChevronRight, MessageSquare, Heart, ArrowRight, Eye } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
@@ -518,20 +518,20 @@ export function DashboardPage() {
                 </div>
               ))
             ) : !profile ? (
-              /* Profile Not Found Fallback */
+              /* Profile Not Found Fallback - Redirect strictly to Profile Hub */
               <div className="flex flex-col items-center justify-center py-20 px-10 text-center bg-muted/20 rounded-[2.5rem] border border-border/40">
                 <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-6">
                   <UserCheck className="w-10 h-10 text-primary" />
                 </div>
-                <h2 className="text-2xl font-black text-foreground mb-3">Profile Synchronization Issue</h2>
+                <h2 className="text-2xl font-black text-foreground mb-3">Profile Access Issue</h2>
                 <p className="text-[15px] font-medium text-muted-foreground mb-10 max-w-[300px]">
-                  We established your account but couldn't locate your profile details. Please try re-syncing or checking your onboarding status.
+                  We established your account but your profile details need to be synchronized. Please visit the Profile Hub to continue.
                 </p>
                 <button
-                  onClick={() => navigate('/onboarding')}
-                  className="premium-btn bg-primary text-white"
+                  onClick={() => navigate('/dashboard/profile')}
+                  className="px-8 py-4 bg-primary text-white font-bold text-[15px] rounded-2xl shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2"
                 >
-                  Return to Onboarding
+                  Setup Profile Hub <ChevronRight className="w-4 h-4" />
                 </button>
               </div>
             ) : !isProfileComplete ? (
@@ -880,7 +880,7 @@ export function DashboardPage() {
                             payment_date: new Date().toISOString()
                           })
                           .eq('id', profile?.id)
-                          .then(({ error }) => {
+                          .then(({ error }: { error: any }) => {
                             setIsVerifyingPayment(false)
                             if (!error) {
                               toast.success('Identity verified! Unlocking profiles...', { id: 'verify-toast' })

@@ -95,7 +95,13 @@ serve(async (req: Request) => {
     const { userId } = await req.json()
     const { data: profile } = await supabase.from('users').select('*').eq('id', userId).single()
     const { data: userResp } = await supabase.from('questionnaire_responses').select('answers').eq('user_id', userId).single()
-    const { data: allResp } = await supabase.from('questionnaire_responses').select('user_id, answers').neq('user_id', userId)
+    
+    // THE BOUNCER: Filter for ACTIVE users AT THE SOURCE
+    const { data: allResp } = await supabase
+      .from('questionnaire_responses')
+      .select('user_id, answers, users!inner(status, gender)')
+      .eq('users.status', 'ACTIVE')
+      .neq('user_id', userId)
 
     if (!userResp || !allResp) throw new Error('Missing responses')
 

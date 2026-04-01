@@ -37,7 +37,7 @@ export function QuestionnairePage() {
     if (savedOrder) {
       const orderIds: string[] = JSON.parse(savedOrder)
       questionOrder = orderIds
-        .map(id => sourceQuestions.find(q => q.id === id))
+        .map(id => sourceQuestions.find((q: any) => q.id === id))
         .filter(Boolean) as Question[]
     } else {
       questionOrder = shuffle(sourceQuestions)
@@ -192,7 +192,7 @@ export function QuestionnairePage() {
               </div>
 
               <div className="grid gap-4">
-                {currentQ.options.map((opt, idx) => {
+                {currentQ.options.map((opt: any, idx: number) => {
                   const isSelected = selectedAnswer === opt.id
                   const isDimmed = selectedAnswer !== null && !isSelected
 

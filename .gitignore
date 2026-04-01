@@ -25,10 +25,10 @@ dist-ssr
 
 # Legacy Archive Exclusions
 archive-v1/
-app/
-components/
-lib/
-utils/
+archive-v1/app/
+archive-v1/components/
+archive-v1/lib/
+archive-v1/utils/
 public/logo-old.png
 middleware.ts
 next.config.js
