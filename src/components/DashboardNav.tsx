@@ -74,7 +74,7 @@ export function DashboardNav() {
               {isActive && (
                 <motion.div
                   layoutId="navActivePill"
-                  className="absolute inset-0 -mx-2 -my-0.5 bg-primary/10 rounded-2xl"
+                  className="absolute inset-0 -mx-2 -my-0.5 bg-primary/10 rounded-3xl"
                   transition={{ type: "spring", stiffness: 400, damping: 30 }}
                 />
               )}

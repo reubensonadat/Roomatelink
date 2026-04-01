@@ -19,16 +19,21 @@ export default defineConfig({
         theme_color: '#0f172a',
         background_color: '#0f172a',
         display: 'standalone',
+        orientation: 'portrait',
+        scope: '/',
+        start_url: '/',
         icons: [
           {
             src: 'logo.png',
             sizes: '192x192',
-            type: 'image/png'
+            type: 'image/png',
+            purpose: 'any maskable'
           },
           {
             src: 'logo.png',
             sizes: '512x512',
-            type: 'image/png'
+            type: 'image/png',
+            purpose: 'any maskable'
           }
         ]
       }

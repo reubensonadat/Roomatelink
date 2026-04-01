@@ -21,7 +21,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<any | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const fetchProfile = async (userId: string) => {
+  const fetchProfile = async (userId: string, retries = 1): Promise<any> => {
     try {
       const { data, error } = await supabase
         .from('users')
@@ -30,78 +30,109 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .single()
       
       if (error) {
-        console.error('Error fetching profile:', error)
+        if (retries > 0) {
+          await new Promise(resolve => setTimeout(resolve, 1000))
+          return fetchProfile(userId, retries - 1)
+        }
         return null
       }
+
+      if (data) {
+        localStorage.setItem(`roommate_profile_${userId}`, JSON.stringify(data))
+      }
+      
       return data
     } catch (err) {
-      console.error('Catch error fetching profile:', err)
       return null
     }
   }
 
   useEffect(() => {
+    let isMounted = true
+
     const initializeAuth = async () => {
       console.log('--- AuthProvider: Initializing ---')
       
-      // WATCHDOG TIMER: Force loading to false after 10 seconds to prevent "Infinite Refresh Hang"
       const watchdog = setTimeout(() => {
-        if (loading) {
-          console.warn('--- AuthProvider: Watchdog forced loading to false (Timeout) ---')
+        if (loading && isMounted) {
           setLoading(false)
         }
-      }, 10000)
+      }, 12000)
 
       try {
-        const { data: { session } } = await supabase.auth.getSession()
-        setSession(session)
-        setUser(session?.user ?? null)
+        const { data: { session: initialSession } } = await supabase.auth.getSession()
         
-        if (session?.user) {
-          const profileData = await fetchProfile(session.user.id)
-          setProfile(profileData)
+        if (!isMounted) return
+
+        setSession(initialSession)
+        setUser(initialSession?.user ?? null)
+        
+        if (initialSession?.user) {
+          // Instant Load from Cache
+          const cached = localStorage.getItem(`roommate_profile_${initialSession.user.id}`)
+          if (cached) {
+            setProfile(JSON.parse(cached))
+            setLoading(false)
+          }
+
+          // Background Sync
+          const profileData = await fetchProfile(initialSession.user.id)
+          if (isMounted) {
+            setProfile(profileData)
+            setLoading(false)
+          }
+        } else {
+          setLoading(false)
         }
       } catch (error) {
         console.error('Auth initialization error:', error)
+        if (isMounted) setLoading(false)
       } finally {
         clearTimeout(watchdog)
-        setLoading(false)
       }
     }
 
     initializeAuth()
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event: string, session: any) => {
+      async (event: string, currentSession: any) => {
         console.log(`--- AuthProvider: Auth Changed [${event}] ---`)
-        try {
-          setSession(session)
-          setUser(session?.user ?? null)
-          if (session?.user) {
-            const profileData = await fetchProfile(session.user.id)
-            setProfile(profileData)
-          } else {
-            setProfile(null)
+        
+        if (!isMounted) return
+
+        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
+          setSession(currentSession)
+          setUser(currentSession?.user ?? null)
+          
+          if (currentSession?.user) {
+            // Hot cache update
+            const cached = localStorage.getItem(`roommate_profile_${currentSession.user.id}`)
+            if (cached) setProfile(JSON.parse(cached))
+
+            const profileData = await fetchProfile(currentSession.user.id)
+            if (isMounted) setProfile(profileData)
           }
-        } catch (error) {
-          console.error('Auth state change error:', error)
-        } finally {
-          setLoading(false)
+        } else if (event === 'SIGNED_OUT') {
+          setSession(null)
+          setUser(null)
+          setProfile(null)
         }
+
+        if (isMounted) setLoading(false)
       }
     )
 
-    // 15-minute Heartbeat to ensure session remains active and token refreshes
     const heartbeat = setInterval(async () => {
-      console.log('--- AuthProvider: Session Heartbeat Check ---')
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session) {
-        setSession(session)
-        setUser(session.user)
+      if (!isMounted) return
+      const { data: { session: activeSession } } = await supabase.auth.getSession()
+      if (activeSession && isMounted) {
+        setSession(activeSession)
+        setUser(activeSession.user)
       }
     }, 15 * 60 * 1000)
 
     return () => {
+      isMounted = false
       subscription.unsubscribe()
       clearInterval(heartbeat)
     }

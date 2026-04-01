@@ -32,7 +32,8 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 221.2 83.2% 53.3%;
 
-    --radius: 0.75rem;
+    --radius: 1.5rem;
+    --shadow-premium: 0 20px 50px -12px rgba(0, 0, 0, 0.12);
   }
 
   .dark {
@@ -85,14 +86,20 @@
     padding-bottom: 1.25rem;
     padding-left: 2.5rem;
     padding-right: 2.5rem;
-    border-radius: 1rem;
+    border-radius: 2rem;
     font-weight: 900;
     font-size: 18px;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    box-shadow: var(--shadow-premium);
     transition-property: all;
     transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
     transition-duration: 300ms;
   }
+}
+
+@layer utilities {
+  .rounded-4xl { border-radius: 2rem; }
+  .rounded-5xl { border-radius: 3rem; }
+  .shadow-premium { box-shadow: var(--shadow-premium); }
 }
 
 /* Global Institutional Backdrop & Modal Overlay */

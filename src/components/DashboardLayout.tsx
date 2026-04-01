@@ -23,7 +23,7 @@ export function DashboardLayout() {
   const isInsideChat = location.pathname.startsWith('/dashboard/messages/') && location.pathname !== '/dashboard/messages'
   
   return (
-    <div className="flex min-h-screen relative bg-background transition-colors duration-300 overflow-x-hidden pt-[env(safe-area-inset-top,20px)]">
+    <div className="flex min-h-screen relative bg-background transition-colors duration-300 overflow-x-hidden pt-[env(safe-area-inset-top,4rem)]">
   
       {/* Desktop Left Sidebar */}
       <Sidebar />
@@ -35,9 +35,9 @@ export function DashboardLayout() {
         </main>
       </div>
   
-      {/* Mobile Bottom Tab Bar — hidden on unauthorized routes, inside chat, or when modal is open (Iron Curtain) */}
+      {/* Mobile Bottom Tab Bar — hidden on unauthorized routes, inside chat, or when modal is open */}
       {showNav && !isInsideChat && (
-        <div className="md:hidden fixed bottom-6 left-6 right-6 z-50 bg-card border border-border shadow-[0_8px_30px_rgb(0,0,0,0.12)] rounded-[24px] overflow-hidden transition-opacity duration-300 group-[.modal-open]:opacity-0 group-[.modal-open]:pointer-events-none [.modal-open_&]:hidden">
+        <div className="md:hidden fixed bottom-6 left-6 right-6 z-50 bg-card border border-border shadow-[0_8px_30px_rgb(0,0,0,0.12)] rounded-[24px] overflow-hidden transition-all duration-300 [.modal-open_&]:opacity-0 [.modal-open_&]:pointer-events-none [.modal-open_&]:translate-y-20">
           <DashboardNav />
         </div>
       )}

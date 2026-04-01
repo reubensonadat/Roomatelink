@@ -1,16 +1,16 @@
-// ═════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════
 // ROOMMATE LINK — MATCH CALCULATE EDGE FUNCTION
-// ═════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════
 // Implements the "Bouncer & Judge" architecture:
 //   - Bouncer: PostgreSQL query filters users BEFORE math runs
 //   - Judge: Pure TypeScript logic calculates compatibility
 //
 // This ensures scalability by eliminating incompatible candidates
 // at the database level rather than in memory.
-// ═════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════
 
-import { serve } from "https://deno.land/std@0.160.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { serve } from "std/http/server.ts"
+import { createClient } from '@supabase/supabase-js'
 import type { AnswerVector, MatchResult } from './types.ts';
 import { encodeAnswers, calculateMatchesForUser } from './judge.ts';
 import { VISIBILITY_THRESHOLD } from './types.ts';
@@ -84,14 +84,14 @@ serve(async (req: Request) => {
     // We eliminate anyone who fails strict dealbreakers BEFORE any math happens.
 
     // Build the gender filter based on user's preference
-    let genderFilter = {};
+    let genderFilter: { gender?: string } = {};
     if (userProfile.gender_preference === 'SAME_GENDER') {
       genderFilter = { gender: userProfile.gender };
     }
     // If gender_preference is 'ANY_GENDER', no filter applied
 
     // Fetch only ACTIVE, PAID users who match gender preference
-    // This is the critical scalability optimization
+    // This is a critical scalability optimization
     const { data: activeCandidates, error: candidatesError } = await supabase
       .from('users')
       .select('id, gender, has_paid')

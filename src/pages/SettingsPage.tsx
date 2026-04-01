@@ -145,7 +145,7 @@ export function SettingsPage() {
         {/* Account Settings */}
         <section>
           <h2 className="text-[12px] font-bold text-muted-foreground uppercase tracking-widest pl-1 mb-3">Account</h2>
-          <div className="bg-card rounded-4xl shadow-sm border border-border flex flex-col p-2 gap-1 overflow-hidden">
+          <div className="bg-card rounded-4xl shadow-premium border border-border flex flex-col p-2 gap-1 overflow-hidden">
 
             <button
               onClick={toggleTheme}
@@ -219,7 +219,7 @@ export function SettingsPage() {
         {/* Support & Legal */}
         <section>
           <h2 className="text-[12px] font-bold text-muted-foreground uppercase tracking-widest pl-1 mb-3">Support & Legal</h2>
-          <div className="bg-card rounded-4xl shadow-sm border border-border flex flex-col p-2 gap-1 overflow-hidden">
+          <div className="bg-card rounded-4xl shadow-premium border border-border flex flex-col p-2 gap-1 overflow-hidden">
             <Link to="/support" className="flex items-center justify-between p-3 rounded-3xl hover:bg-muted/50 transition-colors text-left group border-b border-border/40 pb-4 mb-1">
               <div className="flex flex-col gap-1 w-full relative">
                 <div className="flex items-center gap-4">
