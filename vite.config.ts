@@ -9,6 +9,9 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['logo.png'],
+      workbox: {
+        maximumFileSizeToCacheInBytes: 4000000,
+      },
       manifest: {
         name: 'RoommateLink | Avoid the Roommate Gamble',
         short_name: 'RoommateLink',
@@ -32,7 +35,7 @@ export default defineConfig({
     })
   ],
   build: {
-    sourcemap: true,
-    minify: false
+    sourcemap: false,
+    minify: true
   }
 })

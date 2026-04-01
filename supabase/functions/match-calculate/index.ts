@@ -1,18 +1,19 @@
-// ═══════════════════════════════════════════════════════════════════
+// ═════════════════════════════════════════════════════════════════
 // ROOMMATE LINK — MATCH CALCULATE EDGE FUNCTION
-// ═══════════════════════════════════════════════════════════════════
+// ═════════════════════════════════════════════════════════════════
 // Implements the "Bouncer & Judge" architecture:
 //   - Bouncer: PostgreSQL query filters users BEFORE math runs
 //   - Judge: Pure TypeScript logic calculates compatibility
 //
 // This ensures scalability by eliminating incompatible candidates
 // at the database level rather than in memory.
-// ═══════════════════════════════════════════════════════════════════
+// ═════════════════════════════════════════════════════════════════
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { serve } from "https://deno.land/std@0.160.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import type { AnswerVector, MatchResult } from './types.ts';
-import { encodeAnswers, calculateMatchesForUser, VISIBILITY_THRESHOLD } from './judge.ts';
+import { encodeAnswers, calculateMatchesForUser } from './judge.ts';
+import { VISIBILITY_THRESHOLD } from './types.ts';
 
 // @ts-ignore - Deno types for Edge Functions
 declare const Deno: {
@@ -117,7 +118,7 @@ serve(async (req: Request) => {
     }
 
     // Fetch questionnaire answers for all filtered candidates
-    const candidateIds = activeCandidates.map(u => u.id);
+    const candidateIds = activeCandidates.map((u: { id: string }) => u.id);
     const { data: candidateResponses, error: responsesError } = await supabase
       .from('questionnaire_responses')
       .select('user_id, answers')
@@ -128,7 +129,7 @@ serve(async (req: Request) => {
     }
 
     // Merge candidate data
-    const candidates = candidateResponses?.map(resp => ({
+    const candidates = candidateResponses?.map((resp: { user_id: string; answers: Record<string, string> }) => ({
       userId: resp.user_id,
       answers: encodeAnswers(resp.answers)
     })) || [];
