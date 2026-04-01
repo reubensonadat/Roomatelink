@@ -6,8 +6,10 @@ The Ultimate Student Roommate Compatibility Platform
 University of Cape Coast
 
 
-Version 1.0  —  Architecture Approved
+Version 2.0  —  Architecture Revised (React + Vite)
 Built for UCC Freshmen. Built on Real Conflict. Built to Last.
+Status: Architecture Revised — Next.js Abandoned (March 2026)
+Reason for Revision: 30+ failed Cloudflare Pages builds caused by incompatibility between Next.js and Cloudflare Edge Workers.
 
 
 CONFIDENTIAL PRODUCT DOCUMENT
@@ -166,13 +168,15 @@ Success	Emerald 600 — #059669 — High compatibility scores, confirmed matches
 •	Display: Bold Inter at 32-40px for match percentage badges and key metrics
 •	Body: Regular Inter at 14-16px for questionnaire options and profile bios
 •	Captions: Medium Inter at 12px for timestamps, metadata, category labels
-3.3 PWA Configuration
-Roommate Link is a Progressive Web Application (PWA) built in Next.js. This decision is deliberate and strategically superior to a native mobile app for the following reasons:
-•	Zero download friction: A student clicks a link from the SRC campus guide and lands directly inside the application. No Play Store. No App Store. No install prompt before value delivery.
-•	Cross-device access: Works identically on mobile phones, tablets, and laptops. A fresher using a laptop in the library gets the same experience as one on their phone in the hostel.
-•	Installable to home screen: After first visit, users can add Roommate Link to their home screen. It then behaves exactly like a native app with full-screen mode, app icon, and offline capability for cached screens.
-•	Faster shipping: No app store review process. New versions deploy instantly. Critical bug fixes reach users in minutes not days.
-•	PWA manifest includes: app name, short name, theme colour matching Indigo 600, background colour matching Slate 50, display mode standalone, icons at 192px and 512px.
+3.3 — PWA Configuration (REWRITTEN)
+Roommate Link is a Progressive Web Application (PWA) built with React (Vite) using the vite-plugin-pwa package. This replaces the previous next-pwa package.
+
+• Zero download friction: A student clicks a link from the SRC campus guide and lands directly inside the application. No Play Store. No App Store. No install prompt before value delivery.
+• Cross-device access: Works identically on mobile phones, tablets, and laptops.
+• Installable to home screen: After first visit, the browser prompts installation. App icon, full-screen mode, offline capability for cached screens.
+• Faster shipping: No app store review process. New versions deploy to Cloudflare Pages in under 30 seconds.
+• PWA manifest (public/manifest.json) includes: app name, short name, theme colour (#4f46e5), background colour (#f8fafc), display mode standalone, icons at 192px and 512px.
+• Service worker configured via vite.config.ts using VitePWA() plugin with registerType: 'autoUpdate'.
 3.4 Avatar System
 Users who do not wish to upload a photo may select from a curated grid of ten high-quality vector avatar illustrations. Avatars are designed to feel personality-expressive rather than generic. Example names:
 •	The Night Owl — Dark aesthetic, headphones, late-night energy
@@ -186,10 +190,10 @@ Avatars serve a secondary function: they signal to matches that this person valu
 4. Detailed User Flows
 
 4.1 Phase 1 — Onboarding
-Step 1: Landing Page
+Steps 1: Landing Page
 The landing page communicates three things before the user does anything:
 1.	What the app does: "Find your perfect UCC roommate before you ever meet them."
-2.	That it costs money: "Free to join. Unlock your matches for GHS 15 — less than a bowl of waakye."
+2.	That it costs money: "Free to join. Unlock your matches for GHS 25 — less than a bowl of waakye."
 3.	Why it is trustworthy: "Every profile is a verified UCC student. No strangers. No fake accounts."
 
 The framing of the fee on the landing page is non-negotiable. A student who discovers the fee after completing a 40-question questionnaire feels betrayed. A student who knew the fee existed before they started feels like they made an informed investment.
@@ -218,62 +222,59 @@ The questionnaire is the core data collection event of the onboarding flow. Desi
 •	Question randomisation: Questions are presented in randomised order on every session. This prevents users from recognising category patterns and performing a consistent character rather than answering honestly. Answer values are fixed to question IDs regardless of display order.
 •	No back button: Once an answer is submitted it is final. This prevents overthinking and rationalisation that produces dishonest answers.
 •	Completion celebration: On answering the final question, a brief animated celebration screen appears before transitioning to the match calculation sequence.
-4.2 Phase 2 — The Match Calculation & Paywall
+4.2 — Match Calculation & Paywall (REWRITTEN)
 Match Calculation Sequence
-Immediately on questionnaire completion, a Supabase Database Webhook fires, hitting a secure Next.js API Route (`/api/webhooks/matches`) running on a Node server environment. This begins calculating compatibility scores between the new user and all active profiles in the database. While this runs (typically 3-8 seconds), the user sees an animated sequence:
-•	"Analysing your sleep and study habits..."
-•	"Comparing conflict styles..."
-•	"Checking social compatibility..."
-•	"Mapping lifestyle expectations..."
-•	"Finalising your matches..."
+Immediately on questionnaire completion, the frontend calls a Supabase Edge Function (match-calculate). This replaces the old Next.js API Route.
 
-When results arrive, compatible profiles stack in one by one from highest match percentage to lowest, with a satisfying entrance animation for each card. The user watches their matches arrive in real time. This is psychologically engaging and makes the value immediately tangible.
-The Locked Dashboard State
-The user lands on their Matches tab. They see a grid of profile cards. The following is visible to all users regardless of payment status:
-•	Match Percentage Badge: Large, prominent, coloured by tier. Example: "🔥 94% Match", "87% Match", "76% Match"
-•	Compatibility Breakdown: A list of specific shared traits. Example: "You both prefer quiet study environments", "You both need personal space from visitors", "You have opposite conflict styles — see details"
-•	Category scores: Visual indicators showing how well matched you are in each of the 10 categories
+The Edge Function:
+1. Receives the new user's ID from the frontend
+2. Fetches the new user's answers from questionnaire_responses
+3. Fetches ALL active users' answers from questionnaire_responses
+4. Runs calculateMatchesForUser() (pure TypeScript math, zero external dependencies)
+5. Inserts visible matches into the matches table
+6. Returns the top matches to the frontend
 
-The following is HIDDEN until payment:
-•	Profile photo or avatar
-•	Name
-•	Course and level
-•	Bio
-•	Messaging capability
+While this runs (typically 2-5 seconds), the user sees the animated sequence:
+• "Analysing your sleep and study habits..."
+• "Comparing conflict styles..."
+• "Checking social compatibility..."
+• "Mapping lifestyle expectations..."
+• "Finalising your matches..."
 
-DESIGN PHILOSOPHY	The user sees the chemistry before they see the person. This is intentional. By the time a user sees their 94% match's name and photo, they are not evaluating a stranger. They are putting a face to someone they already know is deeply compatible with them. The reveal feels meaningful rather than transactional.
-The Payment
-The unlock prompt reads: "You have [N] compatible roommates waiting. Unlock all profiles for GHS 25 (or GHS 15 with a hall/club code) — valid for your full academic year."
-•	Payment processor: Paystack with full MoMo (Mobile Money) integration
-•	Promo Codes: Simple string matching against manually generated codes (e.g., ATLANTIC15). Codes are removed manually when the discount period ends to reduce automated complexity.
-•	Payment Verification Ecosystem (Dual-Layer): 
-    1. Client-Side: The frontend calls `/api/paystack/verify` for immediate UI unlocking without refreshing.
-    2. Server-Side (Webhook): A secure backend listener (`/api/paystack/webhook`) catches Paystack's server-to-server notifications. If the student's campus Wi-Fi drops the moment money leaves their MoMo account, the webhook guarantees their database record is updated automatically. No manual admin review required for network drops.
-•	On successful payment: has_paid field in database updates to true, profile unlocks immediately
-•	On failed payment: User is returned to locked state with retry option, no partial unlock
-•	Receipt: Automated email confirmation sent to student email
-4.3 Phase 3 — Interaction & Chat
-Unlocked Dashboard State
-All profile cards unblur simultaneously on payment confirmation. The transition is animated to feel like a reveal moment. Names, photos or avatars, bios, courses, and levels become visible.
+WHY SUPABASE EDGE FUNCTION: The matching algorithm is pure math (Math.abs, array operations, object comparisons). It has ZERO Node.js dependencies. It runs perfectly in Deno (Supabase Edge Functions) because Deno supports standard JavaScript APIs. Running it inside Supabase also means zero network latency to the database — the function lives next to the data.
 
-Users can click any profile card to see a detailed Compatibility Breakdown page showing:
-•	Overall match percentage with visual ring indicator
-•	Category-by-category breakdown with specific shared and conflicting traits
-•	Green indicators for strong matches: "You both prefer a co-tenant relationship, not forced friendship"
-•	Amber indicators for manageable differences: "Different study schedules, but both report high noise tolerance"
-•	Red indicators for flagged tensions: "Opposite conflict styles — one confronts directly, one avoids. Awareness recommended."
-Messaging System
-Real-time chat powered by Supabase WebSockets. Technical specifications:
-•	Only paid users can initiate or receive messages
-•	Message delivery guaranteed via Firebase Cloud Messaging push notifications
-•	If a user is not in the app, an FCM notification fires to their registered phone number: "[Name] replied to your message on Roommate Link"
-•	No SMS notifications — FCM is free, SMS would consume entire revenue at scale
-•	Message Lifecycle (WhatsApp-style receipts): Messages transition through a 4-tier status tracking system within the `messages` table:
-    1. `PENDING`: Displayed as a clock/circle while the websocket pushes the payload to Supabase.
-    2. `SENT` (One Tick): Confirmed saved in the database.
-    3. `DELIVERED` (Two Ticks): The recipient's device has received the payload/notification.
-    4. `READ` (Two Colored Ticks): The recipient has actively opened the chat window.
-•	No phone number or external contact exchange is required or facilitated within the app
+The Payment System (SPLIT ARCHITECTURE)
+The payment system is now deliberately split between client-side and server-side:
+
+Client-Side (React Frontend) — Transaction Initialization:
+• Uses the react-paystack library OR the Paystack inline JS popup
+• Only requires the Paystack PUBLIC key (pk_test_... or pk_live_...)
+• Stored in environment variable VITE_PAYSTACK_PUBLIC_KEY
+• Opens the Paystack popup so the user enters their MoMo details and pays
+• On successful payment, the frontend calls /api/paystack/verify (NOW a Supabase Edge Function) with the transaction reference for immediate UI unlock
+
+Server-Side (Supabase Edge Function) — Webhook Verification:
+• Endpoint: supabase/functions/paystack-webhook/index.ts
+• Receives Paystack's server-to-server webhook notification
+• Verifies the signature using the Web Crypto API (crypto.subtle.sign with HMAC-SHA-512) — NOT Node's crypto module
+• Uses the Paystack SECRET key stored securely in Supabase Edge Function secrets (PAYSTACK_SECRET_KEY)
+• On valid signature: updates has_paid = true and payment_date = now() in the users table
+• Returns 200 to Paystack
+
+WHY THIS SPLIT IS NON-NEGOTIABLE: The public key is safe in the frontend — it can only open a payment popup, it cannot process transactions. The secret key MUST live on a server. If you put the secret key in the frontend, anyone can open Chrome DevTools, steal it, and fake successful payments to unlock accounts for free. The Supabase Edge Function keeps the secret key invisible to the browser.
+
+Dual-Layer Verification Still Applies:
+1. Frontend calls the verify Edge Function with the transaction reference for instant UI feedback
+2. Paystack's background webhook guarantees the database updates even if the user's Wi-Fi drops mid-payment
+4.3 — Interaction & Chat (MINOR UPDATES)
+Real-time chat powered by Supabase WebSockets — unchanged from v1.0.
+
+• Only paid users can initiate or receive messages
+• Message delivery via Firebase Cloud Messaging push notifications
+• Message lifecycle (PENDING → SENT → DELIVERED → READ) tracked in the messages table
+• No phone number or external contact exchange facilitated in the app
+
+Implementation Change: The message status updates now happen via Supabase Realtime subscriptions in the React frontend, not through Next.js server actions. When a message is inserted, the sender subscribes to real-time updates on that message row to watch for read/delivery status changes.
 4.4 Phase 4 — Resolution
 Found Roommate Prompts
 The platform prompts users to confirm their roommate search status at three strategic points rather than relying on voluntary self-reporting:
@@ -628,7 +629,7 @@ Algorithm Note: THE CONSISTENCY VALIDATOR. After 39 situation-based questions, t
  
 6. The Matching Algorithm
 
-The matching algorithm is the engine that justifies the GHS 15 payment. If it produces bad matches, the app dies by word of mouth on a university campus within one semester. Every component of this algorithm was designed to produce matches that translate into peaceful, productive shared living — not just statistically similar survey responses.
+The matching algorithm is the engine that justifies the GHS 25 payment. If it produces bad matches, the app dies by word of mouth on a university campus within one semester. Every component of this algorithm was designed to produce matches that translate into peaceful, productive shared living — not just statistically similar survey responses.
 
 6.1 Answer Encoding
 Every answer is encoded as a numerical value stored in the database:
@@ -701,15 +702,21 @@ The minimum compatibility threshold for a profile to appear in a user's match fe
 Match cards stack in descending order from highest to lowest compatibility percentage. There is no cap on the number of matches shown above the threshold, but the UI prioritises the top 20 for the initial view with infinite scroll for additional matches below.
 
 If a user has zero matches above the threshold after 7 days, a push notification fires: "No highly compatible roommates have joined yet. Want to see your closest available matches while you wait?" The user can choose to lower their visible threshold or remain in the notification queue for when compatible users join.
-6.7 Algorithm Trigger
-The matching algorithm fires via a Supabase Edge Function immediately upon questionnaire completion. There is no cron job, no 6-hour delay, no waiting period. The new user's profile is compared against all active profiles in the database and results are cached in the matches table within seconds of their final answer submission.
+6.7 — Algorithm Trigger (REWRITTEN)
+The matching algorithm fires via a Supabase Edge Function triggered by the frontend after questionnaire completion. There is no cron job.
+
+Trigger Flow:
+1. User answers Q40 → frontend shows celebration animation
+2. Frontend calls supabase.functions.invoke('match-calculate', { body: { userId: user.id } })
+3. Edge Function executes calculateMatchesForUser() against all active profiles
+4. Results inserted into matches table
+5. Frontend receives response and animates match cards appearing
 
 Subsequent recalculations occur:
-•	When a new user completes their questionnaire — existing compatible users receive a push notification if the new user scores above their threshold
-•	When a user updates their profile or answers any questions in the optional extension bank
-•	When a user reactivates their profile after expiry
+• When a new user completes their questionnaire — existing compatible users receive a push notification if the new user scores above their threshold
+• When a user reactivates their profile after expiry
 
-COST NOTE	Supabase Edge Functions are available on the free tier. The matching algorithm running on-demand rather than on a cron job is both cheaper and faster than the original architecture specification. This is a direct cost optimisation with zero quality trade-off.
+CRITICAL CODE CHANGE: The matching algorithm file (algorithm.ts) originally contained import 'server-only' at the top. This is a Next.js-specific import that MUST be removed for the Supabase Edge Function. The algorithm is pure TypeScript math with zero framework dependencies. It works identically in Deno.
  
 7. Database Schema (Supabase PostgreSQL)
 
@@ -779,41 +786,31 @@ created_at	timestamp
 reviewed_at	timestamp, nullable
 admin_notes	text, nullable
  
-8. Technology Stack
-
+8 — Technology Stack (COMPLETE REWRITE)
 Layer	Technology & Rationale
-Frontend / Application	Next.js 16.2.1 — React framework with built-in PWA support, edge-compatible middleware and dynamic routes
-PWA Configuration	next-pwa package — Service worker, offline caching, home screen installation
-Database	Supabase PostgreSQL — Relational queries essential for compatibility algorithm.
-Authentication	Supabase Auth — Built-in email verification with domain checking
-Real-time Chat	Supabase Realtime WebSockets — Native integration with existing database
-Matching Algorithm	Supabase Edge Functions (Deno) — Serverless, triggers on questionnaire completion
-Deployment	Cloudflare Pages — Native Next.js deployment via @cloudflare/next-on-pages
-Edge Runtime	Mandatory opt-in (export const runtime = 'edge') for all dynamic routes and middleware
-Logic Isolation	Browser-libraries (e.g. react-paystack) must be dynamically imported with { ssr: false }
-
----
-
-## 🏗️ Project Structure (Cleaned)
-/app                — Next.js App Router (Client & Server code)
-/components         — Reusable UI components
-/docs               — Product architecture, guides, and specifications
-/supabase           — Database schemas and /migrations
-/tests              — Dev scripts, algorithm benchmarks, and error logs
-/middleware.ts      — Main auth bouncer and session logic (Edge Runtime)
-
-Layer	Technology & Rationale
-Frontend / Application	Next.js — React framework with built-in PWA support, server-side rendering, and excellent Supabase SDK integration
-PWA Configuration	next-pwa package — Service worker, offline caching, home screen installation, standalone display mode
-Database	Supabase PostgreSQL — Relational queries essential for compatibility algorithm. NoSQL would make weighted vector comparisons significantly harder.
-Authentication	Supabase Auth — Built-in email verification with domain checking, JWT session management, and free tier support
-Real-time Chat	Supabase Realtime WebSockets — Native integration with existing database, no additional service required
-Matching Algorithm	Supabase Edge Functions (Deno) — Serverless, triggers on questionnaire completion, free tier available, no cron job needed
-Push Notifications	Firebase Cloud Messaging (FCM) — Free, works when app is closed, delivers to any registered device token. Used exclusively for notifications. No other Firebase service used.
-Payment Processing	Paystack — Full MoMo integration, GHS support, widely used and trusted in Ghana, easy webhook integration for has_paid updates
-Styling	Tailwind CSS — Utility-first, consistent with Indigo/Violet design system, excellent PWA performance
-Hosting	Cloudfalre— Native Next.js deployment, automatic scaling, free tier sufficient for initial launch
+Frontend	React 18+ with Vite — Pure SPA, zero server dependency, instant Cloudflare Pages deployment
+Routing	React Router v6 — Client-side routing with <Route path="..." element={...} /> in App.tsx
+PWA	vite-plugin-pwa — Service worker, offline caching, home screen installation
+Database	Supabase PostgreSQL — Relational queries essential for compatibility algorithm
+Authentication	Supabase Auth — Built-in email verification, Google OAuth, JWT session management
+Real-time Chat	Supabase Realtime WebSockets — Native database integration
+Matching Algorithm	Pure TypeScript, executed inside Supabase Edge Function (Deno) — triggered on questionnaire completion
+Payment Init (Client)	Paystack JS popup with PUBLIC key only — runs in the browser
+Payment Webhook (Server)	Supabase Edge Function — Verifies signature via Web Crypto API, updates DB with SECRET key
+Push Notifications	Firebase Cloud Messaging (FCM) — Free, works when app is closed
+Styling	Tailwind CSS — Utility-first, consistent with Indigo/Violet design system
+Hosting (Frontend)	Cloudflare Pages — Static site hosting, deploys React/Vite build in seconds
+Hosting (Backend)	Supabase Edge Functions — Serverless Deno, triggered by frontend calls and DB webhooks
 Avatar Assets	SVG vector illustrations — stored in Supabase Storage, served via CDN
+
+What Was REMOVED:
+❌ Next.js — Replaced by React (Vite)
+❌ @cloudflare/next-on-pages — Deprecated adapter, no longer needed
+❌ middleware.ts — Next.js convention, deprecated in v16. Replaced by React route guards
+❌ All /api/ routes — Backend logic moved to Supabase Edge Functions
+❌ next-pwa — Replaced by vite-plugin-pwa
+❌ process.env.NEXT_PUBLIC_* — Replaced by import.meta.env.VITE_*
+❌ import 'server-only' — Removed from algorithm file
 
 COST AT LAUNCH	Supabase free tier: up to 50,000 monthly active users, 500MB database, 1GB storage. Vercel free tier: sufficient for initial load. FCM: completely free at any scale. Total infrastructure cost at launch: GHS 0. First paid upgrade trigger: Supabase Pro at $25/month when database exceeds 500MB or users exceed 50,000. At 5,000 UCC users this threshold will not be reached in Year 1.
  
@@ -834,10 +831,10 @@ Total UCC Freshmen per year	Approximately 4,000-6,000
 Reach via campus guide + JCR	Approximately 30-40% aware of platform = 1,500-2,400 students
 Questionnaire completion rate	Estimated 50-60% of sign-ups complete all 40 questions = 750-1,440 users
 Payment conversion rate	Estimated 60-70% of completions pay = 450-1,000 paying users
-Revenue at GHS 15	GHS 6,750 to GHS 15,000 in Year 1
-Break-even point	Supabase Pro at $25/month = approximately GHS 375/month. Covered by first 25 paying users.
+Revenue at GHS 25	GHS 11,250 to GHS 25,000 in Year 1
+Break-even point	Supabase Pro at $25/month = approximately GHS 375/month. Covered by first 15 paying users at base price.
 
-WHY GHS 15 NOT GHS 10	The pricing decision was deliberately conservative-high rather than volume-maximising low. A committed user who pays GHS 15 is a better quality user than a curious user who pays GHS 10. Committed users complete their profiles honestly, engage with matches meaningfully, and generate positive word-of-mouth. Volume users inflate metrics without producing genuine matches. Quality over volume is the right call at launch stage.
+WHY GHS 25 NOT GHS 15	The pricing decision was deliberately conservative-high rather than volume-maximising low. A committed user who pays GHS 25 is a better quality user than a curious user who pays GHS 15. Committed users complete their profiles honestly, engage with matches meaningfully, and generate positive word-of-mouth. Volume users inflate metrics without producing genuine matches. Quality over volume is the right call at launch stage.
 
 9.3 Future Revenue Streams & Features — V2
 •	In-App Referral System: Every paying user gets a personal referral code. Referees get GHS 3 off, referrers earn GHS 2, paid out via MoMo edge functions. (Excluded from V1 to accelerate launch).
@@ -906,7 +903,7 @@ Payment succeeds but database update fails	Paystack webhook retry logic re-attem
 User completes questionnaire but closes app during calculation	Edge function runs server-side regardless of client connection. Results are cached in database. User sees completed matches on next app open with no recalculation required.
 Two users mutually block each other	Both profiles are hidden from each other's match feeds permanently. Block is bidirectional and immediate.
 User changes programme or level after registration	Profile update triggers partial algorithm recalculation for the affected user's matches only.
-Academic year ends with active paid accounts	Paid access is tied to the academic year, not a calendar year. System prompts at year end: "New academic year starting. Renew your access for GHS 15 to find your next-year roommate."
+Academic year ends with active paid accounts	Paid access is tied to the academic year, not a calendar year. System prompts at year end: "New academic year starting. Renew your access for GHS 25 to find your next-year roommate."
 New student cohort arrives (freshers week)	Existing users with COMPLETED or EXPIRED status receive a push notification: "New students just joined Roommate Link. Looking for a new roommate this year? Reactivate your profile."
  
 13. Optional Question Bank — V2 Roadmap
@@ -959,23 +956,17 @@ Q38: D + Q38: A	DEALBREAKER — Strict permission required + communalised belong
 Q40: D + Q22: A	HIGH CROSS-CATEGORY — Still figuring out identity + zero structure. Two unknowns with no anchor. Academic and personal instability.
 
  
-Appendix B: Architecture Decision Log
+## APPENDIX B — Architecture Decision Log (UPDATED ENTRIES)
 
-This appendix documents every major architectural decision made during the design process, including the rejected alternatives and the reasoning for each final choice. This log exists so that future team members, investors, or developers understand not just what was decided but why — and can make informed decisions about when circumstances might justify revisiting any of these choices.
-
-Decision	Rejected Alternative & Reason for Choice
-PWA (Next.js) instead of native mobile app	Rejected: React Native / Flutter. Reason: No app store download friction. Students click a link from SRC campus guide and are immediately inside the app. Faster shipping. Cross-device. Installable to home screen without permission gates.
-On-demand Edge Function instead of cron job matching	Rejected: 6-hour cron job recalculation. Reason: New users waited up to 6 hours to appear in anyone's feed. Silent failure that looked like a broken app. On-demand fires in seconds and is free on Supabase's free tier.
-60-day expiry instead of voluntary self-reporting	Rejected: 'Mark as Complete' button relying on user initiative. Reason: Voluntary self-reporting produces 60%+ ghost rate within 3 months on any platform. Automated expiry with strategic prompts is the only reliable database hygiene mechanism.
-UCC email verification instead of student ID database	Rejected: Student ID number validation against UCC database. Reason: No realistic path to database access. Email domain verification achieves equivalent security using UCC's own email infrastructure as passive verification. Zero institutional dependency.
-Phone number collected but not OTP-verified	Rejected: Full phone OTP verification at registration. Reason: Double verification (email + phone OTP) creates friction before any value has been delivered. Student email verification is sufficient. Phone is used only for FCM notification delivery.
-Gender preference as user choice, not hard-coded	Rejected: Hardcoded males-only-with-males. Reason: Inflexible to edge cases. User-selected preference achieves the same outcome for the majority while accommodating non-binary students and mixed-gender preferences without requiring a policy decision.
-Chemistry visible free, identity paid	Rejected: Full blur with match percentage only. Reason: Match percentages alone feel manipulative ('tantalising blur'). Showing specific compatibility details free — 'you both hate loud music', 'you have opposite conflict styles' — makes the value of the match tangible before payment. The user is not paying to see a stranger. They are paying to find a person they already know is compatible.
-GHS 15 per academic year, not per semester	Rejected: GHS 10 per semester, or GHS 15 once forever. Reason: Once forever leaves recurring revenue on the table. Per-semester requires re-payment every 4 months which creates churn. Academic year aligns with actual usage patterns. Annual renewal is natural and expected.
-3 reports = suspension pending review, not auto-ban	Rejected: 3 reports = permanent automatic ban. Reason: Coordinated friend groups can get innocent users banned. Suspension protects potential victims immediately. Manual review protects innocent users from coordinated attacks. Both protection goals are served.
-40 core questions, 20 optional in V2	Rejected: 100 questions at onboarding. Reason: Industry abandonment rates exceed 70% at 10+ questions. 40 deep behavioural questions produce better data than 100 shallow ones. Optional questions in V2 are informed by real user data, not pre-launch assumptions.
-Question randomisation on every session	Rejected: Fixed chronological question order. Reason: Fixed order allows category pattern recognition. Users who recognise 'these are all conflict questions' perform a consistent character rather than answering honestly. Randomisation produces more authentic data.
-Supabase + FCM instead of full Firebase	Rejected: Full Firebase stack. Reason: Firebase NoSQL makes relational compatibility queries significantly harder. Supabase PostgreSQL handles weighted vector comparisons natively. FCM is taken from Firebase exclusively for push notifications. Best tool for each specific job.
+| Decision | Rejected Alternative & Reason for Choice |
+|----------|----------------------------------------|
+| React (Vite) instead of Next.js | **Rejected: Next.js on Cloudflare Pages.** Reason: `@cloudflare/next-on-pages` adapter deprecated with no migration path. Next.js 16 deprecated `middleware.ts` convention. All API routes required Edge Runtime which conflicted with Node.js crypto (Paystack), `server-only` imports (algorithm), and CPU time limits (matching). Vite produces static files that deploy to Cloudflare Pages in seconds with zero runtime conflicts. |
+| Supabase Edge Functions instead of Cloudflare Workers | **Rejected: Cloudflare Workers with Hono.** Reason: Roommate Link's backend needs are minimal (1 webhook, 1 algorithm trigger). A standalone Cloudflare Worker API adds unnecessary infrastructure, a separate repository, and CORS configuration complexity. Supabase Edge Functions live next to the database, share TypeScript types, and require zero infrastructure management. If future projects need a massive standalone API, Cloudflare Workers + Hono becomes the right choice. |
+| Web Crypto API instead of Node crypto | **Rejected: Node.js `crypto.createHmac`.** Reason: Cloudflare Edge and Deno do not support Node's `crypto` module. `crypto.subtle.sign()` with HMAC-SHA-512 is the browser-standard equivalent and works identically in both Supabase Edge Functions and Cloudflare Workers. |
+| Matching Algorithm in Edge Function instead of Postgres RPC | **Rejected: plv8 PostgreSQL function.** Reason: The algorithm is 200 lines of pure TypeScript with typed interfaces (`MatchResult`, `CategoryBreakdown`, `PatternFlag`). Rewriting it in plv8 (JavaScript inside Postgres) would lose all type safety and make debugging extremely difficult. The algorithm runs in under 100ms for 5,000 users on Deno, well within Edge Function limits. Postgres RPC becomes the right choice if the user base exceeds 50,000. |
+| React Router instead of Next.js file-based routing | **Rejected: Next.js App Router `page.tsx` convention.** Reason: File-based routing only works inside Next.js. Pure React requires explicit route configuration via `react-router-dom`. This is a one-time setup cost in `App.tsx` that eliminates all framework lock-in. |
+| Route Guards instead of middleware.ts | **Rejected: Next.js `middleware.ts`.** Reason: Deprecated in Next.js 16 ("use proxy instead"). In React, a simple `<ProtectedRoute>` component wraps protected routes and checks `supabase.auth.getSession()`. Identical functionality, zero server dependency. |
+| `import.meta.env.VITE_*` instead of `process.env.NEXT_PUBLIC_*` | **Rejected: `process.env`.** Reason: Vite does not use Webpack's `DefinePlugin`. Environment variables exposed to the browser MUST start with `VITE_` in Vite. Using `process.env` in a Vite project will return `undefined` and crash the app. |
 
  
 Status: Architecture Approved & Locked
