@@ -1,20 +1,17 @@
-import { ExpandableProfileHub } from './ExpandableProfileHub'
-
 interface DashboardHeaderProps {
-  userName: string
-  avatarUrl?: string
   matchCount: number
-  hasPaid: boolean
-  onRefresh: () => void
-  onNavigateToProfile: () => void
-  onNavigateToSettings: () => void
 }
 
-export function DashboardHeader(props: DashboardHeaderProps) {
+export function DashboardHeader({ matchCount }: DashboardHeaderProps) {
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 h-20 pointer-events-none">
-      <div className="w-full max-w-7xl mx-auto px-4 h-full flex items-center justify-between pointer-events-auto">
-        <ExpandableProfileHub {...props} />
+    <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-border/40 px-4 sm:px-5 pt-safe-top pb-4">
+      <div className="w-full max-w-2xl lg:max-w-4xl mx-auto">
+        <h1 className="text-[24px] sm:text-[28px] md:text-[32px] lg:text-[34px] font-black tracking-tight text-foreground leading-tight flex items-center gap-2 sm:gap-3">
+          Top Matches
+        </h1>
+        <p className="text-[13px] sm:text-[14px] md:text-[15px] font-bold text-muted-foreground mt-1">
+          {matchCount} highly compatible roommates found.
+        </p>
       </div>
     </header>
   )

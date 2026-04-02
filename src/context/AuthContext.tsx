@@ -53,49 +53,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const initializeAuth = async () => {
       console.log('--- AuthProvider: Initializing ---')
       
-      const watchdog = setTimeout(() => {
-        if (loading && isMounted) {
-          setLoading(false)
-        }
-      }, 12000)
-
       try {
+        // 1. Instant check for session
         const { data: { session: initialSession } } = await supabase.auth.getSession()
         
         if (!isMounted) return
 
-        setSession(initialSession)
-        setUser(initialSession?.user ?? null)
-        
-        if (initialSession?.user) {
-          // Instant Load from Cache
+        if (initialSession) {
+          setSession(initialSession)
+          setUser(initialSession.user)
+          
+          // 2. IMMEDIATE Cache Hydration (Sync-like feel)
           const cached = localStorage.getItem(`roommate_profile_${initialSession.user.id}`)
           if (cached) {
-            setProfile(JSON.parse(cached))
-            setLoading(false)
+            try {
+              const profileData = JSON.parse(cached)
+              if (profileData && isMounted) {
+                setProfile(profileData)
+                // If we have valid cache, we can flip loading=false NOW for instant UI.
+                // Background sync will update it later if needed.
+                setLoading(false) 
+              }
+            } catch (e) {
+              console.warn('Malformed cache, clearing...')
+              localStorage.removeItem(`roommate_profile_${initialSession.user.id}`)
+            }
           }
 
-          // Background Sync
-          const profileData = await fetchProfile(initialSession.user.id)
+          // 3. Background Verification (Mandatory Sync)
+          const profileData = await fetchProfile(initialSession.user.id, 2)
           if (isMounted) {
             setProfile(profileData)
             setLoading(false)
           }
         } else {
+          // No session found
           setLoading(false)
         }
       } catch (error) {
         console.error('Auth initialization error:', error)
         if (isMounted) setLoading(false)
-      } finally {
-        clearTimeout(watchdog)
       }
     }
 
     initializeAuth()
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event: string, currentSession: any) => {
+      async (event, currentSession) => {
         console.log(`--- AuthProvider: Auth Changed [${event}] ---`)
         
         if (!isMounted) return
@@ -105,10 +109,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(currentSession?.user ?? null)
           
           if (currentSession?.user) {
-            // Hot cache update
+            // Hot cache update (Try to show SOMETHING immediately)
             const cached = localStorage.getItem(`roommate_profile_${currentSession.user.id}`)
-            if (cached) setProfile(JSON.parse(cached))
+            if (cached && !profile) {
+              try { setProfile(JSON.parse(cached)) } catch(e) {}
+            }
 
+            // Sync with DB
             const profileData = await fetchProfile(currentSession.user.id)
             if (isMounted) setProfile(profileData)
           }
@@ -116,20 +123,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setSession(null)
           setUser(null)
           setProfile(null)
+          setLoading(false)
+        } else if (event === 'USER_UPDATED') {
+          if (currentSession?.user) {
+            const profileData = await fetchProfile(currentSession.user.id)
+            if (isMounted) setProfile(profileData)
+          }
         }
 
-        if (isMounted) setLoading(false)
+        if (isMounted && event !== 'SIGNED_IN') setLoading(false)
       }
     )
 
+    // Periodic session verification (Heartbeat)
     const heartbeat = setInterval(async () => {
       if (!isMounted) return
       const { data: { session: activeSession } } = await supabase.auth.getSession()
-      if (activeSession && isMounted) {
-        setSession(activeSession)
-        setUser(activeSession.user)
+      if (isMounted) {
+        if (activeSession) {
+          setSession(activeSession)
+          setUser(activeSession.user)
+        } else if (session) {
+          // Session was lost, force logout
+          setSession(null)
+          setUser(null)
+          setProfile(null)
+        }
       }
-    }, 15 * 60 * 1000)
+    }, 10 * 60 * 1000)
 
     return () => {
       isMounted = false

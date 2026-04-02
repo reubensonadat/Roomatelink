@@ -34,6 +34,8 @@
 
     --radius: 1.5rem;
     --shadow-premium: 0 20px 50px -12px rgba(0, 0, 0, 0.12);
+    --shadow-elevated: 0 30px 60px -12px rgba(0, 0, 0, 0.18);
+    --glass-border: rgba(255, 255, 255, 0.08);
   }
 
   .dark {
@@ -66,6 +68,7 @@
     --border: 240 3.7% 14%;
     --input: 240 3.7% 14%;
     --ring: 240 4.9% 83.9%;
+    --glass-border: rgba(255, 255, 255, 0.04);
   }
 }
 
@@ -78,6 +81,16 @@
     @apply bg-background text-foreground;
     font-family: 'Inter', sans-serif;
     font-feature-settings: "rlig" 1, "calt" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* Safe Area Insets for Mobile PWA */
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* Prevent iOS Auto-Zoom on Inputs */
+  input, select, textarea {
+    font-size: 16px !important;
   }
 
   /* Restoration of Premium Button Padding */
@@ -100,6 +113,17 @@
   .rounded-4xl { border-radius: 2rem; }
   .rounded-5xl { border-radius: 3rem; }
   .shadow-premium { box-shadow: var(--shadow-premium); }
+  .shadow-elevated { box-shadow: var(--shadow-elevated); }
+  .glass-v2 {
+    @apply bg-card/60 backdrop-blur-2xl border;
+    border-color: var(--glass-border);
+  }
+
+  /* Mobile Safe Area Utilities */
+  .pt-safe-top { padding-top: env(safe-area-inset-top); }
+  .pb-safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+  .mt-safe-top { margin-top: env(safe-area-inset-top); }
+  .mb-safe-bottom { margin-bottom: env(safe-area-inset-bottom); }
 }
 
 /* Global Institutional Backdrop & Modal Overlay */

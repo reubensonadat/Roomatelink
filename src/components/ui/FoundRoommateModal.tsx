@@ -1,5 +1,6 @@
+import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Check, X, PartyPopper } from 'lucide-react'
+import { Check, X, Heart, Users } from 'lucide-react'
 
 interface FoundRoommateModalProps {
   isOpen: boolean
@@ -9,55 +10,159 @@ interface FoundRoommateModalProps {
 }
 
 export function FoundRoommateModal({ isOpen, onClose, onConfirm, dayNumber }: FoundRoommateModalProps) {
+  const [selectedOption, setSelectedOption] = useState<'yes' | 'no' | null>(null)
+
+  const getDayMessage = () => {
+    switch (dayNumber) {
+      case 7:
+        return "It's been a week! Have you found a roommate yet?"
+      case 30:
+        return "A month has passed! Did you find your perfect match?"
+      case 50:
+        return "Day 50 - almost two months! Any luck finding a roommate?"
+      default:
+        return "Have you found a roommate yet?"
+    }
+  }
+
+  const getDayTitle = () => {
+    switch (dayNumber) {
+      case 7:
+        return "One Week Check-in"
+      case 30:
+        return "Monthly Update"
+      case 50:
+        return "50 Day Milestone"
+      default:
+        return "Roommate Status"
+    }
+  }
+
+  const handleConfirm = () => {
+    if (selectedOption === 'yes') {
+      onConfirm()
+    } else {
+      onClose()
+    }
+  }
+
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 pointer-events-none">
+        <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-10 pointer-events-none">
+          {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-background/80 backdrop-blur-md pointer-events-auto"
+            className="absolute inset-0 bg-background/60 backdrop-blur-md pointer-events-auto"
           />
+
+          {/* Modal Sheet */}
           <motion.div
-            initial={{ scale: 0.9, opacity: 0, y: 20 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.9, opacity: 0, y: 20 }}
-            className="relative w-full max-w-[400px] bg-card border border-border/60 rounded-[3rem] p-8 shadow-2xl overflow-hidden text-center pointer-events-auto"
+            initial={{ y: "100%", opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: "100%", opacity: 0 }}
+            transition={{ type: "spring", damping: 25, stiffness: 200 }}
+            className="relative w-full md:w-[500px] max-w-full bg-card border-t md:border border-border rounded-t-[2.5rem] md:rounded-[2.5rem] shadow-2xl overflow-hidden pointer-events-auto max-h-[92vh] flex flex-col"
           >
-            <div className="absolute -top-12 -left-12 w-48 h-48 bg-primary/20 blur-3xl rounded-full pointer-events-none" />
-            
-            <div className="w-20 h-20 bg-primary/10 rounded-[2rem] flex items-center justify-center mx-auto mb-6 relative z-10">
-              <PartyPopper className="w-10 h-10 text-primary" />
+            {/* Drag Handle */}
+            <div className="w-full flex justify-center pt-3 pb-1 shrink-0 md:hidden">
+              <div className="w-12 h-1.5 rounded-full bg-muted/60" />
             </div>
 
-            <h2 className="text-2xl font-black tracking-tight mb-2 relative z-10">Day {dayNumber} Check-in</h2>
-            <p className="text-sm font-bold text-muted-foreground leading-relaxed mb-8 relative z-10">
-              It's been {dayNumber} days since you joined the tribe. Have you successfully found a roommate yet?
-            </p>
-
-            <div className="flex flex-col gap-3 relative z-10">
-              <button
-                onClick={onConfirm}
-                className="w-full py-4.5 rounded-2xl bg-primary text-primary-foreground font-black text-lg shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-              >
-                Yes, I found one! <Check className="w-5 h-5" />
-              </button>
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border/40 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Users className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <h2 className="text-[18px] font-bold text-foreground leading-tight">{getDayTitle()}</h2>
+                  <p className="text-[12px] text-muted-foreground font-medium mt-0.5">Day {dayNumber} Check-in</p>
+                </div>
+              </div>
               <button
                 onClick={onClose}
-                className="w-full py-4 text-sm font-black text-muted-foreground hover:text-foreground transition-colors"
+                className="w-9 h-9 rounded-full bg-muted flex items-center justify-center hover:bg-foreground hover:text-background transition-colors active:scale-95"
               >
-                Still looking...
+                <X className="w-4 h-4" />
               </button>
             </div>
-            
-            <button
-              onClick={onClose}
-              className="absolute top-6 right-6 p-2 rounded-xl bg-muted/40 hover:bg-muted transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
+
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto px-6 py-6 pb-12 flex flex-col gap-6">
+              <p className="text-[15px] font-bold text-foreground leading-relaxed">
+                {getDayMessage()}
+              </p>
+
+              {/* Options */}
+              <div className="grid grid-cols-1 gap-3">
+                <button
+                  onClick={() => setSelectedOption('yes')}
+                  className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all active:scale-[0.98] ${
+                    selectedOption === 'yes'
+                      ? 'border-emerald-500 bg-emerald-500/5 shadow-sm'
+                      : 'border-border/60 bg-card hover:border-emerald-500/30'
+                  }`}
+                >
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
+                    selectedOption === 'yes' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-muted text-muted-foreground'
+                  }`}>
+                    <Check className="w-5 h-5" strokeWidth={3} />
+                  </div>
+                  <div className="text-left">
+                    <span className="text-[15px] font-bold text-foreground block">Yes, I found a roommate!</span>
+                    <p className="text-[12px] text-muted-foreground mt-0.5 font-medium leading-tight">Great! We'll mark your profile as found.</p>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => setSelectedOption('no')}
+                  className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all active:scale-[0.98] ${
+                    selectedOption === 'no'
+                      ? 'border-amber-500 bg-amber-500/5 shadow-sm'
+                      : 'border-border/60 bg-card hover:border-amber-500/30'
+                  }`}
+                >
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
+                    selectedOption === 'no' ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20' : 'bg-muted text-muted-foreground'
+                  }`}>
+                    <X className="w-5 h-5" strokeWidth={3} />
+                  </div>
+                  <div className="text-left">
+                    <span className="text-[15px] font-bold text-foreground block">Not yet</span>
+                    <p className="text-[12px] text-muted-foreground mt-0.5 font-medium leading-tight">No worries, keep looking! We're here to help.</p>
+                  </div>
+                </button>
+              </div>
+
+              {/* Action Button */}
+              <div className="pt-2">
+                <button
+                  onClick={handleConfirm}
+                  disabled={!selectedOption}
+                  className={`w-full py-4.5 rounded-full font-bold text-[16px] transition-all flex items-center justify-center gap-2 h-[56px] ${
+                    !selectedOption
+                      ? 'bg-muted/50 text-muted-foreground opacity-50 cursor-not-allowed'
+                      : 'bg-primary text-primary-foreground hover:bg-foreground hover:text-background shadow-lg shadow-primary/20 active:scale-[0.98]'
+                  }`}
+                >
+                  {selectedOption === 'yes' ? (
+                    <>
+                      <Heart className="w-5 h-5 fill-current" />
+                      <span>Mark as Found</span>
+                    </>
+                  ) : (
+                    <span>Continue Searching</span>
+                  )}
+                </button>
+                <p className="text-[11px] text-muted-foreground text-center mt-4 font-medium px-4 leading-relaxed">
+                  Updating your status helps us keep the community accurate for everyone.
+                </p>
+              </div>
+            </div>
           </motion.div>
         </div>
       )}

@@ -1,96 +1,101 @@
-import { ChevronRight, Lock, ShieldCheck, MessageSquare } from 'lucide-react'
+import { Lock, Check } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 
 interface MatchCardProps {
   match: any
-  isLocked: boolean
+  isRevealed: boolean
   onSelect: () => void
+  index: number
 }
 
-export function MatchCard({ match, isLocked, onSelect }: MatchCardProps) {
+function getTierInfo(pct: number) {
+  if (pct >= 90) return { label: 'Exceptional', color: 'text-emerald-500', stroke: '#10b981', textColor: 'text-emerald-600 dark:text-emerald-400', bgLight: 'bg-emerald-500/10' };
+  if (pct >= 80) return { label: 'Strong', color: 'text-green-500', stroke: '#22c55e', textColor: 'text-green-600 dark:text-green-400', bgLight: 'bg-green-500/10' };
+  if (pct >= 70) return { label: 'Good', color: 'text-amber-500', stroke: '#f59e0b', textColor: 'text-amber-600 dark:text-amber-400', bgLight: 'bg-amber-500/10' };
+  return { label: 'Potential', color: 'text-slate-400', stroke: '#94a3b8', textColor: 'text-slate-500', bgLight: 'bg-slate-400/10' };
+}
+
+export function MatchCard({ match, isRevealed, onSelect, index }: MatchCardProps) {
+  const tier = getTierInfo(match.matchPercent);
+
   return (
-    <div 
-      onClick={onSelect}
-      className="bg-card/40 backdrop-blur-xl rounded-4xl shadow-premium border border-border/40 hover:border-primary/50 transition-all cursor-pointer group flex flex-col h-full overflow-hidden"
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.08, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
     >
-      <div className="p-6 flex flex-col flex-1">
-        <div className="flex items-start justify-between mb-6">
-          {/* Avatar Hub */}
-          <div className="relative">
-            <div className="w-16 h-16 sm:w-18 sm:h-18 rounded-4xl bg-muted/40 overflow-hidden ring-4 ring-primary/5 border border-border/60">
-              {match.avatar ? (
-                <img
-                  src={match.avatar}
-                  alt={match.name}
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/10 to-violet-600/10">
-                  <span className="text-primary font-black text-xl">
-                    {match.name.charAt(0).toUpperCase()}
-                  </span>
-                </div>
-              )}
-            </div>
-            {match.verified && (
-              <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-blue-500 rounded-full border-2 border-card flex items-center justify-center shadow-lg">
-                <ShieldCheck className="w-3.5 h-3.5 text-white" />
-              </div>
+      <button
+        onClick={onSelect}
+        className="group w-full bg-card rounded-3xl p-3 sm:p-3.5 md:p-4 flex gap-3 sm:gap-3.5 md:gap-4 items-center border border-border/80 shadow-premium transition-all hover:border-primary/40 hover:shadow-elevated active:scale-[0.98] min-h-[100px] sm:min-h-[110px] md:min-h-[125px] overflow-hidden relative text-left"
+      >
+        {/* Avatar Wrapper */}
+        <div className="relative w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 lg:w-20 lg:h-20 shrink-0">
+          <div className={`w-full h-full rounded-3xl border-2 border-primary/20 bg-muted overflow-hidden relative shadow-inner transition-all duration-1000 ease-out ${!isRevealed ? 'blur-lg grayscale saturate-0' : 'blur-0 grayscale-0 saturate-100'}`}>
+            {match.avatar ? (
+              <img src={match.avatar} alt={match.name} className="w-full h-full object-cover" />
+            ) : (
+               <div className="w-full h-full bg-muted flex items-center justify-center">
+                  <span className="text-primary font-black text-xl">{match.name?.charAt(0) || 'S'}</span>
+               </div>
             )}
           </div>
-
-          <div className="flex flex-col items-end">
-            <div className="bg-primary px-3 py-1.5 rounded-3xl shadow-lg shadow-primary/20">
-              <span className="text-white font-black text-[18px]">
-                {match.matchPercent}%
-              </span>
-            </div>
-            <p className="text-[10px] font-black text-primary uppercase tracking-widest mt-1.5">Compatibility</p>
-          </div>
-        </div>
-
-        {/* Identity & Course */}
-        <div className="mb-6 flex-1">
-          <h3 className="text-[18px] font-black text-foreground tracking-tight leading-tight group-hover:text-primary transition-colors">
-            {isLocked ? "Compatible Matching" : match.name}
-          </h3>
-          <p className="text-[12px] font-bold text-muted-foreground mt-1 uppercase tracking-wider line-clamp-1">
-            {match.course} • LEVEL {match.level}
-          </p>
-        </div>
-
-        {/* Tags Tier */}
-        <div className="flex flex-wrap gap-1.5 mb-6">
-          {match.tags?.slice(0, 3).map((tag: string) => (
-            <span
-              key={tag}
-              className="bg-muted/40 px-3 py-1 rounded-2xl text-[10px] font-bold text-muted-foreground uppercase tracking-widest border border-border/40"
-            >
-              {tag}
-            </span>
-          ))}
-        </div>
-
-        {/* Interaction Bar */}
-        <div className="mt-auto pt-4 border-t border-border/40">
-          {isLocked ? (
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Lock className="w-3.5 h-3.5 text-amber-500" />
-                <span className="text-[11px] font-black text-amber-600/80 uppercase tracking-widest">Locked Profile</span>
-              </div>
-              <ChevronRight className="w-4 h-4 text-muted-foreground/30" />
-            </div>
-          ) : (
-            <div className="flex items-center justify-between text-primary">
-              <div className="flex items-center gap-2">
-                <MessageSquare className="w-3.5 h-3.5" />
-                <span className="text-[11px] font-black uppercase tracking-widest">Open Connection</span>
-              </div>
-              <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+          {!isRevealed && (
+            <div className="absolute inset-0 rounded-3xl bg-background/30 flex items-center justify-center backdrop-blur-[1px]">
+              <Lock className="w-4 h-4 text-foreground/50" />
             </div>
           )}
         </div>
-      </div>
-    </div>
+
+        {/* Info Content */}
+        <div className="flex flex-col flex-1 min-w-0 pr-1">
+          {isRevealed ? (
+            <AnimatePresence mode="wait">
+              <motion.div key="revealed" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col">
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <h3 className="text-[14px] sm:text-[15px] md:text-[17px] lg:text-[18px] font-bold text-foreground truncate">{match.name}</h3>
+                  {match.verified && <Check className="w-3.5 h-3.5 text-blue-500 fill-blue-500/10 stroke-[3]" />}
+                </div>
+                <span className="text-[10px] sm:text-[11px] font-bold text-primary/80 truncate mb-1">
+                  Level {match.level} • {match.course}
+                </span>
+                <div className="flex flex-wrap gap-1 mt-1">
+                  <span className="px-2 py-0.5 rounded-lg bg-muted text-[10px] font-bold text-muted-foreground border border-border/40">
+                    {match.trait || "Potential Roommate"}
+                  </span>
+                </div>
+              </motion.div>
+            </AnimatePresence>
+          ) : (
+            <div className="flex flex-col gap-2">
+              <span className={`w-fit text-[10px] font-black px-2 py-0.5 rounded-lg uppercase tracking-wider ${tier.bgLight} ${tier.textColor}`}>
+                {tier.label} Match
+              </span>
+              <div className="h-3 w-3/4 bg-muted/40 rounded-sm animate-pulse" />
+              <div className="h-2 w-1/2 bg-muted/30 rounded-xs animate-pulse" />
+            </div>
+          )}
+        </div>
+
+        {/* Compatibility Gauge */}
+        <div className="relative w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center shrink-0">
+          <svg className="w-full h-full -rotate-90" viewBox="0 0 48 48">
+            <circle cx="24" cy="24" r="20" stroke="currentColor" strokeWidth="4" fill="transparent" className="text-muted/20" />
+            <motion.circle 
+              cx="24" cy="24" r="20" 
+              stroke={tier.stroke} strokeWidth="4" 
+              fill="transparent" 
+              strokeDasharray={125.6} 
+              initial={{ strokeDashoffset: 125.6 }} 
+              animate={{ strokeDashoffset: 125.6 - (125.6 * (match.matchPercent / 100)) }} 
+              transition={{ duration: 1.5, ease: "easeOut" }} 
+            />
+          </svg>
+          <span className={`absolute text-[10px] sm:text-[11px] font-black ${tier.textColor}`}>
+            {match.matchPercent}%
+          </span>
+        </div>
+      </button>
+    </motion.div>
   )
 }

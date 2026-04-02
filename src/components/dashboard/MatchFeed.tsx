@@ -1,5 +1,4 @@
-import { useState } from 'react'
-import { RotateCw, UserX } from 'lucide-react'
+import { useState, useEffect } from 'react'
 import { MatchCard } from './MatchCard'
 
 interface MatchFeedProps {
@@ -10,70 +9,61 @@ interface MatchFeedProps {
 }
 
 export function MatchFeed({ matches, hasPaid, onSelectMatch, isLoading }: MatchFeedProps) {
-  const [visibleCount, setVisibleCount] = useState(10)
+  const [unlockedCount, setUnlockedCount] = useState(0)
 
-  const loadMore = () => {
-    setVisibleCount(prev => prev + 10)
-  }
+  useEffect(() => {
+    if (isLoading) {
+      setUnlockedCount(0)
+      return
+    }
+
+    if (hasPaid) {
+      // Staggered reveal animation
+      const interval = setInterval(() => {
+        setUnlockedCount(prev => {
+          if (prev >= matches.length) {
+            clearInterval(interval)
+            return prev
+          }
+          return prev + 1
+        })
+      }, 100)
+      return () => clearInterval(interval)
+    } else {
+      setUnlockedCount(0)
+    }
+  }, [hasPaid, matches.length, isLoading])
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center py-24">
-        <div className="w-14 h-14 rounded-4xl border-4 border-primary/20 border-t-primary animate-spin" />
-        <p className="mt-6 text-[13px] font-black text-muted-foreground uppercase tracking-widest animate-pulse">Scanning Grid...</p>
+      <div className="flex flex-col gap-3 md:gap-4">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="bg-card w-full rounded-3xl p-3 sm:p-4 flex gap-3 sm:gap-4 items-center border border-border/60 animate-pulse min-h-[110px] sm:min-h-[125px]">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-2xl bg-muted shrink-0" />
+            <div className="flex flex-col flex-1 gap-2">
+              <div className="h-3.5 sm:h-4 w-20 sm:w-24 bg-muted rounded-sm" />
+              <div className="h-2.5 sm:h-3 w-full bg-muted rounded-sm" />
+            </div>
+          </div>
+        ))}
       </div>
-    )
-  }
-
-  if (matches.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
-        <div className="w-24 h-24 rounded-5xl bg-muted/40 flex items-center justify-center mb-6 shadow-inner">
-          <UserX className="w-10 h-10 text-muted-foreground/30" />
-        </div>
-        <h3 className="text-[22px] font-black text-foreground tracking-tight uppercase">No Matches Stabilized</h3>
-        <p className="mt-3 text-[15px] font-medium text-muted-foreground max-w-sm leading-relaxed">
-          The behavioral algorithm is still processing data. Complete your profile details to improve synchronization.
-        </p>
-        <button
-          onClick={() => window.location.reload()}
-          className="mt-10 px-8 py-4 rounded-4xl bg-card border border-border/60 text-foreground font-black text-[14px] shadow-premium hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2"
-        >
-          <RotateCw className="w-4 h-4" /> Refresh Hub
-        </button>
-      </div>
-    )
+    );
   }
 
   return (
-    <div className="flex flex-col gap-6 px-4 sm:px-6 pb-20">
-      <div className="flex items-center justify-between px-2">
-        <h2 className="text-[15px] font-black text-foreground uppercase tracking-wider">Top Matches</h2>
-        <span className="text-[12px] font-bold text-muted-foreground uppercase tracking-widest bg-muted/40 px-3 py-1 rounded-full">
-          {matches.length} Compatible
-        </span>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-        {matches.slice(0, visibleCount).map((match: any) => (
-          <MatchCard 
+    <div className="flex flex-col gap-3 md:gap-4 relative">
+      {matches.map((match, i) => {
+        const isRevealed = hasPaid || (i < unlockedCount)
+        return (
+          <MatchCard
             key={match.id}
             match={match}
-            isLocked={!hasPaid}
+            isRevealed={isRevealed}
             onSelect={() => onSelectMatch(match)}
+            index={i}
           />
-        ))}
-      </div>
-
-      {/* Load More Button */}
-      {matches.length > visibleCount && (
-        <button
-          onClick={loadMore}
-          className="w-full py-5 text-center bg-card border border-border/60 rounded-4xl text-[14px] font-black text-muted-foreground uppercase tracking-widest hover:bg-muted transition-all active:scale-[0.98] shadow-sm mt-4"
-        >
-          Load More Matches
-        </button>
-      )}
+        )
+      })}
     </div>
   )
 }

@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { User, Upload, Sparkles, Check, Users, X, ChevronRight, Flame, PauseCircle } from 'lucide-react'
+import { User, Upload, Check, ChevronRight, Sparkles, Flame, RefreshCw } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
 import { useAuth } from '../context/AuthContext'
+import { ModalShell } from '../components/ui/ModalShell'
 
 const avatars = {
   M: [
@@ -29,6 +30,13 @@ const avatars = {
   ]
 }
 
+function withTimeout<T>(promise: PromiseLike<T>, ms: number, message: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error(message)), ms))
+  ])
+}
+
 export function ProfilePage() {
   const { user } = useAuth()
   const navigate = useNavigate()
@@ -42,91 +50,68 @@ export function ProfilePage() {
   const [course, setCourse] = useState('')
   const [bio, setBio] = useState('')
   const [matchingStatus, setMatchingStatus] = useState<'ACTIVE' | 'HIDDEN' | 'COMPLETED'>('ACTIVE')
-  const [answeredCount, setAnsweredCount] = useState(0)
   const [phone, setPhone] = useState('')
   const [isSaving, setIsSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [mounted, setMounted] = useState(false)
 
   const STORAGE_KEY = 'roommate_profile_data'
-  const ANSWERS_KEY = 'roommate_answers'
 
-  // Standard React mounted state to prevent hydration mismatches
   useEffect(() => {
     setMounted(true)
   }, [])
 
-  // Load saved state from Database
   useEffect(() => {
     const fetchProfile = async () => {
       if (!user) return
+      try {
+        const { data: dbProfile } = await withTimeout(
+          supabase.from('users').select('*').eq('auth_id', user.id).maybeSingle(),
+          30000,
+          "Profile handshake timeout."
+        )
 
-      const { data: profile } = await supabase
-        .from('users')
-        .select('*')
-        .eq('auth_id', user.id)
-        .single()
-
-      if (profile) {
-        if (profile.full_name) setDisplayName(profile.full_name)
-        if (profile.phone_number) setPhone(profile.phone_number)
-        if (profile.course) setCourse(profile.course)
-        if (profile.level) setLevel(profile.level.toString() as any)
-        if (profile.bio) setBio(profile.bio)
-        if (profile.avatar_url) setSelectedAvatar(profile.avatar_url)
-        if (profile.gender) {
-          setGender(profile.gender === 'MALE' ? 'M' : 'F')
+        if (dbProfile) {
+          if (dbProfile.full_name) setDisplayName(dbProfile.full_name)
+          if (dbProfile.phone_number) setPhone(dbProfile.phone_number)
+          if (dbProfile.course) setCourse(dbProfile.course)
+          if (dbProfile.level) setLevel(dbProfile.level.toString() as any)
+          if (dbProfile.bio) setBio(dbProfile.bio)
+          if (dbProfile.avatar_url) setSelectedAvatar(dbProfile.avatar_url)
+          if (dbProfile.gender) {
+            setGender(dbProfile.gender === 'MALE' ? 'M' : 'F')
+          }
+          if (dbProfile.gender_pref) {
+            setMatchPref(dbProfile.gender_pref === 'SAME_GENDER' ? 'same' : 'any')
+          }
+          if (dbProfile.status) setMatchingStatus(dbProfile.status as any)
         }
-        if (profile.gender_pref) {
-          setMatchPref(profile.gender_pref === 'SAME_GENDER' ? 'same' : 'any')
-        }
-        if (profile.status) setMatchingStatus(profile.status as any)
+      } catch (err) {
+        console.error("Fetch failed:", err)
       }
     }
-
     fetchProfile()
   }, [user])
 
-  // Load saved state from localStorage (as fallback/backup)
   useEffect(() => {
+    if (!mounted) return
     const saved = localStorage.getItem(STORAGE_KEY)
     if (saved) {
       try {
         const data = JSON.parse(saved)
-        if (!gender && data.gender) setGender(data.gender)
-        if (!level && data.level) setLevel(data.level)
-        if (!matchPref && data.matchPref) setMatchPref(data.matchPref)
-        if (!selectedAvatar && data.selectedAvatar) setSelectedAvatar(data.selectedAvatar)
         if (!displayName && data.displayName) setDisplayName(data.displayName)
+        if (!phone && data.phone) setPhone(data.phone)
         if (!course && data.course) setCourse(data.course)
         if (!bio && data.bio) setBio(data.bio)
-        if (!phone && data.phone) setPhone(data.phone)
-      } catch (e) { console.error("Error parsing profile data fallback") }
+      } catch { /* parse fail */ }
     }
-  }, [gender, level, matchPref, selectedAvatar, displayName, course, bio, phone])
+  }, [mounted, displayName, phone, course, bio])
 
-  // Load answered count from questionnaire
   useEffect(() => {
-    const savedAnswers = localStorage.getItem(ANSWERS_KEY)
-    if (savedAnswers) {
-      try {
-        const parsed = JSON.parse(savedAnswers)
-        setAnsweredCount(Object.keys(parsed).length)
-      } catch (e) {
-        console.error('Error parsing answers count')
-      }
-    }
-  }, [])
-
-  // Body scroll lock and Nav hiding when modal is open
-  useEffect(() => {
-    const isAnyModalOpen = isAvatarModalOpen || isSaving
-    if (isAnyModalOpen) {
-      document.body.classList.add('modal-open')
-    } else {
-      document.body.classList.remove('modal-open')
-    }
-    return () => document.body.classList.remove('modal-open')
-  }, [isAvatarModalOpen, isSaving])
+    if (!mounted) return
+    const data = { displayName, phone, course, bio, matchingStatus, gender, level, matchPref, selectedAvatar }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
+  }, [mounted, displayName, phone, course, bio, matchingStatus, gender, level, matchPref, selectedAvatar])
 
   const handleGenderChange = (selected: 'M' | 'F') => {
     if (gender !== selected) {
@@ -141,19 +126,21 @@ export function ProfilePage() {
     if (!isComplete || isSaving || !user) return
 
     setIsSaving(true)
+    setSaveError(null)
+    
     try {
-      // Check if profile exists
-      const { data: existingProfile } = await supabase
-        .from('users')
-        .select('id')
-        .eq('auth_id', user.id)
-        .single()
+      const { data: existingProfile } = await withTimeout(
+        supabase.from('users').select('id').eq('auth_id', user.id).maybeSingle(),
+        30000,
+        "Network timed out."
+      )
 
       const profileData: any = {
         full_name: displayName,
         phone_number: phone,
-        course: course || '100',
-        bio,
+        course: course,
+        level: level,
+        bio: bio,
         avatar_url: selectedAvatar || '',
         gender: gender === 'M' ? 'MALE' : 'FEMALE',
         gender_pref: matchPref === 'same' ? 'SAME_GENDER' : 'ANY_GENDER',
@@ -161,34 +148,27 @@ export function ProfilePage() {
       }
 
       if (existingProfile) {
-        const { error } = await supabase
-          .from('users')
-          .update(profileData)
-          .eq('id', existingProfile.id)
-
-        if (error) {
-          toast.error(error.message)
-        } else {
-          toast.success('Profile saved!')
-          navigate('/dashboard')
-        }
+        const { error } = await withTimeout(
+          supabase.from('users').update(profileData).eq('id', existingProfile.id),
+          30000,
+          "Update timed out."
+        )
+        if (error) throw error
       } else {
-        const { error } = await supabase
-          .from('users')
-          .insert({
-            auth_id: user.id,
-            ...profileData
-          })
-
-        if (error) {
-          toast.error(error.message)
-        } else {
-          toast.success('Profile saved!')
-          navigate('/dashboard')
-        }
+        const { error } = await withTimeout(
+          supabase.from('users').insert({ auth_id: user.id, ...profileData }),
+          30000,
+          "Establishment timed out."
+        )
+        if (error) throw error
       }
-    } catch (error) {
-      toast.error('Failed to save profile.')
+
+      toast.success('Identity Synced!')
+      localStorage.removeItem(STORAGE_KEY)
+      navigate('/dashboard')
+    } catch (error: any) {
+      setSaveError(error.message || 'Sync failed. Retry required.')
+      toast.error('Sync Interrupted')
     } finally {
       setIsSaving(false)
     }
@@ -198,85 +178,30 @@ export function ProfilePage() {
     const file = e.target.files?.[0]
     if (!file || !user) return
 
-    // Limit to 500KB before compression
-    if (file.size > 500 * 1024) {
-      toast.error('Image is too large (Maximum 500KB). Please use a smaller file or let us compress it.')
+    if (file.size > 1000 * 1024) {
+      toast.error('File too large (1MB Max).')
       return
     }
 
     setIsSaving(true)
+    setSaveError(null)
     try {
-      // Read and compress image
-      const reader = new FileReader()
-      reader.onload = async () => {
-        const img = new Image()
-        img.onload = async () => {
-          const MAX_WIDTH = 400
-          const MAX_HEIGHT = 400
-          let width = img.width
-          let height = img.height
+      const fileName = `${user.id}/${Date.now()}.jpg`
+      const { error: uploadError } = await withTimeout(
+        supabase.storage.from('avatars').upload(fileName, file, { contentType: file.type, upsert: true }),
+        45000,
+        "Upload timed out."
+      )
 
-          if (width > height) {
-            if (width > MAX_WIDTH) {
-              height *= MAX_WIDTH / width
-              width = MAX_WIDTH
-            }
-          } else {
-            if (height > MAX_HEIGHT) {
-              width *= MAX_HEIGHT / height
-              height = MAX_HEIGHT
-            }
-          }
+      if (uploadError) throw uploadError
 
-          const canvas = document.createElement('canvas')
-          canvas.width = width
-          canvas.height = height
-          const ctx = canvas.getContext('2d')
-          if (ctx) {
-            ctx.drawImage(img, 0, 0, width, height)
-
-            // Compress to Blob
-            canvas.toBlob(async (blob) => {
-              if (!blob) return
-
-              setIsSaving(true)
-              const fileName = `${user.id}/${Date.now()}.jpg`
-
-              // Upload to Supabase Storage
-              const { error: uploadError } = await supabase
-                .storage
-                .from('avatars')
-                .upload(fileName, blob, {
-                  contentType: 'image/jpeg',
-                  upsert: true
-                })
-
-              if (uploadError) {
-                console.error("Upload error:", uploadError)
-                toast.error("Failed to upload photo to storage")
-                setIsSaving(false)
-                return
-              }
-
-              // Get Public URL
-              const { data: { publicUrl } } = await supabase
-                .storage
-                .from('avatars')
-                .getPublicUrl(fileName)
-
-              if (publicUrl) {
-                setSelectedAvatar(publicUrl)
-                setIsSaving(false)
-                toast.success('Avatar uploaded successfully!')
-              }
-            }, 'image/jpeg', 0.85)
-          }
-        }
-        reader.readAsDataURL(file)
-      }
-    } catch (error) {
-      console.error('Avatar upload error:', error)
-      toast.error('Failed to upload avatar')
+      const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(fileName)
+      setSelectedAvatar(publicUrl)
+      setIsAvatarModalOpen(false)
+      toast.success('Visual ID Updated!')
+    } catch (error: any) {
+      toast.error(error.message || 'Upload failed.')
+    } finally {
       setIsSaving(false)
     }
   }
@@ -284,185 +209,161 @@ export function ProfilePage() {
   if (!mounted) return null
 
   return (
-    <div className="flex flex-col w-full min-h-screen bg-background pb-32">
-      <div className="flex flex-col px-5 pt-8 pb-32 w-full md:max-w-3xl lg:max-w-4xl mx-auto overflow-y-auto rounded-4xl">
-        
-        <header className="flex items-center gap-4 mb-10">
+    <div className="flex flex-col w-full min-h-screen bg-background pb-32 relative">
+      <div className="flex flex-col px-6 pt-10 pb-32 w-full md:max-w-3xl lg:max-w-4xl mx-auto overflow-y-auto">
+        <header className="flex items-center gap-5 mb-12">
           <button
             onClick={() => navigate(-1)}
-            className="p-4 rounded-2xl bg-muted/50 hover:bg-muted text-muted-foreground transition-colors group active:scale-95 shadow-sm"
+            className="p-4 rounded-[1.5rem] bg-muted/50 hover:bg-muted text-muted-foreground transition-all group active:scale-95 shadow-sm border border-border/40"
           >
             <ChevronRight className="w-6 h-6 rotate-180 group-hover:-translate-x-1 transition-transform" />
           </button>
           <div className="flex flex-col">
-            <h1 className="text-[28px] md:text-[32px] font-extrabold tracking-tight text-foreground leading-tight">
-              Profile Setup
+            <h1 className="text-[28px] md:text-[34px] font-black tracking-tight text-foreground leading-tight uppercase">
+              Profile Hub
             </h1>
-            <p className="text-[14px] font-medium text-muted-foreground mt-1">
-              {isComplete ? 'Your profile is ready for review' : 'Complete your basic info to proceed'}
+            <p className="text-[14px] font-bold text-muted-foreground mt-1 uppercase tracking-widest opacity-60">
+              Institutional Credentials
             </p>
-          </div>
-          <div className="ml-auto">
-             <button
-                onClick={() => navigate('/dashboard')}
-                className="px-4 py-2.5 rounded-2xl border border-border bg-card hover:bg-muted text-[13px] font-bold text-foreground transition-all active:scale-95 flex items-center gap-2"
-               >
-                Review
-              </button>
           </div>
         </header>
 
-        {/* Visual Identity Section */}
-        <div className="flex flex-col items-center mb-10">
+        <div className="flex flex-col items-center mb-12">
           <button
             onClick={() => gender && setIsAvatarModalOpen(true)}
-            className={`w-28 h-28 rounded-3xl bg-card border-4 border-background shadow-lg flex items-center justify-center relative overflow-hidden group transition-all ${!gender ? 'opacity-40 grayscale hover:scale-100 cursor-not-allowed' : ''}`}
+            className={`w-[160px] h-[160px] rounded-[1.5rem] bg-card border-[6px] border-background shadow-premium flex items-center justify-center relative overflow-hidden group transition-all ${!gender ? 'opacity-40 grayscale hover:scale-100 cursor-not-allowed' : 'hover:scale-105 active:scale-95'}`}
           >
             {selectedAvatar ? (
-              selectedAvatar.startsWith('data:') ? (
-                <img src={selectedAvatar} alt="Avatar" className="absolute inset-0 w-full h-full object-cover" />
-              ) : (
-                <img src={selectedAvatar} alt="Avatar" className="absolute inset-0 w-full h-full object-cover" />
-              )
+              <img src={selectedAvatar} alt="Avatar" className="absolute inset-0 w-full h-full object-cover" />
             ) : (
-              <User className="w-12 h-12 text-muted-foreground/30" />
+              <User className="w-20 h-20 text-muted-foreground/20" />
             )}
             {gender && (
               <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                <Upload className="w-6 h-6 text-white" />
+                <Upload className="w-7 h-7 text-white" />
               </div>
             )}
           </button>
           <button
             onClick={() => gender && setIsAvatarModalOpen(true)}
-            className={`mt-4 px-8 py-4 rounded-2xl bg-primary/10 text-[13px] font-black text-primary transition-all active:scale-95 shadow-sm ${!gender ? 'opacity-40 cursor-not-allowed' : 'hover:bg-primary/20'}`}
+            className={`mt-6 px-10 py-5 rounded-[1.5rem] bg-foreground text-[14px] font-black text-background transition-all active:scale-95 shadow-premium uppercase tracking-[0.2em] ${!gender ? 'opacity-40 cursor-not-allowed' : 'hover:bg-primary hover:text-white'}`}
           >
-            {selectedAvatar ? 'Change Avatar' : gender ? 'Choose Avatar' : 'Select gender first'}
+            {selectedAvatar ? 'Refresh Identity' : gender ? 'Choose Avatar' : 'Select gender first'}
           </button>
         </div>
 
-        {/* Form Sections */}
-        <div className="flex flex-col gap-10">
-          
-          {/* Core Info */}
+        <div className="flex flex-col gap-12">
           <section>
-            <h2 className="text-[12px] font-bold text-muted-foreground uppercase tracking-widest pl-2 mb-3">Core Information</h2>
-            <div className="bg-card rounded-4xl shadow-sm border border-border flex flex flex-col p-4 sm:p-5 gap-5">
+            <h2 className="text-[12px] font-black text-muted-foreground uppercase tracking-[0.3em] pl-3 mb-5">Institutional Identity</h2>
+            <div className="bg-card rounded-[1.5rem] shadow-premium border border-border/40 p-8 flex flex-col gap-8">
               
-              {/* Display Name */}
-              <div className="flex flex-col gap-2">
-                <label className="text-[13px] font-bold text-foreground pl-1">Display Name</label>
+              <div className="flex flex-col gap-3">
+                <label className="text-[13px] font-black text-foreground pl-1 uppercase tracking-widest text-left">Display name</label>
                 <input
                   type="text"
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder="e.g. Michael"
-                  className="w-full bg-background border border-border/60 rounded-2xl px-4 py-3.5 text-foreground font-medium outline-none focus:border-primary/50 focus:ring-[3px] focus:ring-primary/10 transition-all placeholder:text-muted-foreground/40 text-[15px] shadow-[0_2px_10px_rgba(0,0,0,0.02)]"
+                  placeholder="e.g. David"
+                  className="w-full bg-background border border-border/60 rounded-[1.5rem] px-8 py-5.5 text-foreground font-bold outline-none focus:border-primary/50 focus:ring-[6px] focus:ring-primary/10 transition-all placeholder:text-muted-foreground/30 text-[16px] shadow-[0_2px_15px_rgba(0,0,0,0.03)]"
                 />
               </div>
-              
-              {/* Phone Number */}
-              <div className="flex flex-col gap-2">
-                <label className="text-[13px] font-bold text-foreground pl-1">Phone Number</label>
+
+              <div className="flex flex-col gap-3">
+                <label className="text-[13px] font-black text-foreground pl-1 uppercase tracking-widest text-left">Phone number</label>
                 <input
                   type="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="e.g. 054 123 4567"
-                  className="w-full bg-background border border-border/60 rounded-2xl px-4 py-3.5 text-foreground font-medium outline-none focus:border-primary/50 focus:ring-[3px] focus:ring-primary/10 transition-all placeholder:text-muted-foreground/40 text-[15px] shadow-[0_2px_10px_rgba(0,0,0,0.02)]"
+                  className="w-full bg-background border border-border/60 rounded-[1.5rem] px-8 py-5.5 text-foreground font-bold outline-none focus:border-primary/50 focus:ring-[6px] focus:ring-primary/10 transition-all placeholder:text-muted-foreground/30 text-[16px] shadow-[0_2px_15px_rgba(0,0,0,0.03)]"
                 />
-                <p className="text-[11px] font-medium text-muted-foreground/60 px-1 mt-1 leading-relaxed">
-                  <span className="text-primary font-bold">Privacy Note:</span> Your phone number is <span className="text-foreground">never shared</span> with matches. We use it only for critical updates and rewards. <span className="text-primary underline cursor-pointer" onClick={() => navigate('/privacy')}>Read full policy</span>.
-                </p>
+                <div className="bg-primary/5 border-l-4 border-primary p-4 mt-1 rounded-[1.5rem]">
+                   <p className="text-[12px] font-bold text-muted-foreground leading-relaxed uppercase tracking-wider">
+                     <span className="text-primary">Policy Note:</span> Your number is encrypted and used only for critical roommate matches.
+                   </p>
+                </div>
               </div>
-              
-              {/* Gender */}
-              <div className="flex flex-col gap-2">
-                <label className="text-[13px] font-bold text-foreground pl-1">Biological Gender</label>
-                <div className="grid grid-cols-2 gap-3">
+
+              <div className="flex flex-col gap-3">
+                <label className="text-[13px] font-black text-foreground pl-1 flex items-center justify-between uppercase tracking-widest text-left">
+                  Short bio <span className="text-[11px] font-bold text-muted-foreground/30">Optional</span>
+                </label>
+                <textarea
+                  value={bio}
+                  onChange={(e) => setBio(e.target.value)}
+                  placeholder="2-3 sentences about your lifestyle..."
+                  rows={3}
+                  className="w-full bg-background border border-border/60 rounded-[1.5rem] px-8 py-5.5 text-foreground font-bold outline-none focus:border-primary/50 focus:ring-[6px] focus:ring-primary/10 transition-all placeholder:text-muted-foreground/30 text-[16px] resize-none shadow-[0_2px_15px_rgba(0,0,0,0.03)]"
+                />
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <label className="text-[13px] font-black text-foreground pl-1 uppercase tracking-widest text-left">Biological gender</label>
+                <div className="grid grid-cols-2 gap-4">
                   {(['M', 'F'] as const).map((g) => (
                     <button
                       key={g}
                       onClick={() => handleGenderChange(g)}
-                      className={`py-3.5 rounded-2xl border-2 font-bold text-[14px] flex items-center justify-center gap-2 active:scale-[0.98] transition-all
+                      className={`py-6 rounded-[1.5rem] border-2 font-black text-[15px] flex items-center justify-center gap-3 active:scale-[0.98] transition-all uppercase tracking-widest
                         ${gender === g
-                          ? 'border-primary bg-primary/5 text-primary shadow-sm'
-                          : 'border-border/60 bg-background text-muted-foreground hover:border-foreground/20 hover:text-foreground'
+                          ? 'border-primary bg-primary/5 text-primary shadow-premium'
+                          : 'border-border/60 bg-background text-muted-foreground hover:border-foreground/20'
                         }`}
                     >
-                      {gender === g && <Check className="w-4 h-4" />}
+                      {gender === g && <Check className="w-5 h-5" />}
                       {g === 'M' ? 'Male' : 'Female'}
                     </button>
                   ))}
                 </div>
               </div>
-              
-              {/* Match Preference */}
-              <div className="flex flex-col gap-2">
-                <label className="text-[13px] font-bold text-foreground pl-1">Roommate Gender Preference</label>
-                <div className="grid grid-cols-2 gap-3">
+
+              <div className="flex flex-col gap-3">
+                <label className="text-[13px] font-black text-foreground pl-1 uppercase tracking-widest text-left">Roommate preference</label>
+                <div className="grid grid-cols-2 gap-4">
                   {(['same', 'any'] as const).map((p) => (
                     <button
                       key={p}
                       onClick={() => setMatchPref(p)}
-                      className={`py-3.5 rounded-2xl border-2 font-bold text-[14px] flex items-center justify-center gap-2 active:scale-[0.98] transition-all
+                      className={`py-6 rounded-[1.5rem] border-2 font-black text-[15px] flex items-center justify-center gap-3 active:scale-[0.98] transition-all uppercase tracking-widest
                         ${matchPref === p
-                          ? 'border-primary bg-primary/5 text-primary shadow-sm'
-                          : 'border-border/60 bg-background text-muted-foreground hover:border-foreground/20 hover:text-foreground'
+                          ? 'border-primary bg-primary/5 text-primary shadow-premium'
+                          : 'border-border/60 bg-background text-muted-foreground hover:border-foreground/20'
                         }`}
                     >
-                      {matchPref === p && <Check className="w-4 h-4" />}
-                      {p === 'same' ? 'Same Gender' : 'Any Gender'}
+                      {matchPref === p && <Check className="w-5 h-5" />}
+                      {p === 'same' ? 'Same sex' : 'Any sex'}
                     </button>
                   ))}
                 </div>
               </div>
-              
-              {/* Bio */}
-              <div className="flex flex-col gap-2">
-                <label className="text-[13px] font-bold text-foreground pl-1 flex items-center justify-between">
-                  Short Bio <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-widest">Optional</span>
-                </label>
-                <textarea
-                  value={bio}
-                  onChange={(e) => setBio(e.target.value)}
-                  placeholder="2-3 sentences about your lifestyle vibe..."
-                  rows={3}
-                  className="w-full bg-background border border-border/60 rounded-2xl px-4 py-3.5 text-foreground font-medium outline-none focus:border-primary/50 focus:ring-[3px] focus:ring-primary/10 transition-all placeholder:text-muted-foreground/40 text-[15px] resize-none shadow-[0_2px_10px_rgba(0,0,0,0.02)]"
-                />
-              </div>
             </div>
           </section>
-          
-          {/* Academics */}
+
           <section>
-            <h2 className="text-[12px] font-bold text-muted-foreground uppercase tracking-widest pl-2 mb-3">Academics</h2>
-            <div className="bg-card rounded-4xl shadow-sm border border-border flex flex flex-col p-4 sm:p-5 gap-5">
-              
-              {/* Course */}
-              <div className="flex flex-col gap-2">
-                <label className="text-[13px] font-bold text-foreground pl-1">Programme of Study</label>
+            <h2 className="text-[12px] font-black text-muted-foreground uppercase tracking-[0.3em] pl-3 mb-5">Institutional Creds</h2>
+            <div className="bg-card rounded-[1.5rem] shadow-premium border border-border/40 p-8 flex flex-col gap-8">
+              <div className="flex flex-col gap-3">
+                <label className="text-[13px] font-black text-foreground pl-1 uppercase tracking-widest text-left">Academic programme</label>
                 <input
                   type="text"
                   value={course}
                   onChange={(e) => setCourse(e.target.value)}
-                  placeholder="e.g. B.Sc. Computer Science"
-                  className="w-full bg-background border border-border/60 rounded-2xl px-4 py-3.5 text-foreground font-medium outline-none focus:border-primary/50 focus:ring-[3px] focus:ring-primary/10 transition-all placeholder:text-muted-foreground/40 text-[15px] shadow-[0_2px_10px_rgba(0,0,0,0.02)]"
+                  placeholder="e.g. B.A. Economics"
+                  className="w-full bg-background border border-border/60 rounded-[1.5rem] px-8 py-5.5 text-foreground font-bold outline-none focus:border-primary/50 focus:ring-[6px] focus:ring-primary/10 transition-all placeholder:text-muted-foreground/30 text-[16px] shadow-[0_2px_15px_rgba(0,0,0,0.03)]"
                 />
               </div>
-              
-              {/* Academic Level */}
-              <div className="flex flex-col gap-2">
-                <label className="text-[13px] font-bold text-foreground pl-1">Current Level</label>
-                <div className="grid grid-cols-3 gap-2 sm:gap-3">
+
+              <div className="flex flex-col gap-3">
+                <label className="text-[13px] font-black text-foreground pl-1 uppercase tracking-widest text-left">Current level</label>
+                <div className="grid grid-cols-3 gap-4">
                   {['100', '200', '300', '400', '500', '600'].map((l) => (
                     <button
                       key={l}
                       onClick={() => setLevel(l as any)}
-                      className={`py-3 rounded-xl border-2 font-bold text-[14px] active:scale-[0.98] transition-all
+                      className={`py-5 rounded-[1.5rem] border-2 font-black text-[15px] active:scale-[0.98] transition-all
                         ${level === l
-                          ? 'border-primary bg-primary/5 text-primary shadow-sm'
-                          : 'border-border/60 bg-background text-muted-foreground hover:border-foreground/20 hover:text-foreground'
+                          ? 'border-primary bg-primary/5 text-primary shadow-md'
+                          : 'border-border/60 bg-background text-muted-foreground hover:border-foreground/20'
                         }`}
                     >
                       {l}
@@ -472,221 +373,152 @@ export function ProfilePage() {
               </div>
             </div>
           </section>
-          
-          {/* Matching Status */}
+
           <section>
-            <h2 className="text-[12px] font-bold text-muted-foreground uppercase tracking-widest pl-2 mb-3">Matching Status</h2>
-            <div className="bg-card rounded-4xl shadow-sm border border-border flex flex flex-col p-4 sm:p-5 gap-4">
-              <p className="text-[13px] text-muted-foreground font-medium px-1">
-                Control your visibility in compatibility pool. You can pause or mark as complete anytime.
-              </p>
-              
-              <div className="flex flex-col gap-2.5">
-                <button
-                  onClick={() => setMatchingStatus('ACTIVE')}
-                  className={`relative w-full p-8 rounded-[2rem] border-2 text-left transition-all duration-300 group
-                    ${matchingStatus === 'ACTIVE' 
-                      ? 'border-primary bg-primary/5 shadow-sm'
-                      : 'border-border/60 bg-background hover:border-primary/10'}`}
-                >
-                  <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-2xl flex items-center justify-center shrink-0 transition-colors ${matchingStatus === 'ACTIVE' ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'}`}>
-                    <Users className="w-4.5 h-4.5 sm:w-5 sm:h-5" />
-                  </div>
-                  <div className="flex flex-col text-left">
-                    <span className={`font-bold text-[14px] sm:text-[15px] ${matchingStatus === 'ACTIVE' ? 'text-primary' : 'text-foreground'}`}>Actively Searching</span>
-                    <span className="text-[11px] sm:text-[12px] font-medium text-muted-foreground">Profile is visible and finding new matches</span>
-                  </div>
-                </button>
-                
-                <button
-                  onClick={() => setMatchingStatus('HIDDEN')}
-                  className={`flex items-center gap-3.5 p-8 rounded-[2rem] border-2 transition-all active:scale-[0.98]
-                    ${matchingStatus === 'HIDDEN'
-                      ? 'border-amber-500 bg-amber-500/5 shadow-sm'
-                      : 'border-border/60 bg-background hover:border-foreground/10'}`}
-                >
-                  <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-2xl flex items-center justify-center shrink-0 transition-colors ${matchingStatus === 'HIDDEN' ? 'bg-amber-500 text-white' : 'bg-muted text-muted-foreground'}`}>
-                    <PauseCircle className="w-4.5 h-4.5 sm:w-5 sm:h-5" />
-                  </div>
-                  <div className="flex flex-col text-left">
-                    <span className={`font-bold text-[14px] sm:text-[15px] ${matchingStatus === 'HIDDEN' ? 'text-amber-600' : 'text-foreground'}`}>Talking to Matches (Paused)</span>
-                    <span className="text-[11px] sm:text-[12px] font-medium text-muted-foreground">Hidden while you talk to friends</span>
-                  </div>
-                </button>
-                
-                <button
-                  onClick={() => setMatchingStatus('COMPLETED')}
-                  className={`flex items-center gap-3.5 p-8 rounded-[2rem] border-2 transition-all active:scale-[0.98]
-                    ${matchingStatus === 'COMPLETED'
-                      ? 'border-emerald-500 bg-emerald-500/5 shadow-sm'
-                      : 'border-border/60 bg-background hover:border-foreground/10'}`}
-                >
-                  <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-2xl flex items-center justify-center shrink-0 transition-colors ${matchingStatus === 'COMPLETED' ? 'bg-emerald-500 text-white' : 'bg-muted text-muted-foreground'}`}>
-                    <Sparkles className="w-4.5 h-4.5 sm:w-5 sm:h-5" />
-                  </div>
-                  <div className="flex flex-col text-left">
-                    <span className={`font-bold text-[14px] sm:text-[15px] ${matchingStatus === 'COMPLETED' ? 'text-emerald-600' : 'text-foreground'}`}>Success! Match Found</span>
-                    <span className="text-[11px] sm:text-[12px] font-medium text-muted-foreground">Profile permanently hidden from matching pool</span>
-                  </div>
-                </button>
-              </div>
-              
-              <AnimatePresence>
-                {matchingStatus === 'COMPLETED' && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    className="p-4 bg-emerald-500 rounded-3xl mt-2 flex items-center gap-4 shadow-lg shadow-emerald-500/20"
+            <h2 className="text-[12px] font-black text-muted-foreground uppercase tracking-[0.3em] pl-3 mb-5">Network Status</h2>
+            <div className="bg-card rounded-[1.5rem] shadow-premium border border-border/40 p-6 flex flex-col gap-4">
+              {(['ACTIVE', 'HIDDEN', 'COMPLETED'] as const).map((status) => {
+                const isActive = matchingStatus === status
+                return (
+                  <button
+                    key={status}
+                    onClick={() => setMatchingStatus(status)}
+                    className={`flex items-center gap-6 p-6 rounded-[1.5rem] border-2 transition-all active:scale-[0.98] ${isActive ? 'border-primary bg-primary/5' : 'border-border/60 bg-background'}`}
                   >
-                    <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center">
-                      <Flame className="w-5 h-5" />
+                    <div className={`w-14 h-14 rounded-[1.5rem] flex items-center justify-center shrink-0 ${isActive ? 'bg-primary text-white shadow-lg' : 'bg-muted text-muted-foreground/30'}`}>
+                      {status === 'ACTIVE' && <User className="w-7 h-7" />}
+                      {status === 'HIDDEN' && <Check className="w-7 h-7" />}
+                      {status === 'COMPLETED' && <Sparkles className="w-7 h-7" />}
                     </div>
-                    <div>
-                      <span className="block text-[14px] font-extrabold text-white">Congratulations!</span>
-                      <span className="block text-[12px] font-medium text-white/90">Good luck with your new roommate!</span>
+                    <div className="flex flex-col text-left">
+                      <span className={`text-[16px] font-black uppercase tracking-tight ${isActive ? 'text-primary' : 'text-foreground'}`}>
+                        {status === 'ACTIVE' ? 'Actively Searching' : status === 'HIDDEN' ? 'Talking (Hidden)' : 'Match Found!'}
+                      </span>
+                      <span className="text-[12px] font-bold text-muted-foreground/60 uppercase tracking-widest">
+                        {status === 'ACTIVE' ? 'Visible to campus pool' : status === 'HIDDEN' ? 'Hidden from searches' : 'Deactivate matching'}
+                      </span>
                     </div>
-                  </motion.div>
-                )}
-                {matchingStatus === 'HIDDEN' && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="overflow-hidden"
-                  >
-                    <div className="p-4 bg-amber-500/10 rounded-3xl mt-2 flex items-start gap-3 border border-amber-500/20">
-                      <PauseCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-                      <p className="text-[12.5px] font-medium text-amber-700/80 leading-relaxed">
-                        Algorithm matching is on pause. You will not appear in new recommendations, but can continue chatting with existing matches. Choose <span className="font-bold text-amber-600">Actively Searching</span> when you are ready to match again.
-                      </p>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                  </button>
+                )
+              })}
+
+              {matchingStatus === 'COMPLETED' && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="p-5 bg-emerald-500 rounded-[1.5rem] mt-2 flex items-center gap-5 shadow-lg shadow-emerald-500/20"
+                >
+                  <div className="w-12 h-12 rounded-[1.5rem] bg-white/20 flex items-center justify-center text-white">
+                    <Flame className="w-6 h-6 fill-white" />
+                  </div>
+                  <div>
+                    <span className="block text-[15px] font-black text-white uppercase tracking-tight">Institutional Mission Accomplished!</span>
+                    <span className="block text-[12px] font-bold text-white/80 uppercase tracking-widest">Your academy habitat is secured.</span>
+                  </div>
+                </motion.div>
+              )}
             </div>
           </section>
-          
-          {/* Save Button */}
-          <div className="mt-4 mb-8">
+
+          <div className="mt-6 mb-24">
             <button
               onClick={handleSave}
               disabled={!isComplete || isSaving}
-              className={`premium-btn w-full flex items-center justify-center gap-3 transition-all ${isComplete && !isSaving
-                ? 'bg-foreground text-background shadow-2xl hover:scale-[1.02]'
-                : 'bg-muted/50 text-muted-foreground opacity-50 cursor-not-allowed'
+              className={`w-full py-7 rounded-[1.5rem] font-black text-[20px] transition-all flex items-center justify-center gap-4 uppercase tracking-[0.2em] shadow-premium
+                ${isComplete && !isSaving
+                  ? 'bg-foreground text-background hover:bg-primary hover:text-white active:scale-[0.98]'
+                  : 'bg-muted/50 text-muted-foreground opacity-50 cursor-not-allowed'
                 }`}
             >
-              {isSaving ? 'Directing to Campus...' : 'Confirm & Review Profile'} <ChevronRight className="w-6 h-6" />
+              {isSaving ? 'Syncing...' : 'Secure & Synchronize Identity'} <ChevronRight className="w-7 h-7" />
             </button>
           </div>
-          
-          {/* Review Answers Link - Only show when questionnaire is complete */}
-          {answeredCount === 40 && (
-            <div className="mt-3 mb-8">
-              <button
-                onClick={() => navigate('/dashboard')}
-                className="w-full py-3.5 rounded-3xl border border-border bg-card hover:bg-muted font-bold text-[14px] text-muted-foreground hover:text-foreground transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2.062 12.348a1 1 0 1 0-.696 10.75 10.75 0 1 19.876 0 1 1 0 .696 10.75 10.75 0 0 1 19.876 0" /><circle cx="12" cy="12" r="3" /></svg>
-                Review Your Answers
-              </button>
-            </div>
-          )}
         </div>
       </div>
 
-      {/* Avatar Modal */}
-      <AnimatePresence>
-        {isAvatarModalOpen && (
-          <div className="fixed inset-0 z-100 flex items-end md:items-center justify-center pointer-events-none p-0 md:p-10">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsAvatarModalOpen(false)}
-              className="absolute inset-0 bg-background/60 backdrop-blur-md pointer-events-auto"
-            />
-            <motion.div
-              initial={{ y: "100%", opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: "100%", opacity: 0 }}
-              transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="relative w-full md:w-[680px] max-w-full bg-card border-t md:border border-border rounded-t-[2.5rem] md:rounded-3xl shadow-2xl overflow-hidden pointer-events-auto max-h-[92vh] flex flex-col"
-            >
-              {/* Drag Handle (Mobile) */}
-              <div className="w-full flex justify-center pt-3 pb-1 shrink-0 md:hidden">
-                <div className="w-12 h-1.5 rounded-full bg-muted/60" />
-              </div>
-              
-              {/* Header */}
-              <div className="flex items-center justify-between px-6 py-4 border-b border-border/40 shrink-0">
-                <div className="flex flex-col">
-                  <h2 className="text-[18px] font-bold text-foreground leading-tight">Choose Avatar</h2>
-                  <p className="text-[12px] text-muted-foreground font-medium mt-0.5">Select a character for your profile</p>
-                </div>
-                <button
-                  onClick={() => setIsAvatarModalOpen(false)}
-                  className="w-10 h-10 rounded-2xl bg-muted flex items-center justify-center hover:bg-foreground hover:text-background transition-colors active:scale-95"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              
-              <div className="p-5 overflow-y-auto flex-1 pb-10">
-                {/* Hidden file input for custom upload */}
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  id="avatar-upload"
-                  onChange={handleAvatarUpload}
-                />
-                
-                {/* Avatar Grid */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                  {(gender === 'M' ? avatars.M : avatars.F).map((avatar) => (
-                    <button
-                      key={avatar.id}
-                      onClick={() => { setSelectedAvatar(avatar.src); setIsAvatarModalOpen(false); }}
-                      className={`flex flex-col items-center gap-3 p-3 rounded-2xl border-2 transition-all hover:scale-105 active:scale-95
-                        ${selectedAvatar === avatar.src
-                          ? 'border-primary bg-primary/5 ring-4 ring-primary/5'
-                          : 'border-border/60 hover:border-foreground/20 bg-card/40'
-                        }`}
-                    >
-                      <div className="w-full aspect-square rounded-xl overflow-hidden mb-1">
-                        <img src={avatar.src} alt={avatar.label} className="w-full h-full object-cover" />
-                      </div>
-                      <span className={`text-[11px] font-black uppercase tracking-wider text-center ${selectedAvatar === avatar.src ? 'text-primary' : 'text-muted-foreground'}`}>
-                        {avatar.label.split('The ')[1] || avatar.label}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      <ModalShell
+        isOpen={isAvatarModalOpen}
+        onClose={() => setIsAvatarModalOpen(false)}
+        title="Institutional Character"
+        subtitle="Secure your visual identity on the network"
+        maxWidth="md:w-[820px]"
+      >
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-5 pb-10 pt-4">
+          <button
+            onClick={() => document.getElementById('avatar-upload')?.click()}
+            className="flex flex-col items-center justify-center gap-5 p-6 rounded-[1.5rem] border-2 border-dashed border-border/60 bg-muted/20 hover:border-primary/50 hover:bg-primary/5 transition-all group active:scale-95 aspect-square"
+          >
+            <div className="w-14 h-14 rounded-[1.5rem] bg-foreground text-background flex items-center justify-center group-hover:rotate-12 transition-transform">
+              <Upload className="w-7 h-7" />
+            </div>
+            <span className="text-[12px] font-black uppercase tracking-widest text-center">Snapshot Hub</span>
+          </button>
 
-      {/* Loading Overlay */}
+          {gender && (gender === 'M' ? avatars.M : avatars.F).map((avatar) => (
+            <button
+              key={avatar.id}
+              onClick={() => { setSelectedAvatar(avatar.src); setIsAvatarModalOpen(false); }}
+              className={`flex flex-col items-center gap-4 p-4 rounded-[1.5rem] border-2 transition-all hover:scale-[1.03] active:scale-95 group
+                ${selectedAvatar === avatar.src
+                  ? 'border-primary bg-primary/5'
+                  : 'border-border/40 hover:border-foreground/20 bg-card shadow-sm'
+                }`}
+            >
+              <div className="w-full aspect-square rounded-[1.5rem] overflow-hidden mb-1 ring-1 ring-border/20">
+                <img src={avatar.src} alt={avatar.label} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+              </div>
+              <span className={`text-[11px] font-black uppercase tracking-[0.1em] text-center opacity-60 ${selectedAvatar === avatar.src ? 'text-primary opacity-100' : ''}`}>
+                {avatar.label.split('The ')[1] || avatar.label}
+              </span>
+            </button>
+          ))}
+        </div>
+        <input type="file" accept="image/*" className="hidden" id="avatar-upload" onChange={handleAvatarUpload} />
+      </ModalShell>
+
       <AnimatePresence>
         {isSaving && (
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-200 bg-background/90 backdrop-blur-2xl flex flex-col items-center justify-center px-6 text-center"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[200] bg-background/95 backdrop-blur-2xl flex flex-col items-center justify-center px-10 text-center"
           >
-            <div className="relative mb-10">
-              <div className="w-24 h-24 rounded-4xl bg-primary/10 flex items-center justify-center">
-                <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-              </div>
-              <div className="absolute -inset-6 rounded-full border-2 border-primary/20 animate-ping opacity-20" />
+            <div className="relative mb-12">
+              <motion.div
+                animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                className="w-32 h-32 rounded-[1.5rem] bg-primary/10 flex items-center justify-center relative z-10"
+              >
+                <RefreshCw className="w-12 h-12 text-primary" />
+              </motion.div>
+              <div className="absolute -inset-10 rounded-[1.5rem] border-2 border-primary/20 animate-ping opacity-20" />
             </div>
-            <h3 className="text-2xl font-black text-foreground">Securing Identity</h3>
-            <p className="mt-3 text-[13px] font-bold text-muted-foreground uppercase tracking-widest animate-pulse">Syncing Profile to Database...</p>
+
+            <h3 className="text-3xl font-black text-foreground uppercase tracking-tight mb-2">Securing Identity</h3>
+            
+            {!saveError ? (
+              <p className="max-w-md text-[14px] font-bold text-muted-foreground uppercase tracking-widest animate-pulse tracking-[0.3em]">
+                Synchronizing hub to network...
+              </p>
+            ) : (
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-center">
+                <p className="max-w-md text-[14px] font-black text-red-500 uppercase tracking-widest mb-8">
+                  {saveError}
+                </p>
+                <div className="flex gap-4">
+                  <button
+                    onClick={handleSave}
+                    className="px-8 py-4 bg-primary text-white rounded-[1.5rem] font-black uppercase tracking-widest shadow-lg shadow-primary/30"
+                  >
+                    Retry Sync
+                  </button>
+                  <button
+                    onClick={() => { setIsSaving(false); setSaveError(null); }}
+                    className="px-8 py-4 bg-muted text-muted-foreground rounded-[1.5rem] font-black uppercase tracking-widest"
+                  >
+                    Abort
+                  </button>
+                </div>
+              </motion.div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

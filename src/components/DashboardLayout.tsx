@@ -1,6 +1,6 @@
 import { useLocation, Outlet } from "react-router-dom"
-import { Sidebar } from "./ui/Sidebar"
-import { DashboardNav } from "./DashboardNav"
+import { DashboardNav } from "./dashboard/DashboardNav"
+import { Sidebar } from "./dashboard/Sidebar"
  
 export function DashboardLayout() {
   const location = useLocation()
@@ -23,24 +23,26 @@ export function DashboardLayout() {
   const isInsideChat = location.pathname.startsWith('/dashboard/messages/') && location.pathname !== '/dashboard/messages'
   
   return (
-    <div className="flex min-h-screen relative bg-background transition-colors duration-300 overflow-x-hidden pt-[env(safe-area-inset-top,4rem)]">
+    <div 
+      className="flex min-h-screen relative bg-background transition-colors duration-300 overflow-x-hidden pt-[env(safe-area-inset-top,4rem)] group"
+      data-modal-open={document.body.classList.contains('modal-open')}
+    >
+      {/* Desktop Left Sidebar — only for authorized routes */}
+      {showNav && <Sidebar />}
   
-      {/* Desktop Left Sidebar */}
-      <Sidebar />
-  
-      {/* Main Content Area — shifts right on desktop for 256px sidebar */}
-      <div className={`flex-1 md:pl-64 flex flex-col min-h-screen ${isInsideChat ? 'pb-0' : 'pb-36 sm:pb-40'} md:pb-0`}>
+      {/* Main Content Area — shifts right on desktop for the 256px sidebar */}
+      <div className={`flex-1 flex flex-col min-h-screen ${showNav ? 'md:pl-64' : ''} ${isInsideChat ? 'pb-0' : 'pb-36 sm:pb-40'} md:pb-0`}>
         <main className={`flex-1 w-full bg-background ${isInsideChat ? '' : 'max-w-[480px]'} mx-auto md:max-w-none`}>
           <Outlet />
         </main>
       </div>
   
-      {/* Mobile Bottom Tab Bar — hidden on unauthorized routes, inside chat, or when modal is open */}
-      {showNav && !isInsideChat && (
-        <div className="md:hidden fixed bottom-6 left-6 right-6 z-50 bg-card border border-border shadow-[0_8px_30px_rgb(0,0,0,0.12)] rounded-[24px] overflow-hidden transition-all duration-300 [.modal-open_&]:opacity-0 [.modal-open_&]:pointer-events-none [.modal-open_&]:translate-y-20">
+      {/* Mobile Bottom Tab Bar — hidden inside chat, on desktop, or when modal is open */}
+      <div className="md:hidden">
+        {showNav && !isInsideChat && (
           <DashboardNav />
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }

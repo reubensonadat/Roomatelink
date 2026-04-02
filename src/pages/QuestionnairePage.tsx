@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
-import { Check, Loader2, ChevronLeft } from 'lucide-react'
+import { Check, RefreshCw, ChevronLeft, AlertCircle } from 'lucide-react'
 import { questions as sourceQuestions, Question } from '../lib/questions'
 import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
@@ -16,6 +16,14 @@ function shuffle<T>(arr: T[]): T[] {
   return a
 }
 
+// Diagnostic Timeout Helper
+function withTimeout<T>(promise: PromiseLike<T>, ms: number, message: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error(message)), ms))
+  ])
+}
+
 const STORAGE_KEY = 'roommate_answers'
 const ORDER_KEY = 'roommate_question_order'
 
@@ -26,6 +34,7 @@ export function QuestionnairePage() {
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null)
   const [ready, setReady] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -35,10 +44,17 @@ export function QuestionnairePage() {
     let questionOrder: Question[]
 
     if (savedOrder) {
-      const orderIds: string[] = JSON.parse(savedOrder)
-      questionOrder = orderIds
-        .map(id => sourceQuestions.find((q: any) => q.id === id))
-        .filter(Boolean) as Question[]
+      try {
+        const orderIds: string[] = JSON.parse(savedOrder)
+        questionOrder = orderIds
+          .map(id => sourceQuestions.find((q: any) => q.id === id))
+          .filter(Boolean) as Question[]
+        
+        if (questionOrder.length === 0) throw new Error("Empty order")
+      } catch {
+        questionOrder = shuffle(sourceQuestions)
+        localStorage.setItem(ORDER_KEY, JSON.stringify(questionOrder.map(q => q.id)))
+      }
     } else {
       questionOrder = shuffle(sourceQuestions)
       localStorage.setItem(ORDER_KEY, JSON.stringify(questionOrder.map(q => q.id)))
@@ -60,17 +76,69 @@ export function QuestionnairePage() {
     setReady(true)
   }, [])
 
-  useEffect(() => {
-    if (!questions.length) return
-    const currentQId = questions[currentIndex]?.id
-    setSelectedAnswer(answers[currentQId] || null)
-  }, [currentIndex, questions, answers])
+  const currentQ = questions[currentIndex]
+  const progressPercent = ((currentIndex) / questions.length) * 100
+
+  const performSubmission = async (currentAnswers: Record<string, string>) => {
+    setIsSubmitting(true)
+    setSubmitError(null)
+    
+    try {
+      const { data: { user } } = await withTimeout(supabase.auth.getUser(), 15000, "Auth handshake timeout.")
+      if (!user) throw new Error('Session expired.')
+
+      const { data: profile } = await withTimeout(
+        supabase.from('users').select('id').eq('auth_id', user.id).maybeSingle(),
+        20000,
+        "Database handshake timeout."
+      )
+      if (!profile) throw new Error('Identity Hub not found.')
+
+      const { error: upsertError } = await withTimeout(
+        supabase.from('questionnaire_responses').upsert({
+          user_id: profile.id,
+          answers: currentAnswers,
+          completed_at: new Date().toISOString()
+        }),
+        30000,
+        "Data transfer timeout."
+      )
+      if (upsertError) throw upsertError
+
+      const { data: { session } } = await withTimeout(supabase.auth.getSession(), 15000, "Security timeout.")
+      if (!session) throw new Error('Verification failed.')
+
+      const response = await withTimeout(
+        fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/match-calculate`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`
+          },
+          body: JSON.stringify({ userId: profile.id })
+        }),
+        45000,
+        "Calculation engine timeout."
+      )
+
+      if (!response.ok) {
+        console.warn('Edge Function offline.')
+      }
+
+      toast.success('DNA Sync Complete!')
+      localStorage.removeItem(STORAGE_KEY)
+      localStorage.removeItem(ORDER_KEY)
+      navigate('/questionnaire/calculation')
+    } catch (error: any) {
+      setSubmitError(error.message || 'Network unresponsive.')
+      toast.error('Sync Interrupted')
+    }
+  }
 
   const handleSelect = (optionId: string) => {
     if (selectedAnswer !== null && selectedAnswer === optionId) return
     setSelectedAnswer(optionId)
 
-    const currentQ = questions[currentIndex]
     const nextAnswers = { ...answers, [currentQ.id]: optionId }
     setAnswers(nextAnswers)
     localStorage.setItem(STORAGE_KEY, JSON.stringify(nextAnswers))
@@ -78,58 +146,9 @@ export function QuestionnairePage() {
     setTimeout(async () => {
       if (currentIndex < questions.length - 1) {
         setCurrentIndex(prev => prev + 1)
+        setSelectedAnswer(null)
       } else {
-        setIsSubmitting(true)
-        try {
-          const { data: { user } } = await supabase.auth.getUser()
-          if (!user) throw new Error('Not authenticated')
-
-          // 1. Get internal profile ID
-          const { data: profile } = await supabase
-            .from('users')
-            .select('id')
-            .eq('auth_id', user.id)
-            .single()
-
-          if (!profile) throw new Error('Profile not found')
-
-          // 2. Direct Supabase Upsert (Migration Guide Phase 5)
-          const { error } = await supabase
-            .from('questionnaire_responses')
-            .upsert({
-              user_id: profile.id,
-              answers: nextAnswers,
-              completed_at: new Date().toISOString()
-            })
-
-          if (error) throw error
-
-          // 3. Trigger Match Calculation via Edge Function
-          const { data: { session } } = await supabase.auth.getSession()
-          if (!session) throw new Error('No session')
-
-          const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/match-calculate`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${session.access_token}`
-            },
-            body: JSON.stringify({ userId: profile.id })
-          })
-
-          if (!response.ok) {
-            const error = await response.json()
-            throw new Error(error.error || 'Match calculation failed')
-          }
-
-          toast.success('Questionnaire saved successfully!')
-          localStorage.removeItem(STORAGE_KEY)
-          localStorage.removeItem(ORDER_KEY)
-          navigate('/dashboard')
-        } catch (error: any) {
-          toast.error(error.message || 'Failed to save responses')
-          setIsSubmitting(false)
-        }
+        await performSubmission(nextAnswers)
       }
     }, 550)
   }
@@ -137,93 +156,92 @@ export function QuestionnairePage() {
   if (!ready || questions.length === 0) {
     return (
       <div className="min-h-screen bg-background flex flex-col justify-center items-center">
-        <div className="w-8 h-8 rounded-full border-[3px] border-primary border-t-transparent animate-spin mb-4" />
-        <span className="text-[13px] font-bold text-muted-foreground uppercase tracking-widest">Warming Up</span>
+        <RefreshCw className="w-8 h-8 text-primary animate-spin mb-4" />
+        <span className="text-[13px] font-bold text-muted-foreground uppercase tracking-widest">Warming Engine</span>
       </div>
     )
   }
 
-  const currentQ = questions[currentIndex]
-  const progressPercent = ((currentIndex) / questions.length) * 100
-
   return (
-    <div className="min-h-screen bg-background flex flex-col relative selection:bg-primary/20">
-      <div className="fixed top-0 left-0 w-full h-[4px] bg-muted/60 z-50">
+    <div className="min-h-screen bg-background flex flex-col items-center relative selection:bg-primary/20">
+      <div className="fixed top-0 left-0 w-full h-[4px] bg-muted/30 z-50">
         <motion.div
           initial={{ width: 0 }}
           animate={{ width: `${progressPercent}%` }}
           transition={{ duration: 0.5, ease: "easeOut" }}
-          className="h-full bg-primary shadow-[0_0_10px_rgba(59,130,246,0.5)]"
+          className="h-full bg-primary shadow-[0_0_15px_rgba(59,130,246,0.5)]"
         />
       </div>
 
-      <div className="w-full max-w-2xl mx-auto flex flex-col flex-1 relative z-10">
-        <header className="px-6 pt-10 pb-4 flex items-center justify-between">
+      <div className="w-full max-w-[480px] md:max-w-2xl lg:max-w-3xl mx-auto flex flex-col flex-1 relative z-10">
+        <header className="px-6 pt-12 pb-6 flex items-center justify-between">
           <button
             onClick={() => navigate(-1)}
-            className="w-12 h-12 rounded-2xl bg-muted/50 border border-border/50 flex items-center justify-center active:scale-95 transition-all hover:bg-muted"
+            className="w-12 h-12 rounded-[1.5rem] bg-muted/50 border border-border/50 flex items-center justify-center active:scale-90 transition-all hover:bg-muted"
           >
             <ChevronLeft className="w-6 h-6" />
           </button>
 
-          <div className="flex bg-muted/50 border border-border/50 px-5 py-2 rounded-2xl items-center shadow-sm">
-            <span className="text-[14px] font-black text-foreground uppercase tracking-tighter tabular-nums">
-              Step {currentIndex + 1} <span className="text-muted-foreground/60 mx-1">/</span> {questions.length}
+          <div className="flex bg-muted/50 border border-border/50 px-6 py-2 rounded-[1.5rem] items-center">
+            <span className="text-[13px] font-black text-foreground uppercase tracking-[0.2em] tabular-nums">
+              {currentIndex + 1} <span className="opacity-30 text-[10px] mx-1">/</span> {questions.length}
             </span>
           </div>
 
           <div className="w-12 h-12" />
         </header>
 
-        <main className="flex-1 px-6 pt-8 pb-12 flex flex-col">
+        <main className="flex-1 px-6 pt-10 pb-16 flex flex-col">
           <AnimatePresence mode="wait">
             <motion.div
               key={currentQ.id}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
+              initial={{ opacity: 0, scale: 0.98, filter: 'blur(10px)' }}
+              animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+              exit={{ opacity: 0, scale: 0.96, filter: 'blur(10px)' }}
+              transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
               className="flex-1 flex flex-col"
             >
-              <div className="flex-1 flex flex-col justify-center mb-12">
-                <h1 className="text-3xl md:text-5xl font-black leading-[1.1] tracking-tight text-foreground drop-shadow-sm">
+              <div className="flex-1 flex flex-col justify-center min-h-[35vh]">
+                <h1 className="text-[34px] md:text-[52px] font-black leading-[1.05] tracking-tight text-foreground">
                   {currentQ.question}
                 </h1>
               </div>
 
-              <div className="grid gap-4">
+              <div className="flex flex-col gap-4 mt-auto">
                 {currentQ.options.map((opt: any, idx: number) => {
                   const isSelected = selectedAnswer === opt.id
                   const isDimmed = selectedAnswer !== null && !isSelected
 
                   return (
-                    <motion.button
+                    <motion.div
                       key={opt.id}
-                      initial={{ opacity: 0, y: 15 }}
+                      initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: idx * 0.05, duration: 0.4 }}
-                      onClick={() => handleSelect(opt.id)}
-                      disabled={selectedAnswer !== null && selectedAnswer !== opt.id}
-                      className={`
-                        relative w-full p-8 rounded-[2rem] border-2 text-left transition-all duration-300 group
-                        ${isSelected 
-                          ? 'border-primary bg-primary/5 shadow-lg shadow-primary/10 ring-4 ring-primary/5' 
-                          : 'border-border/40 bg-card hover:border-primary/40 hover:bg-muted/30'}
-                        ${isDimmed ? 'opacity-30' : 'opacity-100'}
-                      `}
+                      transition={{ delay: idx * 0.08, duration: 0.4 }}
+                      whileTap={{ scale: 0.98 }}
                     >
-                      <div className="flex items-center gap-6">
+                      <button
+                        onClick={() => handleSelect(opt.id)}
+                        disabled={selectedAnswer !== null && selectedAnswer !== opt.id}
+                        className={`
+                          relative w-full p-7 rounded-[1.5rem] border-2 text-left transition-all duration-400 group flex items-center gap-5 shadow-sm
+                          ${isSelected 
+                            ? 'border-primary bg-primary/5 shadow-lg shadow-primary/10 ring-[6px] ring-primary/5 z-10' 
+                            : 'border-border/40 bg-card hover:border-primary/30 hover:bg-muted/40'}
+                          ${isDimmed ? 'opacity-20 grayscale-[80%]' : 'opacity-100'}
+                        `}
+                      >
                         <div className={`
-                          w-8 h-8 rounded-full border-2 flex items-center justify-center shrink-0 transition-all duration-300
-                          ${isSelected ? 'border-primary bg-primary' : 'border-muted-foreground/30 group-hover:border-primary/50'}
+                          w-7 h-7 rounded-[0.8rem] border-2 flex items-center justify-center shrink-0 transition-all duration-400
+                          ${isSelected ? 'border-primary bg-primary scale-110 shadow-md' : 'border-muted-foreground/20 group-hover:border-primary/40'}
                         `}>
-                          {isSelected && <Check className="w-5 h-5 text-primary-foreground stroke-[4]" />}
+                          {isSelected && <Check className="w-4 h-4 text-primary-foreground stroke-[4]" />}
                         </div>
-                        <span className={`text-lg md:text-xl font-bold transition-colors ${isSelected ? 'text-primary' : 'text-foreground/80'}`}>
+                        <span className={`text-[17px] md:text-[20px] font-black transition-colors tracking-tight ${isSelected ? 'text-primary' : 'text-foreground/90'}`}>
                           {opt.text}
                         </span>
-                      </div>
-                    </motion.button>
+                      </button>
+                    </motion.div>
                   )
                 })}
               </div>
@@ -232,22 +250,54 @@ export function QuestionnairePage() {
         </main>
       </div>
 
+      {/* Sync Diagnostic Overlay */}
       <AnimatePresence>
         {isSubmitting && (
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] bg-background/90 backdrop-blur-2xl flex flex-col items-center justify-center"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[200] bg-background/95 backdrop-blur-2xl flex flex-col items-center justify-center px-10 text-center"
           >
-            <div className="relative">
-              <div className="w-24 h-24 rounded-[2.5rem] bg-primary/10 flex items-center justify-center">
-                 <Loader2 className="w-12 h-12 text-primary animate-spin" />
-              </div>
-              <div className="absolute -inset-8 rounded-full border-2 border-primary/20 animate-ping opacity-20" />
+            <div className="relative mb-12">
+               <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                className="w-32 h-32 rounded-[1.5rem] bg-primary/10 flex items-center justify-center"
+               >
+                 <RefreshCw className="w-12 h-12 text-primary" />
+               </motion.div>
+              <div className="absolute -inset-10 rounded-[1.5rem] border-2 border-primary/20 animate-ping opacity-20" />
             </div>
-            <h3 className="mt-10 text-2xl font-black text-foreground">Syncing Results</h3>
-            <p className="mt-3 text-sm font-bold text-muted-foreground uppercase tracking-widest animate-pulse">Calculating Compatibility...</p>
+
+            <h3 className="text-3xl font-black text-foreground uppercase tracking-tight mb-2">Analyzing Your DNA</h3>
+            
+            {!submitError ? (
+              <p className="max-w-md text-[14px] font-bold text-muted-foreground uppercase tracking-[0.3em] animate-pulse">
+                Syncing with campus records...
+              </p>
+            ) : (
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-center">
+                <div className="w-14 h-14 rounded-[1.5rem] bg-red-500/10 flex items-center justify-center mb-4">
+                  <AlertCircle className="w-7 h-7 text-red-500" />
+                </div>
+                <p className="max-w-md text-[14px] font-black text-red-500 uppercase tracking-widest mb-10 leading-relaxed shadow-sm">
+                  {submitError}
+                </p>
+                <div className="flex gap-4">
+                  <button
+                    onClick={() => performSubmission(answers)}
+                    className="px-10 py-5 bg-foreground text-background rounded-[1.5rem] font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all"
+                  >
+                    Retry Sync
+                  </button>
+                  <button
+                    onClick={() => { setIsSubmitting(false); setSubmitError(null); }}
+                    className="px-10 py-5 bg-muted text-muted-foreground rounded-[1.5rem] font-black uppercase tracking-widest"
+                  >
+                    Abort
+                  </button>
+                </div>
+              </motion.div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

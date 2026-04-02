@@ -43,8 +43,9 @@ export function SettingsPage() {
       await signOut();
       toast.success('Signed out successfully');
       navigate('/auth');
-    } catch {
-      toast.error('Failed to sign out');
+    } catch (err) {
+      console.error('Logout error:', err);
+      toast.error('Failed to sign out fully');
     } finally {
       setIsLoggingOut(false);
       setIsLogoutOpen(false);
@@ -52,23 +53,27 @@ export function SettingsPage() {
   };
 
   const handleDeleteAccount = async () => {
-    if (deleteInput !== 'DELETE') return;
+    if (deleteInput !== 'DELETE' || !user) return;
     setIsDeleting(true);
     try {
-      // In a real application, you'd call a Supabase Edge Function to handle account deletion 
-      // safely (removing auth user + database data).
-      // For now, we'll simulate it with a toast.
-      const { error } = await supabase.rpc('delete_user_data', { user_id: user?.id });
+      // 1. Clear local profile cache first
+      localStorage.removeItem(`roommate_profile_${user.id}`);
+      
+      // 2. Call deletion RPC
+      const { error } = await supabase.rpc('delete_user_data', { user_id: user.id });
       
       if (error) {
-        toast.error('Failed to delete account data');
+        console.error('Deletion RPC error:', error);
+        toast.error('Could not wipe all data. Contact support.');
       } else {
+        // 3. Final Sign Out
         await signOut();
         navigate('/auth');
-        toast.success('Account deleted successfully');
+        toast.success('Account permanently cleared');
       }
-    } catch {
-      toast.error('Failed to delete account');
+    } catch (err) {
+      console.error('Account deletion failure:', err);
+      toast.error('Sync error during account deletion');
     } finally {
       setIsDeleting(false);
       setIsDeleteOpen(false);

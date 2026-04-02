@@ -3,6 +3,7 @@ import { LandingPage } from './pages/LandingPage'
 import { AuthPage } from './pages/AuthPage'
 import { AuthCallbackPage } from './pages/AuthCallbackPage'
 import { QuestionnairePage } from './pages/QuestionnairePage'
+import CalculationPage from './pages/CalculationPage'
 import { OnboardingPage } from './pages/OnboardingPage'
 import { ProfilePage } from './pages/ProfilePage'
 import { DashboardPage } from './pages/DashboardPage'
@@ -36,6 +37,8 @@ export default function App() {
         
         {/* Protected routes with DashboardLayout */}
         <Route element={<ProtectedRoute />}>
+          <Route path="/questionnaire" element={<QuestionnairePage />} />
+          <Route path="/questionnaire/calculation" element={<CalculationPage />} />
           <Route element={<DashboardLayout />}>
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/dashboard/messages" element={<MessagesPage />} />
@@ -47,7 +50,6 @@ export default function App() {
             {/* These pages now have navigation consistently after login */}
             <Route path="/onboarding" element={<OnboardingPage />} />
             <Route path="/profile" element={<ProfilePage />} />
-            <Route path="/questionnaire" element={<QuestionnairePage />} />
             <Route path="/verify-student" element={<VerificationPage />} />
           </Route>
         </Route>
