@@ -18,7 +18,7 @@ export function MatchFeed({ matches, hasPaid, onSelectMatch, isLoading }: MatchF
     }
 
     if (hasPaid) {
-      // Staggered reveal animation
+      // Staggered reveal animation (Archive-V1 Standard)
       const interval = setInterval(() => {
         setUnlockedCount(prev => {
           if (prev >= matches.length) {
@@ -27,7 +27,7 @@ export function MatchFeed({ matches, hasPaid, onSelectMatch, isLoading }: MatchF
           }
           return prev + 1
         })
-      }, 100)
+      }, 500)
       return () => clearInterval(interval)
     } else {
       setUnlockedCount(0)

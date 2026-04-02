@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { User, Upload, Check, ChevronRight, Sparkles, Flame, RefreshCw } from 'lucide-react'
+import { User, Upload, Check, ChevronRight, Sparkles, RefreshCw } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
@@ -49,13 +49,29 @@ export function ProfilePage() {
   const [displayName, setDisplayName] = useState('')
   const [course, setCourse] = useState('')
   const [bio, setBio] = useState('')
-  const [matchingStatus, setMatchingStatus] = useState<'ACTIVE' | 'HIDDEN' | 'COMPLETED'>('ACTIVE')
+  const [matchingStatus, setMatchingStatus] = useState<'ACTIVE' | 'HIDDEN' | 'COMPLETED' | null>(null)
   const [phone, setPhone] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [mounted, setMounted] = useState(false)
 
   const STORAGE_KEY = 'roommate_profile_data'
+
+  // ─── Instant Sync Helper ───
+  const updateField = async (field: string, value: any) => {
+    if (!user) return
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({ [field]: value })
+        .eq('auth_id', user.id)
+      
+      if (error) throw error
+    } catch (err) {
+      console.error(`Failed to sync ${field}:`, err)
+      toast.error(`Sync Delayed: ${field}`)
+    }
+  }
 
   useEffect(() => {
     setMounted(true)
@@ -209,164 +225,88 @@ export function ProfilePage() {
   if (!mounted) return null
 
   return (
-    <div className="flex flex-col w-full min-h-screen bg-background pb-32 relative">
-      <div className="flex flex-col px-6 pt-10 pb-32 w-full md:max-w-3xl lg:max-w-4xl mx-auto overflow-y-auto">
-        <header className="flex items-center gap-5 mb-12">
-          <button
-            onClick={() => navigate(-1)}
-            className="p-4 rounded-[1.5rem] bg-muted/50 hover:bg-muted text-muted-foreground transition-all group active:scale-95 shadow-sm border border-border/40"
-          >
-            <ChevronRight className="w-6 h-6 rotate-180 group-hover:-translate-x-1 transition-transform" />
-          </button>
-          <div className="flex flex-col">
-            <h1 className="text-[28px] md:text-[34px] font-black tracking-tight text-foreground leading-tight uppercase">
-              Profile Hub
-            </h1>
-            <p className="text-[14px] font-bold text-muted-foreground mt-1 uppercase tracking-widest opacity-60">
-              Institutional Credentials
-            </p>
-          </div>
-        </header>
+    <div className="flex flex-col w-full min-h-screen bg-slate-50 relative selection:bg-indigo-100">
+      {/* Sticky Header */}
+      <div className="bg-white px-4 py-4 flex items-center sticky top-0 z-50 border-b border-slate-100 shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
+        <button 
+          onClick={() => navigate(-1)}
+          className="p-2.5 bg-slate-50 rounded-2xl text-slate-700 hover:bg-slate-100 transition-colors group active:scale-95"
+        >
+          <ChevronRight className="w-5 h-5 rotate-180 group-hover:-translate-x-0.5 transition-transform" />
+        </button>
+        <h1 className="flex-1 text-center text-lg font-bold text-slate-900 mr-10">Profile Hub</h1>
+      </div>
 
-        <div className="flex flex-col items-center mb-12">
-          <button
+      <div className="flex-1 overflow-y-auto w-full md:max-w-2xl lg:max-w-3xl mx-auto px-4 pt-6 pb-32">
+        
+        {/* Identity Section */}
+        <div className="flex flex-col items-center pt-2 pb-8">
+          <div className="relative mb-3 group">
+            <div className={`w-20 h-20 bg-indigo-50 rounded-[24px] flex items-center justify-center border-4 border-white shadow-sm overflow-hidden relative transition-all ${
+              !gender ? 'opacity-40 grayscale animate-pulse' : 'hover:ring-4 hover:ring-indigo-100'
+            }`}>
+              {selectedAvatar ? (
+                <img src={selectedAvatar} alt="Avatar" className="absolute inset-0 w-full h-full object-cover" />
+              ) : (
+                <User size={32} className="text-indigo-400" />
+              )}
+              {gender && (
+                <button 
+                  onClick={() => setIsAvatarModalOpen(true)}
+                  className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <Upload className="w-5 h-5 text-white" />
+                </button>
+              )}
+            </div>
+            {gender && <div className="absolute bottom-1 right-0.5 w-4 h-4 bg-green-500 border-2 border-white rounded-[6px] shadow-sm" />}
+          </div>
+          <h2 className="text-xl font-bold text-slate-900">{displayName || 'User Identity'}</h2>
+          
+          <button 
             onClick={() => gender && setIsAvatarModalOpen(true)}
-            className={`w-[160px] h-[160px] rounded-[1.5rem] bg-card border-[6px] border-background shadow-premium flex items-center justify-center relative overflow-hidden group transition-all ${!gender ? 'opacity-40 grayscale hover:scale-100 cursor-not-allowed' : 'hover:scale-105 active:scale-95'}`}
+            disabled={!gender}
+            className={`mt-3 px-8 py-3 bg-slate-900 text-white rounded-xl text-sm font-bold transition-all shadow-md active:scale-95 ${
+              !gender ? 'opacity-30 cursor-not-allowed' : 'hover:bg-slate-800'
+            }`}
           >
-            {selectedAvatar ? (
-              <img src={selectedAvatar} alt="Avatar" className="absolute inset-0 w-full h-full object-cover" />
-            ) : (
-              <User className="w-20 h-20 text-muted-foreground/20" />
-            )}
-            {gender && (
-              <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                <Upload className="w-7 h-7 text-white" />
-              </div>
-            )}
-          </button>
-          <button
-            onClick={() => gender && setIsAvatarModalOpen(true)}
-            className={`mt-6 px-10 py-5 rounded-[1.5rem] bg-foreground text-[14px] font-black text-background transition-all active:scale-95 shadow-premium uppercase tracking-[0.2em] ${!gender ? 'opacity-40 cursor-not-allowed' : 'hover:bg-primary hover:text-white'}`}
-          >
-            {selectedAvatar ? 'Refresh Identity' : gender ? 'Choose Avatar' : 'Select gender first'}
+            Refresh Identity
           </button>
         </div>
 
-        <div className="flex flex-col gap-12">
+        <div className="space-y-6">
+          
+          {/* Institutional Creds */}
           <section>
-            <h2 className="text-[12px] font-black text-muted-foreground uppercase tracking-[0.3em] pl-3 mb-5">Institutional Identity</h2>
-            <div className="bg-card rounded-[1.5rem] shadow-premium border border-border/40 p-8 flex flex-col gap-8">
-              
-              <div className="flex flex-col gap-3">
-                <label className="text-[13px] font-black text-foreground pl-1 uppercase tracking-widest text-left">Display name</label>
-                <input
-                  type="text"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder="e.g. David"
-                  className="w-full bg-background border border-border/60 rounded-[1.5rem] px-8 py-5.5 text-foreground font-bold outline-none focus:border-primary/50 focus:ring-[6px] focus:ring-primary/10 transition-all placeholder:text-muted-foreground/30 text-[16px] shadow-[0_2px_15px_rgba(0,0,0,0.03)]"
-                />
-              </div>
-
-              <div className="flex flex-col gap-3">
-                <label className="text-[13px] font-black text-foreground pl-1 uppercase tracking-widest text-left">Phone number</label>
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="e.g. 054 123 4567"
-                  className="w-full bg-background border border-border/60 rounded-[1.5rem] px-8 py-5.5 text-foreground font-bold outline-none focus:border-primary/50 focus:ring-[6px] focus:ring-primary/10 transition-all placeholder:text-muted-foreground/30 text-[16px] shadow-[0_2px_15px_rgba(0,0,0,0.03)]"
-                />
-                <div className="bg-primary/5 border-l-4 border-primary p-4 mt-1 rounded-[1.5rem]">
-                   <p className="text-[12px] font-bold text-muted-foreground leading-relaxed uppercase tracking-wider">
-                     <span className="text-primary">Policy Note:</span> Your number is encrypted and used only for critical roommate matches.
-                   </p>
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-3">
-                <label className="text-[13px] font-black text-foreground pl-1 flex items-center justify-between uppercase tracking-widest text-left">
-                  Short bio <span className="text-[11px] font-bold text-muted-foreground/30">Optional</span>
-                </label>
-                <textarea
-                  value={bio}
-                  onChange={(e) => setBio(e.target.value)}
-                  placeholder="2-3 sentences about your lifestyle..."
-                  rows={3}
-                  className="w-full bg-background border border-border/60 rounded-[1.5rem] px-8 py-5.5 text-foreground font-bold outline-none focus:border-primary/50 focus:ring-[6px] focus:ring-primary/10 transition-all placeholder:text-muted-foreground/30 text-[16px] resize-none shadow-[0_2px_15px_rgba(0,0,0,0.03)]"
-                />
-              </div>
-
-              <div className="flex flex-col gap-3">
-                <label className="text-[13px] font-black text-foreground pl-1 uppercase tracking-widest text-left">Biological gender</label>
-                <div className="grid grid-cols-2 gap-4">
-                  {(['M', 'F'] as const).map((g) => (
-                    <button
-                      key={g}
-                      onClick={() => handleGenderChange(g)}
-                      className={`py-6 rounded-[1.5rem] border-2 font-black text-[15px] flex items-center justify-center gap-3 active:scale-[0.98] transition-all uppercase tracking-widest
-                        ${gender === g
-                          ? 'border-primary bg-primary/5 text-primary shadow-premium'
-                          : 'border-border/60 bg-background text-muted-foreground hover:border-foreground/20'
-                        }`}
-                    >
-                      {gender === g && <Check className="w-5 h-5" />}
-                      {g === 'M' ? 'Male' : 'Female'}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-3">
-                <label className="text-[13px] font-black text-foreground pl-1 uppercase tracking-widest text-left">Roommate preference</label>
-                <div className="grid grid-cols-2 gap-4">
-                  {(['same', 'any'] as const).map((p) => (
-                    <button
-                      key={p}
-                      onClick={() => setMatchPref(p)}
-                      className={`py-6 rounded-[1.5rem] border-2 font-black text-[15px] flex items-center justify-center gap-3 active:scale-[0.98] transition-all uppercase tracking-widest
-                        ${matchPref === p
-                          ? 'border-primary bg-primary/5 text-primary shadow-premium'
-                          : 'border-border/60 bg-background text-muted-foreground hover:border-foreground/20'
-                        }`}
-                    >
-                      {matchPref === p && <Check className="w-5 h-5" />}
-                      {p === 'same' ? 'Same sex' : 'Any sex'}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section>
-            <h2 className="text-[12px] font-black text-muted-foreground uppercase tracking-[0.3em] pl-3 mb-5">Institutional Creds</h2>
-            <div className="bg-card rounded-[1.5rem] shadow-premium border border-border/40 p-8 flex flex-col gap-8">
-              <div className="flex flex-col gap-3">
-                <label className="text-[13px] font-black text-foreground pl-1 uppercase tracking-widest text-left">Academic programme</label>
+            <h3 className="px-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Institutional Creds</h3>
+            <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 p-5 space-y-5">
+              <div>
+                <label className="text-xs font-semibold text-slate-500 mb-1.5 block">Academic Programme</label>
                 <input
                   type="text"
                   value={course}
                   onChange={(e) => setCourse(e.target.value)}
-                  placeholder="e.g. B.A. Economics"
-                  className="w-full bg-background border border-border/60 rounded-[1.5rem] px-8 py-5.5 text-foreground font-bold outline-none focus:border-primary/50 focus:ring-[6px] focus:ring-primary/10 transition-all placeholder:text-muted-foreground/30 text-[16px] shadow-[0_2px_15px_rgba(0,0,0,0.03)]"
+                  placeholder="e.g. Information Technology"
+                  className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-slate-900 font-bold text-sm focus:outline-none focus:border-indigo-200 transition-all placeholder:text-slate-300"
                 />
               </div>
-
-              <div className="flex flex-col gap-3">
-                <label className="text-[13px] font-black text-foreground pl-1 uppercase tracking-widest text-left">Current level</label>
-                <div className="grid grid-cols-3 gap-4">
-                  {['100', '200', '300', '400', '500', '600'].map((l) => (
-                    <button
-                      key={l}
-                      onClick={() => setLevel(l as any)}
-                      className={`py-5 rounded-[1.5rem] border-2 font-black text-[15px] active:scale-[0.98] transition-all
-                        ${level === l
-                          ? 'border-primary bg-primary/5 text-primary shadow-md'
-                          : 'border-border/60 bg-background text-muted-foreground hover:border-foreground/20'
-                        }`}
+              <div>
+                <label className="text-xs font-semibold text-slate-500 mb-2.5 block">Current Level</label>
+                <div className="flex flex-wrap gap-2">
+                  {['100', '200', '300', '400', '500', '600'].map(lvl => (
+                    <button 
+                      key={lvl}
+                      onClick={() => {
+                        setLevel(lvl as any)
+                        updateField('level', parseInt(lvl))
+                      }}
+                      className={`w-14 py-2.5 rounded-xl text-sm font-bold transition-all border ${
+                        level === lvl 
+                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg shadow-indigo-100' 
+                          : 'bg-slate-50 text-slate-500 border-slate-50 hover:bg-slate-100'
+                      }`}
                     >
-                      {l}
+                      {lvl}
                     </button>
                   ))}
                 </div>
@@ -374,63 +314,153 @@ export function ProfilePage() {
             </div>
           </section>
 
+          {/* Personal Details */}
           <section>
-            <h2 className="text-[12px] font-black text-muted-foreground uppercase tracking-[0.3em] pl-3 mb-5">Network Status</h2>
-            <div className="bg-card rounded-[1.5rem] shadow-premium border border-border/40 p-6 flex flex-col gap-4">
-              {(['ACTIVE', 'HIDDEN', 'COMPLETED'] as const).map((status) => {
-                const isActive = matchingStatus === status
-                return (
-                  <button
-                    key={status}
-                    onClick={() => setMatchingStatus(status)}
-                    className={`flex items-center gap-6 p-6 rounded-[1.5rem] border-2 transition-all active:scale-[0.98] ${isActive ? 'border-primary bg-primary/5' : 'border-border/60 bg-background'}`}
-                  >
-                    <div className={`w-14 h-14 rounded-[1.5rem] flex items-center justify-center shrink-0 ${isActive ? 'bg-primary text-white shadow-lg' : 'bg-muted text-muted-foreground/30'}`}>
-                      {status === 'ACTIVE' && <User className="w-7 h-7" />}
-                      {status === 'HIDDEN' && <Check className="w-7 h-7" />}
-                      {status === 'COMPLETED' && <Sparkles className="w-7 h-7" />}
-                    </div>
-                    <div className="flex flex-col text-left">
-                      <span className={`text-[16px] font-black uppercase tracking-tight ${isActive ? 'text-primary' : 'text-foreground'}`}>
-                        {status === 'ACTIVE' ? 'Actively Searching' : status === 'HIDDEN' ? 'Talking (Hidden)' : 'Match Found!'}
-                      </span>
-                      <span className="text-[12px] font-bold text-muted-foreground/60 uppercase tracking-widest">
-                        {status === 'ACTIVE' ? 'Visible to campus pool' : status === 'HIDDEN' ? 'Hidden from searches' : 'Deactivate matching'}
-                      </span>
-                    </div>
-                  </button>
-                )
-              })}
+            <h3 className="px-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Personal Details</h3>
+            <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 overflow-hidden">
+              
+              <div className="px-5 py-4 border-b border-slate-50">
+                <label className="text-xs font-semibold text-slate-500 mb-2 block">Phone Number</label>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="e.g. 054 165 1298"
+                  className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-slate-900 font-bold text-sm focus:outline-none focus:border-indigo-200 transition-all placeholder:text-slate-300"
+                />
+                <div className="mt-3 bg-blue-50/50 border border-blue-100 rounded-xl p-4 flex items-start">
+                  <Check size={16} className="text-blue-500 mt-0.5 mr-3 shrink-0" />
+                  <p className="text-[11.5px] text-blue-700 leading-relaxed font-semibold">
+                    <span className="text-blue-500 font-black">POLICY NOTE:</span> YOUR NUMBER IS ENCRYPTED AND USED ONLY FOR CRITICAL ROOMMATE MATCHES.
+                  </p>
+                </div>
+              </div>
 
-              {matchingStatus === 'COMPLETED' && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="p-5 bg-emerald-500 rounded-[1.5rem] mt-2 flex items-center gap-5 shadow-lg shadow-emerald-500/20"
-                >
-                  <div className="w-12 h-12 rounded-[1.5rem] bg-white/20 flex items-center justify-center text-white">
-                    <Flame className="w-6 h-6 fill-white" />
-                  </div>
-                  <div>
-                    <span className="block text-[15px] font-black text-white uppercase tracking-tight">Institutional Mission Accomplished!</span>
-                    <span className="block text-[12px] font-bold text-white/80 uppercase tracking-widest">Your academy habitat is secured.</span>
-                  </div>
-                </motion.div>
-              )}
+              <div className="px-5 py-4 border-b border-slate-50">
+                <div className="flex justify-between items-center mb-2">
+                  <label className="text-xs font-semibold text-slate-500">Short Bio</label>
+                  <span className="text-[10px] text-slate-300 uppercase tracking-wider font-extrabold">Optional</span>
+                </div>
+                <input
+                  type="text"
+                  value={bio}
+                  onChange={(e) => setBio(e.target.value)}
+                  placeholder="Tell us about yourself..."
+                  className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-slate-900 font-bold text-sm focus:outline-none focus:border-indigo-200 transition-all placeholder:text-slate-300"
+                />
+              </div>
+              
+              <div className="px-5 py-4 border-b border-slate-50 flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-500">Biological Gender</span>
+                <div className="flex bg-slate-50 p-1.5 rounded-xl border border-slate-100/50 shadow-inner">
+                  {(['M', 'F'] as const).map((opt) => (
+                    <button 
+                      key={opt} 
+                      onClick={() => {
+                        handleGenderChange(opt)
+                        updateField('gender', opt === 'M' ? 'MALE' : 'FEMALE')
+                      }} 
+                      className={`px-5 py-2 rounded-[8px] text-xs font-black transition-all flex items-center gap-1.5 ${
+                        gender === opt 
+                          ? 'bg-white text-indigo-600 shadow-md border border-slate-200' 
+                          : 'text-slate-400 hover:text-slate-600'
+                      }`}
+                    >
+                      {gender === opt && <Check size={13} className="stroke-[3]" />} {opt === 'M' ? 'Male' : 'Female'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="px-5 py-4 flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-500">Roommate Preference</span>
+                <div className="flex bg-slate-50 p-1.5 rounded-xl border border-slate-100/50 shadow-inner">
+                  {(['same', 'any'] as const).map((opt) => (
+                    <button 
+                      key={opt} 
+                      onClick={() => {
+                        setMatchPref(opt)
+                        updateField('gender_pref', opt === 'same' ? 'SAME_GENDER' : 'ANY_GENDER')
+                      }} 
+                      className={`px-5 py-2 rounded-[8px] text-xs font-black transition-all flex items-center gap-1.5 ${
+                        matchPref === opt 
+                          ? 'bg-white text-indigo-600 shadow-md border border-slate-200' 
+                          : 'text-slate-400 hover:text-slate-600'
+                      }`}
+                    >
+                      {matchPref === opt && <Check size={13} className="stroke-[3]" />} {opt === 'same' ? 'Same Sex' : 'Any Sex'}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           </section>
 
-          <div className="mt-6 mb-24">
+          {/* Network Status */}
+          <section>
+            <h3 className="px-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Network Status</h3>
+            <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 p-2 space-y-2">
+              
+              {(['ACTIVE', 'HIDDEN', 'COMPLETED'] as const).map((status) => {
+                const isActive = matchingStatus === status
+                const colorMap = {
+                  ACTIVE: { bg: 'bg-indigo-50', border: 'border-indigo-200', text: 'text-indigo-900', sub: 'text-indigo-500', iconBg: 'bg-indigo-500' },
+                  HIDDEN: { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-900', sub: 'text-blue-500', iconBg: 'bg-blue-500' },
+                  COMPLETED: { bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-900', sub: 'text-green-600', iconBg: 'bg-green-500' }
+                }
+                const current = colorMap[status]
+
+                return (
+                  <button
+                    key={status}
+                    onClick={() => {
+                      setMatchingStatus(status)
+                      updateField('status', status)
+                    }}
+                    className={`w-full flex items-center p-3 rounded-2xl transition-all border ${
+                      isActive ? `${current.bg} ${current.border}` : 'bg-transparent border-transparent hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center mr-3 shrink-0 ${
+                      isActive ? `${current.iconBg} text-white shadow-sm` : 'bg-slate-100 text-slate-400'
+                    }`}>
+                      {status === 'ACTIVE' && <User size={20} />}
+                      {status === 'HIDDEN' && <Check size={20} />}
+                      {status === 'COMPLETED' && <Sparkles size={20} />}
+                    </div>
+                    <div className="text-left flex-1">
+                      <h4 className={`text-sm font-bold ${isActive ? current.text : 'text-slate-700'}`}>
+                        {status === 'ACTIVE' ? 'Actively Searching' : status === 'HIDDEN' ? 'Talking (Hidden)' : 'Match Found!'}
+                      </h4>
+                      <p className={`text-[10px] font-extrabold uppercase tracking-widest mt-0.5 ${isActive ? current.sub : 'text-slate-400'}`}>
+                        {status === 'ACTIVE' ? 'Visible to campus pool' : status === 'HIDDEN' ? 'Hidden from searches' : 'Deactivate matching'}
+                      </p>
+                    </div>
+                    {isActive && (
+                      <div className={`w-5 h-5 ${current.iconBg} rounded-[6px] flex items-center justify-center shadow-sm`}>
+                        <Check size={12} className="text-white stroke-[3]" />
+                      </div>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          </section>
+
+          {/* Big Action Button */}
+          <div className="mt-8 mb-24">
             <button
               onClick={handleSave}
               disabled={!isComplete || isSaving}
-              className={`w-full py-7 rounded-[1.5rem] font-black text-[20px] transition-all flex items-center justify-center gap-4 uppercase tracking-[0.2em] shadow-premium
-                ${isComplete && !isSaving
-                  ? 'bg-foreground text-background hover:bg-primary hover:text-white active:scale-[0.98]'
-                  : 'bg-muted/50 text-muted-foreground opacity-50 cursor-not-allowed'
-                }`}
+              className={`w-full bg-slate-900 rounded-[20px] py-5 px-7 flex items-center justify-between shadow-[0_20px_40px_rgba(0,0,0,0.1)] transition-all active:scale-[0.98] ${
+                !isComplete || isSaving ? 'opacity-40 cursor-not-allowed' : 'hover:bg-slate-800'
+              }`}
             >
-              {isSaving ? 'Syncing...' : 'Secure & Synchronize Identity'} <ChevronRight className="w-7 h-7" />
+              <div className="flex flex-col text-left">
+                <span className="font-bold tracking-widest text-[11px] uppercase leading-tight text-slate-400">Secure &</span>
+                <span className="font-bold tracking-widest text-sm uppercase leading-tight text-white">Synchronize Identity</span>
+              </div>
+              <ChevronRight size={24} className="text-slate-500" />
             </button>
           </div>
         </div>

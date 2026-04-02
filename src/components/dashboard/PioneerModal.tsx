@@ -1,5 +1,5 @@
-import { motion, AnimatePresence } from 'framer-motion'
 import { Crown, PartyPopper } from 'lucide-react'
+import { ModalShell } from '../ui/ModalShell'
 
 interface PioneerModalProps {
   isOpen: boolean
@@ -9,47 +9,31 @@ interface PioneerModalProps {
 
 export function PioneerModal({ isOpen, onClose, onClaim }: PioneerModalProps) {
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center px-4">
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="absolute inset-0 bg-background/80 backdrop-blur-sm"
-          />
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0, y: 20 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.9, opacity: 0, y: 20 }}
-            className="relative w-full max-w-[340px] bg-card rounded-3xl p-6 shadow-2xl overflow-hidden text-center border border-primary/30"
-          >
-            <div className="absolute -top-12 -left-12 w-40 h-40 bg-primary/20 blur-3xl rounded-full pointer-events-none" />
-            <div className="absolute -bottom-12 -right-12 w-40 h-40 bg-emerald-500/20 blur-3xl rounded-full pointer-events-none" />
-
-            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-5 relative z-10 shadow-inner">
-              <Crown className="w-8 h-8 text-primary" />
-            </div>
-
-            <h2 className="text-[22px] font-black tracking-tight text-foreground mb-3 relative z-10 flex items-center justify-center gap-2">
-              Pioneer Status
-            </h2>
-            <p className="text-[14px] text-muted-foreground font-medium leading-relaxed mb-6 relative z-10">
-              You are officially one of the very first 100 students to join the roommate revolution. To say thank you, we've completely waived your verification fee.
-              <br /><br />
-              <span className="text-foreground font-bold">Your Premium access is free forever.</span>
-            </p>
-
-            <button
-              onClick={onClaim}
-              className="w-full h-[52px] bg-primary text-primary-foreground font-bold text-[15px] rounded-2xl flex items-center justify-center gap-2 hover:bg-primary/90 transition-all active:scale-95 shadow-md relative z-10"
-            >
-              Claim Pioneer Access <PartyPopper className="w-4 h-4" />
-            </button>
-          </motion.div>
+    <ModalShell
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Pioneer Status"
+      subtitle="Exclusive Batch Access"
+      maxWidth="md:w-[440px]"
+    >
+      <div className="flex flex-col items-center text-center py-4">
+        <div className="w-16 h-16 bg-primary/10 rounded-3xl flex items-center justify-center mb-6 shadow-inner border border-primary/20">
+          <Crown className="w-8 h-8 text-primary" />
         </div>
-      )}
-    </AnimatePresence>
+
+        <p className="text-[14px] text-muted-foreground font-medium leading-relaxed mb-8 px-2">
+          You are officially one of the very first 100 students to join the roommate revolution. To say thank you, we've completely <span className="text-primary font-black uppercase tracking-widest">waived</span> your verification fee.
+          <br /><br />
+          <span className="text-foreground font-extrabold uppercase tracking-tight">Your Premium access is free forever.</span>
+        </p>
+
+        <button
+          onClick={onClaim}
+          className="w-full h-[60px] bg-primary text-white font-black text-[16px] rounded-2xl flex items-center justify-center gap-3 hover:bg-primary/90 transition-all active:scale-[0.98] shadow-lg uppercase tracking-widest"
+        >
+          Claim Pioneer Access <PartyPopper className="w-5 h-5" />
+        </button>
+      </div>
+    </ModalShell>
   )
 }

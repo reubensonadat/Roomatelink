@@ -59,7 +59,14 @@ export function SettingsPage() {
       // 1. Clear local profile cache first
       localStorage.removeItem(`roommate_profile_${user.id}`);
       
-      // 2. Call deletion RPC
+      // 2. Cascading Data Wipe (Best Effort manual cleanup)
+      await Promise.all([
+        supabase.from('messages').delete().or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`),
+        supabase.from('questionnaire_responses').delete().eq('user_id', user.id),
+        // Add more manual wipes if needed
+      ]);
+      
+      // 3. Call deletion RPC for root user record
       const { error } = await supabase.rpc('delete_user_data', { user_id: user.id });
       
       if (error) {
