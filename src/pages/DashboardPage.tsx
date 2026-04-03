@@ -6,7 +6,6 @@ import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
 import { PullToRefresh } from '../components/PullToRefresh'
 import { useAuth } from '../context/AuthContext'
-import { DashboardHeader } from '../components/dashboard/DashboardHeader'
 import { MatchFeed } from '../components/dashboard/MatchFeed'
 import { ProfilePreviewModal } from '../components/dashboard/ProfilePreviewModal'
 import { PaymentModal } from '../components/dashboard/PaymentModal'
@@ -356,27 +355,49 @@ export function DashboardPage() {
   
   if (!mounted || isHydrating) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-background p-6">
-        <div className="relative w-24 h-24 mb-10">
-          <div className="absolute inset-0 rounded-full border-[4px] border-primary/10" />
-          <div className="absolute inset-0 rounded-full border-[4px] border-transparent border-t-primary animate-spin" />
+      <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 p-6 selection:bg-indigo-100 uppercase tracking-tight">
+        <div className="relative w-28 h-28 mb-12">
+          {/* Outer Ring Glow */}
+          <div className="absolute inset-[-8px] rounded-[2.5rem] bg-indigo-500/10 blur-xl animate-pulse" />
+          
+          {/* Main Spinner */}
+          <div className="absolute inset-0 rounded-[2.5rem] border-[3px] border-slate-200" />
+          <motion.div 
+            animate={{ rotate: 360 }}
+            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+            className="absolute inset-0 rounded-[2.5rem] border-[3px] border-transparent border-t-indigo-600 shadow-[0_0_20px_rgba(79,70,229,0.2)]"
+          />
+          
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center">
-              <LockIcon className="w-6 h-6 text-primary" />
+            <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-sm border border-slate-100">
+              <Sparkles className="w-7 h-7 text-indigo-600 animate-pulse" />
             </div>
           </div>
         </div>
-        <h2 
-          onClick={() => setDevClickCount(prev => prev + 1)}
-          className="text-[12px] font-black text-primary uppercase tracking-[0.4em] mb-2 cursor-default select-none active:opacity-50 transition-opacity"
+
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex flex-col items-center text-center"
         >
-          Institutional Hub {isDevMode && <span className="text-secondary tracking-normal">(DEV)</span>}
-        </h2>
-        <div className="flex items-center gap-3">
-          <div className="h-1 w-12 bg-primary rounded-full animate-pulse" />
-          <span className="text-[28px] font-black tracking-tighter">Scanning...</span>
-          <div className="h-1 w-12 bg-primary rounded-full animate-pulse" />
-        </div>
+          <h2 className="text-[12px] font-black text-indigo-600 uppercase tracking-[0.4em] mb-4">
+            Welcome Back {isDevMode && <span className="text-slate-400 tracking-normal">(DEV)</span>}
+          </h2>
+          <div className="flex flex-col items-center gap-2">
+            <span className="text-[32px] font-black tracking-tighter text-slate-900 leading-none">Starting Roommate Link</span>
+            <p className="text-[14px] font-bold text-slate-400">Synchronizing your matching preferences</p>
+          </div>
+          
+          {/* Premium Progress Bar */}
+          <div className="mt-8 w-48 h-1.5 bg-slate-200 rounded-full overflow-hidden relative">
+            <motion.div 
+              initial={{ x: "-100%" }}
+              animate={{ x: "100%" }}
+              transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+              className="absolute inset-0 h-full bg-indigo-600 shadow-[0_0_10px_rgba(79,70,229,0.5)] w-[60%]"
+            />
+          </div>
+        </motion.div>
       </div>
     )
   }

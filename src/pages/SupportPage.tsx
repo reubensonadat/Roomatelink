@@ -47,7 +47,7 @@ export function SupportPage() {
             Back
           </button>
           <div className="text-[12px] font-black uppercase tracking-widest text-muted-foreground/60">
-            Support Protocol v1.0
+            Support Center
           </div>
         </div>
       </header>
@@ -63,7 +63,7 @@ export function SupportPage() {
             <div className="w-12 h-12 rounded-2xl bg-foreground/5 flex items-center justify-center">
               <UserGroupIcon className="w-8 h-8" />
             </div>
-            <span className="text-[14px] font-black uppercase tracking-[0.2em]">Institutional Support</span>
+            <span className="text-[14px] font-black uppercase tracking-[0.2em]">Roommate Link Support</span>
           </motion.div>
           <h1 className="text-5xl sm:text-6xl font-black tracking-tight mb-8 leading-[1.1]">
             How can we <br />help you today?
@@ -141,7 +141,7 @@ export function SupportPage() {
           <div className="divide-y divide-border/50">
             <FAQItem
               question="Why is there a one-time verification fee?"
-              answer="To definitively restrict bots, scammers, and actors who aren't serious about finding a roommate. This fee sustains our high-security infrastructure and academic verification engine."
+              answer="To definitively restrict bots, scammers, and actors who aren't serious about finding a roommate. This fee sustains our optimized matching system and student verification process."
             />
             <FAQItem
               question="Can my matches see my phone number?"

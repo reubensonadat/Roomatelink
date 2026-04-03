@@ -1,7 +1,8 @@
 import { useEffect, useState, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { Loader2, AlertCircle } from 'lucide-react'
+import { AlertCircle } from 'lucide-react'
+import { motion } from 'framer-motion'
 
 export function AuthCallbackPage() {
   const navigate = useNavigate()
@@ -23,7 +24,7 @@ export function AuthCallbackPage() {
     }, 10000)
 
     const handleCallback = async () => {
-      console.log('--- AuthCallback: Initializing Institutional Flow ---')
+      console.log('--- AuthCallback: Initializing Secure Auth Flow ---')
       hasHandled.current = true
 
       // 1. Check for explicit error from Supabase
@@ -55,7 +56,7 @@ export function AuthCallbackPage() {
           const { data: { session: retrySession } } = await supabase.auth.getSession()
           
           if (!retrySession) {
-            setErrorDetails('No institutional session detected. Please sign in again.')
+            setErrorDetails('Verify session failed. Please sign in again.')
             setStatus('error')
             setTimeout(() => navigate('/auth'), 3000)
             return
@@ -125,34 +126,81 @@ export function AuthCallbackPage() {
 
   if (status === 'error') {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center">
-        <div className="w-20 h-20 bg-destructive/10 rounded-3xl flex items-center justify-center mb-8 shadow-inner">
-          <AlertCircle className="w-10 h-10 text-destructive" />
-        </div>
-        <h1 className="text-[24px] font-black tracking-tight text-foreground mb-4 uppercase">Sync Failure</h1>
-        <p className="text-muted-foreground font-medium max-w-xs mx-auto mb-10 leading-relaxed">
-          {errorDetails}
-        </p>
-        <p className="text-[10px] font-black text-muted-foreground/40 uppercase tracking-widest">
-          Institutional Protocol v2.0 • Retrying in 3s
-        </p>
+      <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 p-6 selection:bg-indigo-100 uppercase tracking-tight">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="w-20 h-20 bg-red-50 rounded-[24px] flex items-center justify-center mb-10 shadow-sm border border-red-100"
+        >
+          <AlertCircle className="w-10 h-10 text-red-500" />
+        </motion.div>
+        
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex flex-col items-center text-center max-w-sm"
+        >
+          <h2 className="text-[12px] font-black text-red-500 uppercase tracking-[0.4em] mb-4">
+            Connection Interrupted
+          </h2>
+          <span className="text-[32px] font-black tracking-tighter text-slate-900 leading-tight mb-4">
+            Security Block
+          </span>
+          <p className="text-slate-500 font-bold text-[15px] leading-relaxed mb-10 text-pretty">
+            {errorDetails || "We couldn't verify your credentials. Please attempt to re-authenticate."}
+          </p>
+          
+          <button 
+            onClick={() => navigate('/auth')}
+            className="px-8 py-4 bg-slate-900 text-white font-black rounded-2xl shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all text-[13px] tracking-widest uppercase"
+          >
+            Return to Auth
+          </button>
+        </motion.div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center">
-      <div className="text-center px-8">
-        <div className="relative w-24 h-24 mx-auto mb-10">
-          <div className="absolute inset-0 rounded-full border-[6px] border-primary/10" />
-          <div className="absolute inset-0 rounded-full border-[6px] border-transparent border-t-primary animate-spin" />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <Loader2 className="w-8 h-8 text-primary opacity-40 animate-pulse" />
-          </div>
+    <div className="flex flex-col items-center justify-center min-vh-screen min-h-[100vh] bg-slate-50 p-6 selection:bg-indigo-100 uppercase tracking-tight text-left">
+      <div className="relative w-28 h-28 mb-12">
+        {/* Outer Ring Glow */}
+        <div className="absolute inset-[-8px] rounded-[2.5rem] bg-indigo-500/10 blur-xl animate-pulse" />
+        
+        {/* Main Spinner */}
+        <div className="absolute inset-0 rounded-[2.5rem] border-[3px] border-slate-200" />
+        <div className="absolute inset-0 rounded-[2.5rem] border-[3px] border-transparent border-t-indigo-600 shadow-[0_0_20px_rgba(79,70,229,0.2)] animate-spin" />
+        
+        <div className="absolute inset-0 flex items-center justify-center text-indigo-600">
+          <svg className="w-10 h-10 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A10.003 10.003 0 004.5 12.512m14.5 0a10.005 10.005 0 01-5.657 9.07c0-3.517-1.009-6.799-2.753-9.571m-3.44-2.04L10 11V5a2 2 0 10-4 0v6m4-6V5a2 2 0 114 0v6m4 6v2a2 2 0 11-4 0v-2m0 0a2 2 0 014 0z" />
+          </svg>
         </div>
-        <h1 className="text-[20px] font-black text-foreground tracking-tight uppercase mb-2">Syncing Identity</h1>
-        <p className="text-[13px] font-medium text-muted-foreground uppercase tracking-widest opacity-60">Please wait while we establish your session</p>
       </div>
+
+      <motion.div 
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex flex-col items-center text-center"
+      >
+        <h2 className="text-[12px] font-black text-indigo-600 uppercase tracking-[0.4em] mb-4">
+          Identity Sync
+        </h2>
+        <div className="flex flex-col items-center gap-2">
+          <span className="text-[32px] font-black tracking-tighter text-slate-900 leading-none">Confirming Identity</span>
+          <p className="text-[14px] font-bold text-slate-400">Establishing your secure Roommate Link session</p>
+        </div>
+        
+        <div className="mt-8 w-48 h-1.5 bg-slate-200 rounded-full overflow-hidden relative">
+          <div className="absolute inset-0 bg-indigo-600/10" />
+          <motion.div 
+            initial={{ x: "-100%" }}
+            animate={{ x: "100%" }}
+            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+            className="h-full bg-indigo-600 shadow-[0_0_10px_rgba(79,70,229,0.5)] w-[60%]"
+          />
+        </div>
+      </motion.div>
     </div>
   )
 }
