@@ -57,15 +57,13 @@ export function SettingsPage() {
     if (deleteInput !== 'DELETE' || !user) return;
     setIsDeleting(true);
     try {
-      // 1. Call Secure Edge Function with a 30s timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000);
+      // 1. Call Secure Edge Function with a strict 15s timeout
+      const invokePromise = supabase.functions.invoke('delete-account', { body: {} });
+      const timeoutPromise = new Promise<{ error: any }>((_, reject) => 
+        setTimeout(() => reject(new Error("TimeoutError")), 15000)
+      );
 
-      const { error } = await supabase.functions.invoke('delete-account', {
-        body: {},
-      });
-
-      clearTimeout(timeoutId);
+      const { error } = await Promise.race([invokePromise, timeoutPromise]);
       
       if (error) {
         console.error('Edge Function Deletion error:', error);

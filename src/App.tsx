@@ -19,11 +19,13 @@ import { ProtectedRoute } from './components/ProtectedRoute'
 import { DashboardLayout } from './components/DashboardLayout'
 import { Toaster } from 'sonner'
 import { ScrollToReset } from './components/ui/ScrollToReset'
+import { InstallPrompt } from './components/ui/InstallPrompt'
 
 export default function App() {
   return (
     <BrowserRouter>
       <ScrollToReset />
+      <InstallPrompt />
       <Toaster position="top-center" richColors />
       <Routes>
         {/* Public routes */}
