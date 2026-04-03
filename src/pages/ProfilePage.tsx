@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
 import { useAuth } from '../context/AuthContext'
 import { ModalShell } from '../components/ui/ModalShell'
+import { TopHeader } from '../components/layout/TopHeader'
 
 const avatars = {
   M: [
@@ -226,16 +227,7 @@ export function ProfilePage() {
 
   return (
     <div className="flex flex-col w-full min-h-screen bg-slate-50 relative selection:bg-indigo-100">
-      {/* Sticky Header */}
-      <div className="bg-white px-4 py-4 flex items-center sticky top-0 z-50 border-b border-slate-100 shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
-        <button 
-          onClick={() => navigate(-1)}
-          className="p-2.5 bg-slate-50 rounded-2xl text-slate-700 hover:bg-slate-100 transition-colors group active:scale-95"
-        >
-          <ChevronRight className="w-5 h-5 rotate-180 group-hover:-translate-x-0.5 transition-transform" />
-        </button>
-        <h1 className="flex-1 text-center text-lg font-bold text-slate-900 mr-10">Profile Hub</h1>
-      </div>
+      <TopHeader title="Profile Hub" showBackButton />
 
       <div className="flex-1 overflow-y-auto w-full md:max-w-2xl lg:max-w-3xl mx-auto px-4 pt-6 pb-32">
         
@@ -452,15 +444,22 @@ export function ProfilePage() {
             <button
               onClick={handleSave}
               disabled={!isComplete || isSaving}
-              className={`w-full bg-slate-900 rounded-[20px] py-5 px-7 flex items-center justify-between shadow-[0_20px_40px_rgba(0,0,0,0.1)] transition-all active:scale-[0.98] ${
-                !isComplete || isSaving ? 'opacity-40 cursor-not-allowed' : 'hover:bg-slate-800'
+              className={`w-full h-[72px] bg-indigo-600 rounded-[24px] flex items-center justify-center gap-3 shadow-[0_20px_40px_rgba(79,70,229,0.25)] transition-all active:scale-[0.98] relative overflow-hidden group ${
+                !isComplete || isSaving ? 'opacity-40 cursor-not-allowed grayscale' : 'hover:bg-indigo-700 hover:shadow-[0_20px_50px_rgba(79,70,229,0.35)]'
               }`}
             >
-              <div className="flex flex-col text-left">
-                <span className="font-bold tracking-widest text-[11px] uppercase leading-tight text-slate-400">Secure &</span>
-                <span className="font-bold tracking-widest text-sm uppercase leading-tight text-white">Synchronize Identity</span>
+              {/* Subtle glass reflection effect */}
+              <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/5 to-white/0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+              
+              <div className="flex flex-col items-center">
+                <span className="text-[10px] font-bold tracking-widest uppercase text-indigo-200 transition-colors group-hover:text-indigo-100">
+                  {isSaving ? 'Synchronizing...' : 'Secure Profile'}
+                </span>
+                <span className="text-[17px] font-black text-white leading-tight">
+                  Synchronize Identity
+                </span>
               </div>
-              <ChevronRight size={24} className="text-slate-500" />
+              {!isSaving && <ChevronRight size={22} className="text-indigo-200/80 group-hover:translate-x-1 transition-transform" />}
             </button>
           </div>
         </div>

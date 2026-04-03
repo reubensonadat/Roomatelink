@@ -14,6 +14,7 @@ import { PioneerModal } from '../components/dashboard/PioneerModal'
 import { PaymentVerificationOverlay } from '../components/dashboard/PaymentVerificationOverlay'
 import { ReportModal } from '../components/ui/ReportModal'
 import { FoundRoommateModal } from '../components/ui/FoundRoommateModal'
+import { TopHeader } from '../components/layout/TopHeader'
 import { MOCK_MATCHES } from '../lib/mockData'
 
 // ─── Types ────────────────────────────────────────────────────────────
@@ -393,7 +394,10 @@ export function DashboardPage() {
       />
 
       <PullToRefresh onRefresh={async () => { await new Promise(r => setTimeout(r, 1200)); toast.success('Matches refreshed!'); }}>
-          <DashboardHeader matchCount={matches.length} />
+          <TopHeader 
+            title="Top Matches" 
+            subtitle={`${matches.length} highly compatible roommates found.`} 
+          />
   
           <div className="flex flex-col px-4 sm:px-5 pt-6 pb-40 w-full max-w-2xl lg:max-w-4xl mx-auto">
             {isPioneerUser && !hasPaid && (

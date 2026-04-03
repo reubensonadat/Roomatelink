@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
+import { TopHeader } from '../components/layout/TopHeader';
 
 export function SettingsPage() {
   const navigate = useNavigate();
@@ -138,19 +139,10 @@ export function SettingsPage() {
   };
 
   return (
-    <div className="flex flex-col w-full min-h-screen bg-background pb-32 px-5 pt-8 md:max-w-3xl lg:max-w-4xl mx-auto selection:bg-primary/20">
+    <div className="flex flex-col w-full min-h-screen bg-slate-50 selection:bg-indigo-100">
+      <TopHeader title="Settings" showBackButton />
 
-      <header className="flex items-center gap-4 mb-10">
-        <button
-          onClick={() => window.history.back()}
-          className="p-4 rounded-2xl bg-muted/50 hover:bg-muted text-muted-foreground transition-colors group active:scale-95 shadow-sm"
-        >
-          <ChevronRight className="w-6 h-6 rotate-180 group-hover:-translate-x-1 transition-transform" />
-        </button>
-        <h1 className="text-[28px] md:text-[32px] font-extrabold tracking-tight text-foreground leading-tight">
-          Settings
-        </h1>
-      </header>
+      <div className="flex-1 overflow-y-auto w-full md:max-w-2xl lg:max-w-3xl mx-auto px-4 pt-8 pb-32">
 
       <div className="flex flex-col gap-10">
 
@@ -462,6 +454,7 @@ export function SettingsPage() {
           </div>
         )}
       </AnimatePresence>
+      </div>
     </div>
   );
 }
