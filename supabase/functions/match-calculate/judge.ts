@@ -261,7 +261,7 @@ function detectCrossCategoryPatterns(userA: AnswerVector, userB: AnswerVector): 
  * Analyse a single user's answer vector for honesty/consistency signals.
  * Returns a modifier (can be negative) and a list of descriptive flags.
  */
-function analyseConsistency(answers: AnswerVector): {
+export function analyseConsistency(answers: AnswerVector): {
   modifier: number;   // percentage points (typically –15 to +0)
   flags: string[];
 } {

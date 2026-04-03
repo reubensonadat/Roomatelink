@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Search, MessageCircle, UserCheck, ChevronRight, Sparkles } from 'lucide-react'
+import { Search, MessageCircle, UserCheck, ChevronRight, Sparkles, Lock } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { supabase } from '../lib/supabase'
@@ -8,7 +8,8 @@ import { TopHeader } from '../components/layout/TopHeader'
 export function MessagesPage() {
   const [profileStatus, setProfileStatus] = useState({
     isProfileComplete: true,
-    hasQuestionnaire: true
+    hasQuestionnaire: true,
+    hasPaid: true
   })
   const [chats, setChats] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -37,37 +38,41 @@ export function MessagesPage() {
 
         setProfileStatus({
           isProfileComplete: !!(profile.course && profile.level && profile.phone_number),
-          hasQuestionnaire: !!questionnaire
+          hasQuestionnaire: !!questionnaire,
+          hasPaid: !!profile.has_paid
         })
 
-        const { data: msgs } = await supabase
-          .from('messages')
-          .select(`
-            *,
-            sender:users!sender_id (id, full_name, avatar_url),
-            receiver:users!receiver_id (id, full_name, avatar_url)
-          `)
-          .or(`sender_id.eq.${profile.id},receiver_id.eq.${profile.id}`)
-          .order('created_at', { ascending: false })
+        // Only fetch messages if the user has paid
+        if (profile.has_paid) {
+          const { data: msgs } = await supabase
+            .from('messages')
+            .select(`
+              *,
+              sender:users!sender_id (id, full_name, avatar_url),
+              receiver:users!receiver_id (id, full_name, avatar_url)
+            `)
+            .or(`sender_id.eq.${profile.id},receiver_id.eq.${profile.id}`)
+            .order('created_at', { ascending: false })
 
-        if (msgs) {
-          const threads: Record<string, any> = {}
-          msgs.forEach((m: any) => {
-            const other = m.sender_id === profile.id ? m.receiver : m.sender
-            if (other && !threads[other.id]) {
-              threads[other.id] = {
-                id: other.id,
-                name: other.full_name,
-                avatar: other.avatar_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + other.id,
-                lastMessage: m.content,
-                time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                unread: m.receiver_id === profile.id && m.status !== 'READ' ? 1 : 0
+          if (msgs) {
+            const threads: Record<string, any> = {}
+            msgs.forEach((m: any) => {
+              const other = m.sender_id === profile.id ? m.receiver : m.sender
+              if (other && !threads[other.id]) {
+                threads[other.id] = {
+                  id: other.id,
+                  name: other.full_name,
+                  avatar: other.avatar_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + other.id,
+                  lastMessage: m.content,
+                  time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                  unread: m.receiver_id === profile.id && m.status !== 'READ' ? 1 : 0
+                }
+              } else if (other && m.receiver_id === profile.id && m.status !== 'READ') {
+                threads[other.id].unread++
               }
-            } else if (other && m.receiver_id === profile.id && m.status !== 'READ') {
-              threads[other.id].unread++
-            }
-          })
-          setChats(Object.values(threads))
+            })
+            setChats(Object.values(threads))
+          }
         }
       }
       setIsLoading(false)
@@ -123,6 +128,17 @@ export function MessagesPage() {
             <p className="text-slate-400 font-bold max-w-xs">Take the DNA test to unlock matches and start private conversations.</p>
             <Link to="/questionnaire" className="px-8 py-4 bg-slate-900 text-white font-black rounded-2xl shadow-xl flex items-center gap-2">
               Start Test <ChevronRight className="w-4 h-4" />
+            </Link>
+          </motion.div>
+        ) : !profileStatus.hasPaid ? (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-center py-20 text-center gap-6">
+            <div className="w-24 h-24 bg-primary/10 rounded-[2.5rem] flex items-center justify-center">
+              <Lock className="w-10 h-10 text-primary" />
+            </div>
+            <h2 className="text-2xl font-black text-slate-900">Unlock Messages</h2>
+            <p className="text-slate-400 font-bold max-w-xs">Unlock your matches for GHS 25 to start private conversations with your top roommate matches.</p>
+            <Link to="/dashboard" className="px-8 py-4 bg-primary text-primary-foreground font-black rounded-2xl shadow-xl flex items-center gap-2">
+              Unlock Matches <ChevronRight className="w-4 h-4" />
             </Link>
           </motion.div>
         ) : chats.length === 0 ? (

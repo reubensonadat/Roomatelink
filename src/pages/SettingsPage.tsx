@@ -57,31 +57,39 @@ export function SettingsPage() {
     if (deleteInput !== 'DELETE' || !user) return;
     setIsDeleting(true);
     try {
-      // 1. Clear local profile cache first
-      localStorage.removeItem(`roommate_profile_${user.id}`);
-      
-      // 2. Cascading Data Wipe (Best Effort manual cleanup)
-      await Promise.all([
-        supabase.from('messages').delete().or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`),
-        supabase.from('questionnaire_responses').delete().eq('user_id', user.id),
-        // Add more manual wipes if needed
-      ]);
-      
-      // 3. Call deletion RPC for root user record
-      const { error } = await supabase.rpc('delete_user_data', { user_id: user.id });
+      // 1. Call Secure Edge Function with a 30s timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+      const { error } = await supabase.functions.invoke('delete-account', {
+        body: {},
+      });
+
+      clearTimeout(timeoutId);
       
       if (error) {
-        console.error('Deletion RPC error:', error);
+        console.error('Edge Function Deletion error:', error);
         toast.error('Could not wipe all data. Contact support.');
       } else {
+        // 2. Clear ALL local caches
+        for (const key of Object.keys(localStorage)) {
+          if (key.startsWith('roommate_') || key.startsWith('sb-')) {
+            localStorage.removeItem(key);
+          }
+        }
+        
         // 3. Final Sign Out
         await signOut();
         navigate('/auth');
         toast.success('Account permanently cleared');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Account deletion failure:', err);
-      toast.error('Sync error during account deletion');
+      if (err?.name === 'AbortError') {
+        toast.error('Deletion timed out. Please try again or contact support.');
+      } else {
+        toast.error('Sync error during account deletion');
+      }
     } finally {
       setIsDeleting(false);
       setIsDeleteOpen(false);

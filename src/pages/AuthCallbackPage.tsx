@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { AlertCircle } from 'lucide-react'
+import { AlertCircle, Fingerprint } from 'lucide-react'
 import { motion } from 'framer-motion'
 
 export function AuthCallbackPage() {
@@ -167,14 +167,12 @@ export function AuthCallbackPage() {
         {/* Outer Ring Glow */}
         <div className="absolute inset-[-8px] rounded-[2.5rem] bg-indigo-500/10 blur-xl animate-pulse" />
         
-        {/* Main Spinner */}
-        <div className="absolute inset-0 rounded-[2.5rem] border-[3px] border-slate-200" />
-        <div className="absolute inset-0 rounded-[2.5rem] border-[3px] border-transparent border-t-indigo-600 shadow-[0_0_20px_rgba(79,70,229,0.2)] animate-spin" />
+        {/* Smooth Circular Spinner */}
+        <div className="absolute inset-0 rounded-full border-[3px] border-slate-200/50" />
+        <div className="absolute inset-0 rounded-full border-[3px] border-transparent border-t-indigo-600 shadow-[0_0_15px_rgba(79,70,229,0.3)] animate-spin" />
         
         <div className="absolute inset-0 flex items-center justify-center text-indigo-600">
-          <svg className="w-10 h-10 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A10.003 10.003 0 004.5 12.512m14.5 0a10.005 10.005 0 01-5.657 9.07c0-3.517-1.009-6.799-2.753-9.571m-3.44-2.04L10 11V5a2 2 0 10-4 0v6m4-6V5a2 2 0 114 0v6m4 6v2a2 2 0 11-4 0v-2m0 0a2 2 0 014 0z" />
-          </svg>
+          <Fingerprint className="w-12 h-12" />
         </div>
       </div>
 
@@ -191,13 +189,12 @@ export function AuthCallbackPage() {
           <p className="text-[14px] font-bold text-slate-400">Establishing your secure Roommate Link session</p>
         </div>
         
-        <div className="mt-8 w-48 h-1.5 bg-slate-200 rounded-full overflow-hidden relative">
-          <div className="absolute inset-0 bg-indigo-600/10" />
+        <div className="mt-10 w-48 h-1 bg-slate-200/50 rounded-full overflow-hidden relative">
           <motion.div 
-            initial={{ x: "-100%" }}
-            animate={{ x: "100%" }}
-            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-            className="h-full bg-indigo-600 shadow-[0_0_10px_rgba(79,70,229,0.5)] w-[60%]"
+            initial={{ left: "-100%" }}
+            animate={{ left: "100%" }}
+            transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+            className="absolute top-0 bottom-0 bg-indigo-600 w-1/2 rounded-full shadow-[0_0_15px_rgba(79,70,229,0.4)]"
           />
         </div>
       </motion.div>

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Flag, ArrowLeft, Send, ShieldCheck } from 'lucide-react'
+import { Flag, ArrowLeft, Send, ShieldCheck, Lock } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
@@ -17,6 +17,7 @@ export function ChatPage() {
   const bottomRef = useRef<HTMLDivElement>(null)
   const [isReportModalOpen, setIsReportModalOpen] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [isLocked, setIsLocked] = useState(false)
 
   useEffect(() => {
     async function setupChat() {
@@ -29,6 +30,14 @@ export function ChatPage() {
       if (!me || !them) {
         toast.error("User not found")
         navigate('/messages')
+        return
+      }
+
+      // ── Payment guard: only paid users can message ────────────────
+      if (!me.has_paid) {
+        setIsLocked(true)
+        setOtherUser(them)
+        setLoading(false)
         return
       }
 
@@ -108,6 +117,43 @@ export function ChatPage() {
   }
 
   if (loading) return null
+
+  // ── Locked state: user hasn't paid ───────────────────────────────
+  if (isLocked) {
+    return (
+      <div className="flex flex-col h-[100dvh] bg-background max-w-2xl mx-auto border-x border-border/40 items-center justify-center p-8 text-center">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="flex flex-col items-center gap-6"
+        >
+          <div className="w-20 h-20 rounded-[2rem] bg-primary/10 flex items-center justify-center">
+            <Lock className="w-9 h-9 text-primary" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-black text-foreground mb-2">
+              Unlock to Message {otherUser?.full_name?.split(' ')[0] || 'this match'}
+            </h2>
+            <p className="text-muted-foreground font-semibold text-sm max-w-xs mx-auto">
+              Unlock your matches for GHS 25 to start private conversations and see full profiles.
+            </p>
+          </div>
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="px-8 py-4 bg-primary text-primary-foreground font-black rounded-2xl shadow-xl active:scale-95 transition-all"
+          >
+            Unlock Matches — GHS 25
+          </button>
+          <button
+            onClick={() => navigate(-1)}
+            className="text-sm font-bold text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Go Back
+          </button>
+        </motion.div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col h-[100dvh] bg-background max-w-2xl mx-auto border-x border-border/40">

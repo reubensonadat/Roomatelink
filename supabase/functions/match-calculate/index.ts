@@ -11,8 +11,8 @@
 
 import { serve } from "std/http/server.ts"
 import { createClient } from '@supabase/supabase-js'
-import type { AnswerVector, MatchResult } from './types.ts';
-import { encodeAnswers, calculateMatchesForUser } from './judge.ts';
+import type { AnswerVector } from './types.ts';
+import { encodeAnswers, calculateMatchesForUser, analyseConsistency } from './judge.ts';
 import { VISIBILITY_THRESHOLD } from './types.ts';
 
 // @ts-ignore - Deno types for Edge Functions
@@ -33,9 +33,18 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey, {
 // REQUEST HANDLER
 // ═══════════════════════════════════════════════════════════════════
 
+export const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
 serve(async (req: Request) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+
   if (req.method !== 'POST') {
-    return new Response('Method Not Allowed', { status: 405 });
+    return new Response('Method Not Allowed', { status: 405, headers: corsHeaders });
   }
 
   try {
@@ -45,7 +54,7 @@ serve(async (req: Request) => {
     if (!userId) {
       return new Response(JSON.stringify({ error: 'userId is required' }), {
         status: 400,
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json', ...corsHeaders }
       });
     }
 
@@ -59,7 +68,7 @@ serve(async (req: Request) => {
     if (profileError || !userProfile) {
       return new Response(JSON.stringify({ error: 'User profile not found' }), {
         status: 404,
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json', ...corsHeaders }
       });
     }
 
@@ -72,7 +81,7 @@ serve(async (req: Request) => {
     if (!userResponses || !userResponses.answers) {
       return new Response(JSON.stringify({ error: 'Questionnaire responses not found' }), {
         status: 404,
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json', ...corsHeaders }
       });
     }
 
@@ -113,7 +122,7 @@ serve(async (req: Request) => {
         candidatesFound: 0
       }), {
         status: 200,
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json', ...corsHeaders }
       });
     }
 
@@ -143,7 +152,20 @@ serve(async (req: Request) => {
       candidates
     );
 
-    // ── STEP 4: Store matches in database ───────────────────────────────
+    // ── STEP 4: Write consistency_score back to questionnaire_responses ──
+    // The consistency analysis runs inside calculateMatch per-pair,
+    // but we also want a standalone score for this user's profile.
+    const userConsistency = analyseConsistency(newUserAnswers);
+    
+    await supabase
+      .from('questionnaire_responses')
+      .update({
+        consistency_score: userConsistency.modifier,
+        profile_flags: userConsistency.flags
+      })
+      .eq('user_id', userId);
+
+    // ── STEP 5: Store matches in database ───────────────────────────────
     // Delete old matches for this user first
     const { error: deleteError } = await supabase
       .from('matches')
@@ -192,7 +214,7 @@ serve(async (req: Request) => {
       threshold: VISIBILITY_THRESHOLD
     }), {
       status: 200,
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json', ...corsHeaders }
     });
 
   } catch (error: any) {
@@ -202,7 +224,7 @@ serve(async (req: Request) => {
       timestamp: new Date().toISOString()
     }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json', ...corsHeaders }
     });
   }
 });

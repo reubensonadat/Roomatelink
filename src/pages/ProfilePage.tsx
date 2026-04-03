@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { User, Upload, Check, ChevronRight, Sparkles, RefreshCw } from 'lucide-react'
+import { User, Upload, Check, ChevronRight, Sparkles, Loader2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
@@ -62,6 +62,13 @@ export function ProfilePage() {
   const updateField = async (field: string, value: any) => {
     if (!user) return
     try {
+      const { data: existingProfile } = await supabase.from('users').select('id').eq('auth_id', user.id).maybeSingle()
+      if (!existingProfile) {
+        // If they are a new user, do not throw sync errors for partial updates yet!
+        // LocalStorage will hold their data until they click "Secure Profile"
+        return
+      }
+
       const { error } = await supabase
         .from('users')
         .update({ [field]: value })
@@ -70,9 +77,33 @@ export function ProfilePage() {
       if (error) throw error
     } catch (err) {
       console.error(`Failed to sync ${field}:`, err)
-      toast.error(`Sync Delayed: ${field}`)
     }
   }
+
+  // ─── Debounced Auto-Safes for Text Inputs ───
+  useEffect(() => {
+    if (!mounted || !user) return
+    const timer = setTimeout(() => updateField('full_name', displayName), 1500)
+    return () => clearTimeout(timer)
+  }, [displayName])
+
+  useEffect(() => {
+    if (!mounted || !user) return
+    const timer = setTimeout(() => updateField('phone_number', phone), 1500)
+    return () => clearTimeout(timer)
+  }, [phone])
+
+  useEffect(() => {
+    if (!mounted || !user) return
+    const timer = setTimeout(() => updateField('course', course), 1500)
+    return () => clearTimeout(timer)
+  }, [course])
+
+  useEffect(() => {
+    if (!mounted || !user) return
+    const timer = setTimeout(() => updateField('bio', bio), 1500)
+    return () => clearTimeout(timer)
+  }, [bio])
 
   useEffect(() => {
     setMounted(true)
@@ -120,9 +151,14 @@ export function ProfilePage() {
         if (!phone && data.phone) setPhone(data.phone)
         if (!course && data.course) setCourse(data.course)
         if (!bio && data.bio) setBio(data.bio)
+        if (!gender && data.gender) setGender(data.gender)
+        if (!level && data.level) setLevel(data.level)
+        if (!matchPref && data.matchPref) setMatchPref(data.matchPref)
+        if (!selectedAvatar && data.selectedAvatar) setSelectedAvatar(data.selectedAvatar)
+        if (!matchingStatus && data.matchingStatus) setMatchingStatus(data.matchingStatus)
       } catch { /* parse fail */ }
     }
-  }, [mounted, displayName, phone, course, bio])
+  }, [mounted])
 
   useEffect(() => {
     if (!mounted) return
@@ -156,7 +192,7 @@ export function ProfilePage() {
         full_name: displayName,
         phone_number: phone,
         course: course,
-        level: level,
+        level: parseInt(level as string) || null,
         bio: bio,
         avatar_url: selectedAvatar || '',
         gender: gender === 'M' ? 'MALE' : 'FEMALE',
@@ -167,15 +203,19 @@ export function ProfilePage() {
       if (existingProfile) {
         const { error } = await withTimeout(
           supabase.from('users').update(profileData).eq('id', existingProfile.id),
-          30000,
-          "Update timed out."
+          6000,
+          "Update timed out after 6s. Network unstable."
         )
         if (error) throw error
       } else {
         const { error } = await withTimeout(
-          supabase.from('users').insert({ auth_id: user.id, ...profileData }),
-          30000,
-          "Establishment timed out."
+          supabase.from('users').insert({ 
+             auth_id: user.id, 
+             email: user.email || `university_mail_${Date.now()}@stu.ucc.edu.gh`, 
+             ...profileData 
+          }),
+          6000,
+          "Insertion timed out after 6s. Network unstable."
         )
         if (error) throw error
       }
@@ -184,8 +224,9 @@ export function ProfilePage() {
       localStorage.removeItem(STORAGE_KEY)
       navigate('/dashboard')
     } catch (error: any) {
-      setSaveError(error.message || 'Sync failed. Retry required.')
-      toast.error('Sync Interrupted')
+      console.error("RAW SYNCHRONIZATION ERROR:", error);
+      setSaveError(error.message || JSON.stringify(error) || 'Sync failed. Retry required.')
+      toast.error(`Sync Failed: ${error.message || 'Network issue'}`, { duration: 8000 })
     } finally {
       setIsSaving(false)
     }
@@ -274,12 +315,12 @@ export function ProfilePage() {
             <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 p-5 space-y-5">
               <div>
                 <label className="text-xs font-semibold text-slate-500 mb-1.5 block">Academic Programme</label>
-                <input
+                  <input
                   type="text"
                   value={course}
                   onChange={(e) => setCourse(e.target.value)}
                   placeholder="e.g. Information Technology"
-                  className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-slate-900 font-bold text-sm focus:outline-none focus:border-indigo-200 transition-all placeholder:text-slate-300"
+                  className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-xl text-slate-900 font-bold text-sm focus:outline-none focus:border-indigo-200 transition-all placeholder:text-slate-300"
                 />
               </div>
               <div>
@@ -292,7 +333,7 @@ export function ProfilePage() {
                         setLevel(lvl as any)
                         updateField('level', parseInt(lvl))
                       }}
-                      className={`w-14 py-2.5 rounded-xl text-sm font-bold transition-all border ${
+                      className={`w-14 py-2.5 rounded-lg text-sm font-bold transition-all border ${
                         level === lvl 
                           ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg shadow-indigo-100' 
                           : 'bg-slate-50 text-slate-500 border-slate-50 hover:bg-slate-100'
@@ -312,13 +353,24 @@ export function ProfilePage() {
             <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 overflow-hidden">
               
               <div className="px-5 py-4 border-b border-slate-50">
-                <label className="text-xs font-semibold text-slate-500 mb-2 block">Phone Number</label>
+                <label className="text-xs font-semibold text-slate-500 mb-2 block">Full Name</label>
                 <input
+                  type="text"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  placeholder="e.g. John Doe"
+                  className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-xl text-slate-900 font-bold text-sm focus:outline-none focus:border-indigo-200 transition-all placeholder:text-slate-300"
+                />
+              </div>
+
+              <div className="px-5 py-4 border-b border-slate-50">
+                <label className="text-xs font-semibold text-slate-500 mb-2 block">Phone Number</label>
+                  <input
                   type="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="e.g. 054 165 1298"
-                  className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-slate-900 font-bold text-sm focus:outline-none focus:border-indigo-200 transition-all placeholder:text-slate-300"
+                  className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-xl text-slate-900 font-bold text-sm focus:outline-none focus:border-indigo-200 transition-all placeholder:text-slate-300"
                 />
                 <div className="mt-3 bg-blue-50/50 border border-blue-100 rounded-xl p-4 flex items-start">
                   <Check size={16} className="text-blue-500 mt-0.5 mr-3 shrink-0" />
@@ -338,7 +390,7 @@ export function ProfilePage() {
                   value={bio}
                   onChange={(e) => setBio(e.target.value)}
                   placeholder="Tell us about yourself..."
-                  className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-slate-900 font-bold text-sm focus:outline-none focus:border-indigo-200 transition-all placeholder:text-slate-300"
+                  className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-xl text-slate-900 font-bold text-sm focus:outline-none focus:border-indigo-200 transition-all placeholder:text-slate-300"
                 />
               </div>
               
@@ -352,7 +404,7 @@ export function ProfilePage() {
                         handleGenderChange(opt)
                         updateField('gender', opt === 'M' ? 'MALE' : 'FEMALE')
                       }} 
-                      className={`px-5 py-2 rounded-[8px] text-xs font-black transition-all flex items-center gap-1.5 ${
+                      className={`px-5 py-2 flex-1 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
                         gender === opt 
                           ? 'bg-white text-indigo-600 shadow-md border border-slate-200' 
                           : 'text-slate-400 hover:text-slate-600'
@@ -374,7 +426,7 @@ export function ProfilePage() {
                         setMatchPref(opt)
                         updateField('gender_pref', opt === 'same' ? 'SAME_GENDER' : 'ANY_GENDER')
                       }} 
-                      className={`px-5 py-2 rounded-[8px] text-xs font-black transition-all flex items-center gap-1.5 ${
+                      className={`px-5 py-2 flex-1 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
                         matchPref === opt 
                           ? 'bg-white text-indigo-600 shadow-md border border-slate-200' 
                           : 'text-slate-400 hover:text-slate-600'
@@ -444,12 +496,14 @@ export function ProfilePage() {
             <button
               onClick={handleSave}
               disabled={!isComplete || isSaving}
-              className={`w-full h-[72px] bg-indigo-600 rounded-[24px] flex items-center justify-center gap-3 shadow-[0_20px_40px_rgba(79,70,229,0.25)] transition-all active:scale-[0.98] relative overflow-hidden group ${
-                !isComplete || isSaving ? 'opacity-40 cursor-not-allowed grayscale' : 'hover:bg-indigo-700 hover:shadow-[0_20px_50px_rgba(79,70,229,0.35)]'
+              className={`w-full h-[72px] rounded-[24px] flex items-center justify-center gap-3 shadow-[0_10px_40px_rgba(0,0,0,0.1)] transition-all duration-500 active:scale-[0.96] relative overflow-hidden group ${
+                !isComplete || isSaving 
+                  ? 'bg-slate-200 text-slate-400 cursor-not-allowed' 
+                  : 'bg-black hover:bg-gradient-to-r hover:from-indigo-600 hover:to-violet-600 hover:shadow-[0_20px_50px_rgba(79,70,229,0.4)]'
               }`}
             >
-              {/* Subtle glass reflection effect */}
-              <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/5 to-white/0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+              {/* Premium sheen sweep */}
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-[150%] skew-x-[-20deg] group-hover:translate-x-[150%] transition-transform duration-1000 ease-out" />
               
               <div className="flex flex-col items-center">
                 <span className="text-[10px] font-bold tracking-widest uppercase text-indigo-200 transition-colors group-hover:text-indigo-100">
@@ -508,40 +562,37 @@ export function ProfilePage() {
       <AnimatePresence>
         {isSaving && (
           <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[200] bg-background/95 backdrop-blur-2xl flex flex-col items-center justify-center px-10 text-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-100 bg-white/90 backdrop-blur-md flex flex-col items-center justify-center px-6"
           >
-            <div className="relative mb-12">
-              <motion.div
-                animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                className="w-32 h-32 rounded-[1.5rem] bg-primary/10 flex items-center justify-center relative z-10"
-              >
-                <RefreshCw className="w-12 h-12 text-primary" />
-              </motion.div>
-              <div className="absolute -inset-10 rounded-[1.5rem] border-2 border-primary/20 animate-ping opacity-20" />
+            <div className="relative">
+              <div className="w-16 h-16 rounded-3xl bg-indigo-600/10 flex items-center justify-center">
+                 <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
+              </div>
+              <div className="absolute -inset-4 rounded-full border-2 border-indigo-600/20 animate-ping opacity-20" />
             </div>
-
-            <h3 className="text-3xl font-black text-foreground uppercase tracking-tight mb-2">Securing Identity</h3>
+            
+            <h3 className="mt-8 text-[18px] font-black text-slate-900 tracking-tight">Securing Identity</h3>
             
             {!saveError ? (
-              <p className="max-w-md text-[14px] font-bold text-muted-foreground uppercase tracking-widest animate-pulse tracking-[0.3em]">
-                Synchronizing hub to network...
-              </p>
+              <p className="mt-2 text-[13px] font-medium text-slate-500 animate-pulse">Syncing with campus records...</p>
             ) : (
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-center">
-                <p className="max-w-md text-[14px] font-black text-red-500 uppercase tracking-widest mb-8">
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-4 flex flex-col items-center">
+                <p className="max-w-xs text-center text-[13px] font-bold text-red-500 mb-6 px-4 py-2 bg-red-50 rounded-xl border border-red-100">
                   {saveError}
                 </p>
                 <div className="flex gap-4">
                   <button
                     onClick={handleSave}
-                    className="px-8 py-4 bg-primary text-white rounded-[1.5rem] font-black uppercase tracking-widest shadow-lg shadow-primary/30"
+                    className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-bold shadow-sm hover:bg-indigo-500 active:scale-95 transition-all"
                   >
                     Retry Sync
                   </button>
                   <button
                     onClick={() => { setIsSaving(false); setSaveError(null); }}
-                    className="px-8 py-4 bg-muted text-muted-foreground rounded-[1.5rem] font-black uppercase tracking-widest"
+                    className="px-6 py-2.5 bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900 rounded-xl text-sm font-bold active:scale-95 transition-all"
                   >
                     Abort
                   </button>

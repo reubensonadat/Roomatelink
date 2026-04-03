@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
-import { Check, RefreshCw, ChevronLeft, AlertCircle } from 'lucide-react'
+import { Check, ChevronLeft, Loader2, Edit2, Sparkles } from 'lucide-react'
 import { questions as sourceQuestions, Question } from '../lib/questions'
 import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
@@ -35,11 +35,18 @@ export function QuestionnairePage() {
   const [ready, setReady] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [isReviewing, setIsReviewing] = useState(false)
+  const [editCount, setEditCount] = useState(0)
   const navigate = useNavigate()
 
   useEffect(() => {
     const savedAnswers = localStorage.getItem(STORAGE_KEY)
     const savedOrder = localStorage.getItem(ORDER_KEY)
+    const savedEditCount = localStorage.getItem('roommate_edit_count')
+
+    if (savedEditCount) {
+      setEditCount(parseInt(savedEditCount) || 0)
+    }
 
     let questionOrder: Question[]
 
@@ -67,7 +74,9 @@ export function QuestionnairePage() {
         const parsed = JSON.parse(savedAnswers)
         setAnswers(parsed)
         const count = Object.keys(parsed).length
-        if (count < questionOrder.length) {
+        if (count === questionOrder.length) {
+          setIsReviewing(true)
+        } else {
           setCurrentIndex(count)
         }
       } catch { /* fresh start */ }
@@ -99,7 +108,7 @@ export function QuestionnairePage() {
           user_id: profile.id,
           answers: currentAnswers,
           completed_at: new Date().toISOString()
-        }),
+        }, { onConflict: 'user_id' }),
         30000,
         "Data transfer timeout."
       )
@@ -128,6 +137,7 @@ export function QuestionnairePage() {
       toast.success('DNA Sync Complete!')
       localStorage.removeItem(STORAGE_KEY)
       localStorage.removeItem(ORDER_KEY)
+      localStorage.removeItem('roommate_edit_count')
       navigate('/questionnaire/calculation')
     } catch (error: any) {
       setSubmitError(error.message || 'Network unresponsive.')
@@ -143,21 +153,123 @@ export function QuestionnairePage() {
     setAnswers(nextAnswers)
     localStorage.setItem(STORAGE_KEY, JSON.stringify(nextAnswers))
 
-    setTimeout(async () => {
-      if (currentIndex < questions.length - 1) {
+    setTimeout(() => {
+      // If we've answered all 40 questions, proceed to Review Stage automatically
+      if (Object.keys(nextAnswers).length === questions.length) {
+        setSelectedAnswer(null)
+        setIsReviewing(true)
+      } else if (currentIndex < questions.length - 1) {
         setCurrentIndex(prev => prev + 1)
         setSelectedAnswer(null)
-      } else {
-        await performSubmission(nextAnswers)
       }
     }, 550)
   }
 
+  const LoadingOverlay = () => (
+    <AnimatePresence>
+      {isSubmitting && (
+         <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[200] bg-background/80 backdrop-blur-xl flex flex-col items-center justify-center p-10 text-center"
+         >
+            <div className="relative">
+               <div className="w-16 h-16 rounded-3xl bg-primary/10 flex items-center justify-center">
+                  <Loader2 className="w-8 h-8 text-primary animate-spin" />
+               </div>
+               <div className="absolute -inset-4 rounded-full border-2 border-primary/20 animate-ping opacity-20" />
+            </div>
+            
+            <h3 className="mt-8 text-[18px] font-black text-foreground">Analyzing Your DNA</h3>
+            
+            {!submitError ? (
+               <p className="mt-2 text-[13px] font-medium text-muted-foreground animate-pulse">Syncing with campus records...</p>
+            ) : (
+               <div className="mt-4 flex flex-col items-center">
+                  <p className="text-sm font-bold text-red-500 mb-6 bg-red-50 px-4 py-2 rounded-xl">{submitError}</p>
+                  <div className="flex gap-4">
+                     <button onClick={() => performSubmission(answers)} className="px-6 py-2.5 bg-primary text-primary-foreground rounded-lg font-bold shadow-sm">Retry Sync</button>
+                     <button onClick={() => { setIsSubmitting(false); setSubmitError(null); }} className="px-6 py-2.5 bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/80 rounded-lg font-bold">Abort</button>
+                  </div>
+               </div>
+            )}
+         </motion.div>
+      )}
+    </AnimatePresence>
+  )
+
   if (!ready || questions.length === 0) {
     return (
       <div className="min-h-screen bg-background flex flex-col justify-center items-center">
-        <RefreshCw className="w-8 h-8 text-primary animate-spin mb-4" />
-        <span className="text-[13px] font-bold text-muted-foreground uppercase tracking-widest">Warming Engine</span>
+      <Loader2 className="w-8 h-8 text-primary animate-spin mb-4" />
+      <span className="text-[13px] font-bold text-muted-foreground uppercase tracking-widest">Loading Questions</span>
+      </div>
+    )
+  }
+
+  if (isReviewing) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col relative selection:bg-primary/20">
+        <div className="fixed top-0 left-0 w-full h-[4px] bg-muted/30 z-50">
+          <motion.div className="h-full bg-primary" initial={{ width: 0 }} animate={{ width: '100%' }} />
+        </div>
+        <div className="w-full max-w-3xl mx-auto flex flex-col flex-1 relative z-10 px-6 pt-16 pb-24">
+          <h1 className="text-3xl md:text-4xl font-black text-foreground tracking-tight mb-2">Review Your Preferences</h1>
+          <p className="text-muted-foreground font-semibold mb-8">Confirm your answers before running the matching engine.</p>
+          
+          <div className="space-y-4 mb-12">
+            {questions.map((q, idx) => {
+              const selectedOpt = q.options.find(o => o.id === answers[q.id])
+              return (
+                <div key={q.id} className="p-5 rounded-2xl border-2 border-border/40 bg-card flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div className="flex-1">
+                    <h3 className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 flex items-center gap-2">
+                      <Check className="w-3 h-3 text-primary" /> Question {idx + 1}
+                    </h3>
+                    <p className="text-base font-black text-foreground mb-2 leading-snug">{q.question}</p>
+                    <p className="text-primary font-bold text-sm bg-primary/10 inline-block px-3 py-1 rounded-lg">
+                      {selectedOpt?.text || 'Unanswered'}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      if (editCount >= 2) {
+                        toast.error("You can only revise a maximum of 2 answers to maintain honesty.")
+                        return
+                      }
+                      setEditCount(prev => {
+                        const newCount = prev + 1
+                        localStorage.setItem('roommate_edit_count', newCount.toString())
+                        return newCount
+                      })
+                      setCurrentIndex(idx)
+                      setIsReviewing(false)
+                    }}
+                    className={`flex items-center justify-center gap-2 px-6 py-4 rounded-xl font-bold group shrink-0 transition-all ${
+                      editCount >= 2 
+                        ? 'bg-muted/30 text-muted-foreground/30 cursor-not-allowed' 
+                        : 'bg-muted/60 text-muted-foreground hover:bg-primary/10 hover:text-primary active:scale-95'
+                    }`}
+                  >
+                    <Edit2 className="w-4 h-4" /> {editCount >= 2 ? 'Locked' : 'Edit'}
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+
+          <div className="sticky bottom-6 mt-4">
+            <button
+               onClick={() => performSubmission(answers)}
+               className="w-full py-5 bg-foreground text-background rounded-2xl font-black uppercase tracking-widest shadow-[0_10px_40px_rgba(0,0,0,0.1)] active:scale-95 transition-all text-sm flex justify-center items-center gap-3"
+            >
+               <Sparkles className="w-5 h-5 opacity-60" /> Submit & Calculate Matches
+            </button>
+          </div>
+        </div>
+        
+        <LoadingOverlay />
       </div>
     )
   }
@@ -176,14 +288,24 @@ export function QuestionnairePage() {
       <div className="w-full max-w-[480px] md:max-w-2xl lg:max-w-3xl mx-auto flex flex-col flex-1 relative z-10">
         <header className="px-6 pt-12 pb-6 flex items-center justify-between">
           <button
-            onClick={() => navigate(-1)}
+            onClick={() => {
+              if (Object.keys(answers).length > 0 && currentIndex > 0) {
+                 // Navigate to the previously answered question
+                 setCurrentIndex(prev => prev - 1);
+              } else {
+                 navigate(-1);
+              }
+            }}
             className="w-12 h-12 rounded-[1.5rem] bg-muted/50 border border-border/50 flex items-center justify-center active:scale-90 transition-all hover:bg-muted"
           >
             <ChevronLeft className="w-6 h-6" />
           </button>
 
-          <div className="flex bg-muted/50 border border-border/50 px-6 py-2 rounded-[1.5rem] items-center">
-            <span className="text-[13px] font-black text-foreground uppercase tracking-[0.2em] tabular-nums">
+          <div className="flex bg-muted/50 border border-border/50 px-6 py-2 rounded-[1.5rem] items-center cursor-pointer hover:bg-muted transition-colors" onClick={() => {
+             // Let them peek at the review screen early if they have answered questions
+             if (Object.keys(answers).length > 0) setIsReviewing(true)
+          }}>
+            <span className="text-[13px] font-black text-foreground uppercase tracking-[0.2em] tabular-nums flex items-center gap-2">
               {currentIndex + 1} <span className="opacity-30 text-[10px] mx-1">/</span> {questions.length}
             </span>
           </div>
@@ -250,57 +372,7 @@ export function QuestionnairePage() {
         </main>
       </div>
 
-      {/* Sync Diagnostic Overlay */}
-      <AnimatePresence>
-        {isSubmitting && (
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[200] bg-background/95 backdrop-blur-2xl flex flex-col items-center justify-center px-10 text-center"
-          >
-            <div className="relative mb-12">
-               <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                className="w-32 h-32 rounded-[1.5rem] bg-primary/10 flex items-center justify-center"
-               >
-                 <RefreshCw className="w-12 h-12 text-primary" />
-               </motion.div>
-              <div className="absolute -inset-10 rounded-[1.5rem] border-2 border-primary/20 animate-ping opacity-20" />
-            </div>
-
-            <h3 className="text-3xl font-black text-foreground uppercase tracking-tight mb-2">Analyzing Your DNA</h3>
-            
-            {!submitError ? (
-              <p className="max-w-md text-[14px] font-bold text-muted-foreground uppercase tracking-[0.3em] animate-pulse">
-                Syncing with campus records...
-              </p>
-            ) : (
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-center">
-                <div className="w-14 h-14 rounded-[1.5rem] bg-red-500/10 flex items-center justify-center mb-4">
-                  <AlertCircle className="w-7 h-7 text-red-500" />
-                </div>
-                <p className="max-w-md text-[14px] font-black text-red-500 uppercase tracking-widest mb-10 leading-relaxed shadow-sm">
-                  {submitError}
-                </p>
-                <div className="flex gap-4">
-                  <button
-                    onClick={() => performSubmission(answers)}
-                    className="px-10 py-5 bg-foreground text-background rounded-[1.5rem] font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all"
-                  >
-                    Retry Sync
-                  </button>
-                  <button
-                    onClick={() => { setIsSubmitting(false); setSubmitError(null); }}
-                    className="px-10 py-5 bg-muted text-muted-foreground rounded-[1.5rem] font-black uppercase tracking-widest"
-                  >
-                    Abort
-                  </button>
-                </div>
-              </motion.div>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <LoadingOverlay />
     </div>
   )
 }

@@ -131,7 +131,7 @@ export function DashboardPage() {
             )
           `)
           .eq('user_a_id', activeProfile.id)
-          .order('score', { ascending: false })
+          .order('match_percentage', { ascending: false })
 
         if (matchesError) throw matchesError
 
@@ -142,7 +142,7 @@ export function DashboardPage() {
             id: m.roommate.id,
             name: m.roommate.full_name || 'Anonymous Student',
             verified: m.roommate.is_student_verified,
-            matchPercent: Math.round(m.score * 100),
+            matchPercent: m.match_percentage,
             gender: m.roommate.gender,
             course: m.roommate.course || 'Unspecified Course',
             level: m.roommate.level && !m.roommate.level.toLowerCase().includes('level') ? `Level ${m.roommate.level}` : (m.roommate.level || 'Unknown Level'),

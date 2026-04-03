@@ -15,11 +15,45 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
+// Helpers for synchronous hydration to prevent "Loading Session" flash
+const getLocalSession = (): Session | null => {
+  try {
+    const key = Object.keys(localStorage).find(k => k.startsWith('sb-') && k.endsWith('-auth-token'))
+    if (key) {
+      const data = JSON.parse(localStorage.getItem(key) || '{}')
+      // Supabase v2 stores the session object directly, not wrapped in { session: ... }
+      if (data && data.access_token) {
+        return data as Session
+      }
+      return null
+    }
+  } catch (e) {
+    return null
+  }
+  return null
+}
+
+const getLocalProfile = (userId: string) => {
+  try {
+    const cached = localStorage.getItem(`roommate_profile_${userId}`)
+    return cached ? JSON.parse(cached) : null
+  } catch {
+    return null
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
-  const [session, setSession] = useState<Session | null>(null)
-  const [profile, setProfile] = useState<any | null>(null)
-  const [loading, setLoading] = useState(true)
+  // 1. Initialize states synchronously from Local Storage to prevent any flash!
+  const initialSession = getLocalSession()
+  const initialUser = initialSession?.user ?? null
+  const initialProfile = initialUser ? getLocalProfile(initialUser.id) : null
+
+  const [user, setUser] = useState<User | null>(initialUser)
+  const [session, setSession] = useState<Session | null>(initialSession)
+  const [profile, setProfile] = useState<any | null>(initialProfile)
+  
+  // If we already have a session, we are NOT loading. Instant rendering!
+  const [loading, setLoading] = useState(initialSession ? false : true)
 
   const fetchProfile = async (userId: string, retries = 1): Promise<any> => {
     try {
@@ -51,47 +85,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let isMounted = true
 
     const initializeAuth = async () => {
-      console.log('--- AuthProvider: Initializing ---')
-      
+      // We still update the state from the actual async Supabase call to catch expired tokens
       try {
-        // 1. Instant check for session
-        const { data: { session: initialSession } } = await supabase.auth.getSession()
+        const { data: { session: activeSession } } = await supabase.auth.getSession()
         
         if (!isMounted) return
 
-        if (initialSession) {
-          setSession(initialSession)
-          setUser(initialSession.user)
+        if (activeSession) {
+          setSession(activeSession)
+          setUser(activeSession.user)
           
-          // 2. IMMEDIATE Cache Hydration (Sync-like feel)
-          const cached = localStorage.getItem(`roommate_profile_${initialSession.user.id}`)
-          if (cached) {
-            try {
-              const profileData = JSON.parse(cached)
-              if (profileData && isMounted) {
-                setProfile(profileData)
-                // If we have valid cache, we can flip loading=false NOW for instant UI.
-                // Background sync will update it later if needed.
-                setLoading(false) 
-              }
-            } catch (e) {
-              console.warn('Malformed cache, clearing...')
-              localStorage.removeItem(`roommate_profile_${initialSession.user.id}`)
-            }
-          }
-
-          // 3. Background Verification (Mandatory Sync)
-          const profileData = await fetchProfile(initialSession.user.id, 2)
+          // Background Sync Profile
+          const profileData = await fetchProfile(activeSession.user.id, 2)
           if (isMounted) {
             setProfile(profileData)
             setLoading(false)
           }
         } else {
-          // No session found
-          setLoading(false)
+          // If Supabase says we actually don't have a session, clear the optimistic cache
+          if (isMounted) {
+            setSession(null)
+            setUser(null)
+            setProfile(null)
+            setLoading(false)
+          }
         }
       } catch (error) {
         console.error('Auth initialization error:', error)
+      } finally {
         if (isMounted) setLoading(false)
       }
     }
@@ -100,8 +121,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
-        console.log(`--- AuthProvider: Auth Changed [${event}] ---`)
-        
         if (!isMounted) return
 
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
@@ -109,13 +128,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(currentSession?.user ?? null)
           
           if (currentSession?.user) {
-            // Hot cache update (Try to show SOMETHING immediately)
-            const cached = localStorage.getItem(`roommate_profile_${currentSession.user.id}`)
+            const cached = getLocalProfile(currentSession.user.id)
             if (cached && !profile) {
-              try { setProfile(JSON.parse(cached)) } catch(e) {}
+              setProfile(cached)
             }
-
-            // Sync with DB
             const profileData = await fetchProfile(currentSession.user.id)
             if (isMounted) setProfile(profileData)
           }
@@ -124,6 +140,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(null)
           setProfile(null)
           setLoading(false)
+          // Clean profiles cache
+          for (const key of Object.keys(localStorage)) {
+            if (key.startsWith('roommate_profile_')) localStorage.removeItem(key)
+          }
         } else if (event === 'USER_UPDATED') {
           if (currentSession?.user) {
             const profileData = await fetchProfile(currentSession.user.id)
@@ -135,27 +155,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     )
 
-    // Periodic session verification (Heartbeat)
-    const heartbeat = setInterval(async () => {
-      if (!isMounted) return
-      const { data: { session: activeSession } } = await supabase.auth.getSession()
-      if (isMounted) {
-        if (activeSession) {
-          setSession(activeSession)
-          setUser(activeSession.user)
-        } else if (session) {
-          // Session was lost, force logout
-          setSession(null)
-          setUser(null)
-          setProfile(null)
-        }
-      }
-    }, 10 * 60 * 1000)
-
     return () => {
       isMounted = false
       subscription.unsubscribe()
-      clearInterval(heartbeat)
     }
   }, [])
 
@@ -184,26 +186,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const signOut = async () => {
-    console.log('--- AuthProvider: Forces-clearing session and signing out ---')
-    
-    // 1. Manually clear state IMMEDIATELY for instant UI response
-    setSession(null)
-    setUser(null)
-    setProfile(null)
-    setLoading(false)
-    
-    // 2. Clear known localStorage keys that can cause state hangs
-    localStorage.removeItem('sb-token')
-    localStorage.removeItem('supabase.auth.token')
-    
     try {
-      // 3. Attempt the Supabase call but don't wait for it to finish if it's hanging
-      await Promise.race([
-        supabase.auth.signOut(),
-        new Promise(resolve => setTimeout(resolve, 800))
-      ])
+      // 1. Let Supabase properly invalidate the token on server and wipe its internal caching
+      await supabase.auth.signOut()
     } catch (error) {
-      console.warn('Silent signout error:', error)
+      console.warn('Signout error:', error)
+    } finally {
+      // 2. Wipe memory states immediately
+      setSession(null)
+      setUser(null)
+      setProfile(null)
+      setLoading(false)
+      
+      // 3. Clear our custom Profile cache explicitly
+      for (const key of Object.keys(localStorage)) {
+        if (key.startsWith('roommate_profile_')) {
+          localStorage.removeItem(key)
+        }
+      }
     }
   }
 

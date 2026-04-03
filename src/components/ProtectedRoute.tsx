@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Navigate, Outlet } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { LogOut, AlertCircle } from 'lucide-react'
+import { LogOut, ShieldCheck } from 'lucide-react'
 import { motion } from 'framer-motion'
 
 export function ProtectedRoute() {
@@ -28,11 +28,11 @@ export function ProtectedRoute() {
           <div className="absolute inset-[-8px] rounded-[2.5rem] bg-indigo-500/10 blur-xl animate-pulse" />
           
           {/* Main Spinner */}
-          <div className="absolute inset-0 rounded-[2.5rem] border-[3px] border-slate-200" />
-          <div className="absolute inset-0 rounded-[2.5rem] border-[3px] border-transparent border-t-indigo-600 shadow-[0_0_20px_rgba(79,70,229,0.2)] animate-spin" />
+          <div className="absolute inset-0 rounded-full border-[3px] border-slate-200/50" />
+          <div className="absolute inset-0 rounded-full border-[3px] border-transparent border-t-indigo-600 shadow-[0_0_15px_rgba(79,70,229,0.3)] animate-spin" />
           
           <div className="absolute inset-0 flex items-center justify-center text-indigo-600">
-             <AlertCircle className={`w-8 h-8 ${showFallback ? 'text-amber-500 animate-bounce' : 'opacity-20 animate-pulse'}`} />
+             <ShieldCheck className={`w-10 h-10 ${showFallback ? 'text-amber-500 animate-bounce' : 'text-indigo-600/80'}`} />
           </div>
         </div>
 

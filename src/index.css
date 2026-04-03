@@ -32,7 +32,7 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 221.2 83.2% 53.3%;
 
-    --radius: 1.5rem;
+    --radius: 12px;
     --shadow-premium: 0 20px 50px -12px rgba(0, 0, 0, 0.12);
     --shadow-elevated: 0 30px 60px -12px rgba(0, 0, 0, 0.18);
     --glass-border: rgba(255, 255, 255, 0.08);
@@ -93,30 +93,78 @@
     font-size: 16px !important;
   }
 
-  /* Restoration of Premium Button Padding */
+  /* Universal Flaccid Fixes: Global Inputs */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  textarea {
+    border-radius: 12px;
+    border-bottom-width: 3px;
+    border-bottom-color: hsl(var(--border));
+    background-color: hsl(var(--muted) / 0.5);
+    transition: all 0.2s ease-out;
+  }
+
+  input:focus,
+  textarea:focus {
+    border-bottom-color: hsl(var(--primary));
+    background-color: hsl(var(--background));
+    /* The lift/weight effect */
+    transform: translateY(1px);
+    border-bottom-width: 2px;
+    margin-bottom: 1px;
+    box-shadow: 0 8px 24px -8px hsl(var(--primary)/0.2);
+  }
+
+  /* Premium Tactical Buttons */
+  button {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Base Premium Button - Adding Weight */
   .premium-btn {
     padding-top: 1.25rem;
     padding-bottom: 1.25rem;
     padding-left: 2.5rem;
     padding-right: 2.5rem;
-    border-radius: 2rem;
+    border-radius: 12px;
     font-weight: 900;
     font-size: 18px;
-    box-shadow: var(--shadow-premium);
-    transition-property: all;
-    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-    transition-duration: 300ms;
+    border-bottom-width: 4px;
+    border-color: rgba(0,0,0,0.2) !important;
+    transform: translateY(0);
+  }
+
+  .premium-btn:active, .premium-btn.active-press {
+    transform: translateY(4px);
+    border-bottom-width: 0px;
+    margin-bottom: 4px;
+    box-shadow: none !important;
   }
 }
 
 @layer utilities {
-  .rounded-4xl { border-radius: 2rem; }
-  .rounded-5xl { border-radius: 3rem; }
+  .rounded-4xl { border-radius: 16px !important; }
+  .rounded-5xl { border-radius: 16px !important; }
   .shadow-premium { box-shadow: var(--shadow-premium); }
   .shadow-elevated { box-shadow: var(--shadow-elevated); }
   .glass-v2 {
     @apply bg-card/60 backdrop-blur-2xl border;
     border-color: var(--glass-border);
+  }
+
+  /* Tactile Button (Alternative for smaller buttons) */
+  .tactile-btn {
+    border-radius: 12px;
+    border-bottom-width: 3px;
+    border-color: rgba(0,0,0,0.1) !important;
+    transition: all 0.15s ease-out;
+  }
+  .tactile-btn:active {
+    transform: translateY(3px);
+    border-bottom-width: 0px;
+    margin-bottom: 3px;
   }
 
   /* Mobile Safe Area Utilities */
@@ -143,12 +191,13 @@
   background-color: hsl(var(--card));
   border: 1px solid hsl(var(--border));
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  border-radius: 16px !important;
 }
 
 /* Geometric Progress Bar Fixes */
 .geometric-progress {
   height: 0.625rem;
-  border-radius: 0.125rem;
+  border-radius: 12px;
   background-color: hsl(var(--primary));
   opacity: 0.2;
   transition: all 500ms cubic-bezier(0.4, 0, 0.2, 1);
@@ -170,9 +219,11 @@
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
   background: hsl(var(--muted-foreground) / 0.2);
-  border-radius: 10px;
+  border-radius: 12px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--muted-foreground) / 0.4);
-}@keyframes ping-pong { 0% { transform: translateX(-100%); } 50% { transform: translateX(0%); } 100% { transform: translateX(100%); } } .animate-ping-pong { animation: ping-pong 2s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
+}
+
+@keyframes ping-pong { 0% { transform: translateX(-100%); } 50% { transform: translateX(0%); } 100% { transform: translateX(100%); } } .animate-ping-pong { animation: ping-pong 2s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
