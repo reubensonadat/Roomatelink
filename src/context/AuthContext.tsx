@@ -11,6 +11,7 @@ interface AuthContextType {
   signUp: (email: string, password: string) => Promise<{ error: AuthError | null; success?: string }>
   signOut: () => Promise<void>
   signInWithGoogle: () => Promise<void>
+  refreshProfile: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -61,7 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .from('users')
         .select('*')
         .eq('auth_id', userId)
-        .single()
+        .maybeSingle()
       
       if (error) {
         if (retries > 0) {
@@ -220,8 +221,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const refreshProfile = async () => {
+    if (!user) return
+    const profileData = await fetchProfile(user.id)
+    setProfile(profileData)
+  }
+
   return (
-    <AuthContext.Provider value={{ user, session, profile, loading, signIn, signUp, signOut, signInWithGoogle }}>
+    <AuthContext.Provider value={{ user, session, profile, loading, signIn, signUp, signOut, signInWithGoogle, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   )

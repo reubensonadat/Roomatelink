@@ -39,7 +39,7 @@ function withTimeout<T>(promise: PromiseLike<T>, ms: number, message: string): P
 }
 
 export function ProfilePage() {
-  const { user } = useAuth()
+  const { user, refreshProfile } = useAuth()
   const navigate = useNavigate()
 
   const STORAGE_KEY = 'roommate_profile_data'
@@ -173,6 +173,7 @@ export function ProfilePage() {
 
       toast.success('Identity Synced!')
       localStorage.removeItem(STORAGE_KEY)
+      await refreshProfile()
       navigate('/dashboard')
     } catch (error: any) {
       console.error("RAW SYNCHRONIZATION ERROR:", error);

@@ -69,7 +69,7 @@ export function InstallPrompt() {
           initial={{ y: 150, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 150, opacity: 0 }}
-          className="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-96 bg-primary text-primary-foreground p-4 rounded-2xl shadow-xl z-50 flex items-center gap-4"
+          className="fixed bottom-28 left-4 right-4 md:left-auto md:right-4 md:w-96 bg-primary/95 backdrop-blur-md text-primary-foreground p-4 rounded-2xl shadow-2xl z-50 flex items-center gap-4 border border-white/10"
         >
           <div className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center shrink-0">
             <Download className="w-6 h-6 text-white" />
