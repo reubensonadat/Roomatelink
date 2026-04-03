@@ -42,68 +42,35 @@ export function ProfilePage() {
   const { user } = useAuth()
   const navigate = useNavigate()
 
-  const [gender, setGender] = useState<'M' | 'F' | null>(null)
-  const [level, setLevel] = useState<'100' | '200' | '300' | '400' | '500' | '600' | null>(null)
-  const [matchPref, setMatchPref] = useState<'same' | 'any' | null>(null)
-  const [selectedAvatar, setSelectedAvatar] = useState<string | null>(null)
+  const STORAGE_KEY = 'roommate_profile_data'
+
+  // Hydrate synchronously to avoid effect race conditions overwriting data
+  const getInitial = () => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY)
+      return saved ? JSON.parse(saved) : {}
+    } catch {
+      return {}
+    }
+  }
+  const initialState = getInitial()
+
+  const [gender, setGender] = useState<'M' | 'F' | null>(initialState.gender || null)
+  const [level, setLevel] = useState<'100' | '200' | '300' | '400' | '500' | '600' | null>(initialState.level || null)
+  const [matchPref, setMatchPref] = useState<'same' | 'any' | null>(initialState.matchPref || null)
+  const [selectedAvatar, setSelectedAvatar] = useState<string | null>(initialState.selectedAvatar || null)
+  const [displayName, setDisplayName] = useState(initialState.displayName || '')
+  const [course, setCourse] = useState(initialState.course || '')
+  const [bio, setBio] = useState(initialState.bio || '')
+  const [matchingStatus, setMatchingStatus] = useState<'ACTIVE' | 'HIDDEN' | 'COMPLETED' | null>(initialState.matchingStatus || null)
+  const [phone, setPhone] = useState(initialState.phone || '')
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false)
-  const [displayName, setDisplayName] = useState('')
-  const [course, setCourse] = useState('')
-  const [bio, setBio] = useState('')
-  const [matchingStatus, setMatchingStatus] = useState<'ACTIVE' | 'HIDDEN' | 'COMPLETED' | null>(null)
-  const [phone, setPhone] = useState('')
+  
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [mounted, setMounted] = useState(false)
 
-  const STORAGE_KEY = 'roommate_profile_data'
 
-  // ─── Instant Sync Helper ───
-  const updateField = async (field: string, value: any) => {
-    if (!user) return
-    try {
-      const { data: existingProfile } = await supabase.from('users').select('id').eq('auth_id', user.id).maybeSingle()
-      if (!existingProfile) {
-        // If they are a new user, do not throw sync errors for partial updates yet!
-        // LocalStorage will hold their data until they click "Secure Profile"
-        return
-      }
-
-      const { error } = await supabase
-        .from('users')
-        .update({ [field]: value })
-        .eq('auth_id', user.id)
-      
-      if (error) throw error
-    } catch (err) {
-      console.error(`Failed to sync ${field}:`, err)
-    }
-  }
-
-  // ─── Debounced Auto-Safes for Text Inputs ───
-  useEffect(() => {
-    if (!mounted || !user) return
-    const timer = setTimeout(() => updateField('full_name', displayName), 1500)
-    return () => clearTimeout(timer)
-  }, [displayName])
-
-  useEffect(() => {
-    if (!mounted || !user) return
-    const timer = setTimeout(() => updateField('phone_number', phone), 1500)
-    return () => clearTimeout(timer)
-  }, [phone])
-
-  useEffect(() => {
-    if (!mounted || !user) return
-    const timer = setTimeout(() => updateField('course', course), 1500)
-    return () => clearTimeout(timer)
-  }, [course])
-
-  useEffect(() => {
-    if (!mounted || !user) return
-    const timer = setTimeout(() => updateField('bio', bio), 1500)
-    return () => clearTimeout(timer)
-  }, [bio])
 
   useEffect(() => {
     setMounted(true)
@@ -143,27 +110,11 @@ export function ProfilePage() {
 
   useEffect(() => {
     if (!mounted) return
-    const saved = localStorage.getItem(STORAGE_KEY)
-    if (saved) {
-      try {
-        const data = JSON.parse(saved)
-        if (!displayName && data.displayName) setDisplayName(data.displayName)
-        if (!phone && data.phone) setPhone(data.phone)
-        if (!course && data.course) setCourse(data.course)
-        if (!bio && data.bio) setBio(data.bio)
-        if (!gender && data.gender) setGender(data.gender)
-        if (!level && data.level) setLevel(data.level)
-        if (!matchPref && data.matchPref) setMatchPref(data.matchPref)
-        if (!selectedAvatar && data.selectedAvatar) setSelectedAvatar(data.selectedAvatar)
-        if (!matchingStatus && data.matchingStatus) setMatchingStatus(data.matchingStatus)
-      } catch { /* parse fail */ }
-    }
-  }, [mounted])
-
-  useEffect(() => {
-    if (!mounted) return
     const data = { displayName, phone, course, bio, matchingStatus, gender, level, matchPref, selectedAvatar }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
+    // Only save to localStorage if there's actually data to prevent wiping it randomly
+    if (displayName || gender || phone || course) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
+    }
   }, [mounted, displayName, phone, course, bio, matchingStatus, gender, level, matchPref, selectedAvatar])
 
   const handleGenderChange = (selected: 'M' | 'F') => {
@@ -267,7 +218,7 @@ export function ProfilePage() {
   if (!mounted) return null
 
   return (
-    <div className="flex flex-col w-full min-h-screen bg-slate-50 relative selection:bg-indigo-100">
+    <div className="flex flex-col w-full min-h-screen bg-background relative selection:bg-indigo-100 dark:selection:bg-indigo-500/30">
       <TopHeader title="Profile Hub" showBackButton />
 
       <div className="flex-1 overflow-y-auto w-full md:max-w-2xl lg:max-w-3xl mx-auto px-4 pt-6 pb-32">
@@ -294,13 +245,13 @@ export function ProfilePage() {
             </div>
             {gender && <div className="absolute bottom-1 right-0.5 w-4 h-4 bg-green-500 border-2 border-white rounded-[6px] shadow-sm" />}
           </div>
-          <h2 className="text-xl font-bold text-slate-900">{displayName || 'User Identity'}</h2>
+          <h2 className="text-xl font-bold text-foreground">{displayName || 'User Identity'}</h2>
           
           <button 
             onClick={() => gender && setIsAvatarModalOpen(true)}
             disabled={!gender}
-            className={`mt-3 px-8 py-3 bg-slate-900 text-white rounded-xl text-sm font-bold transition-all shadow-md active:scale-95 ${
-              !gender ? 'opacity-30 cursor-not-allowed' : 'hover:bg-slate-800'
+            className={`mt-3 px-8 py-3 bg-foreground text-background rounded-xl text-sm font-bold transition-all shadow-md active:scale-95 ${
+              !gender ? 'opacity-30 cursor-not-allowed' : 'hover:opacity-80'
             }`}
           >
             Refresh Identity
@@ -311,32 +262,29 @@ export function ProfilePage() {
           
           {/* Institutional Creds */}
           <section>
-            <h3 className="px-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Institutional Creds</h3>
-            <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 p-5 space-y-5">
+            <h3 className="px-4 text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Institutional Creds</h3>
+            <div className="bg-card rounded-[24px] shadow-sm border border-border p-5 space-y-5">
               <div>
-                <label className="text-xs font-semibold text-slate-500 mb-1.5 block">Academic Programme</label>
+                <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Academic Programme</label>
                   <input
                   type="text"
                   value={course}
                   onChange={(e) => setCourse(e.target.value)}
                   placeholder="e.g. Information Technology"
-                  className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-xl text-slate-900 font-bold text-sm focus:outline-none focus:border-indigo-200 transition-all placeholder:text-slate-300"
+                  className="w-full px-5 py-3.5 bg-muted border border-border rounded-xl text-foreground font-bold text-sm focus:outline-none focus:border-primary transition-all placeholder:text-muted-foreground/50"
                 />
               </div>
               <div>
-                <label className="text-xs font-semibold text-slate-500 mb-2.5 block">Current Level</label>
+                <label className="text-xs font-semibold text-muted-foreground mb-2.5 block">Current Level</label>
                 <div className="flex flex-wrap gap-2">
                   {['100', '200', '300', '400', '500', '600'].map(lvl => (
                     <button 
                       key={lvl}
-                      onClick={() => {
-                        setLevel(lvl as any)
-                        updateField('level', parseInt(lvl))
-                      }}
+                      onClick={() => setLevel(lvl as any)}
                       className={`w-14 py-2.5 rounded-lg text-sm font-bold transition-all border ${
                         level === lvl 
-                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg shadow-indigo-100' 
-                          : 'bg-slate-50 text-slate-500 border-slate-50 hover:bg-slate-100'
+                          ? 'bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/20' 
+                          : 'bg-muted text-muted-foreground border-muted hover:bg-accent'
                       }`}
                     >
                       {lvl}
@@ -349,28 +297,28 @@ export function ProfilePage() {
 
           {/* Personal Details */}
           <section>
-            <h3 className="px-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Personal Details</h3>
-            <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 overflow-hidden">
+            <h3 className="px-4 text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Personal Details</h3>
+            <div className="bg-card rounded-[24px] shadow-sm border border-border overflow-hidden">
               
-              <div className="px-5 py-4 border-b border-slate-50">
-                <label className="text-xs font-semibold text-slate-500 mb-2 block">Full Name</label>
+              <div className="px-5 py-4 border-b border-border">
+                <label className="text-xs font-semibold text-muted-foreground mb-2 block">Full Name</label>
                 <input
                   type="text"
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
                   placeholder="e.g. John Doe"
-                  className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-xl text-slate-900 font-bold text-sm focus:outline-none focus:border-indigo-200 transition-all placeholder:text-slate-300"
+                  className="w-full px-5 py-3.5 bg-muted border border-border rounded-xl text-foreground font-bold text-sm focus:outline-none focus:border-primary transition-all placeholder:text-muted-foreground/50"
                 />
               </div>
 
-              <div className="px-5 py-4 border-b border-slate-50">
-                <label className="text-xs font-semibold text-slate-500 mb-2 block">Phone Number</label>
+              <div className="px-5 py-4 border-b border-border">
+                <label className="text-xs font-semibold text-muted-foreground mb-2 block">Phone Number</label>
                   <input
                   type="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="e.g. 054 165 1298"
-                  className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-xl text-slate-900 font-bold text-sm focus:outline-none focus:border-indigo-200 transition-all placeholder:text-slate-300"
+                  className="w-full px-5 py-3.5 bg-muted border border-border rounded-xl text-foreground font-bold text-sm focus:outline-none focus:border-primary transition-all placeholder:text-muted-foreground/50"
                 />
                 <div className="mt-3 bg-blue-50/50 border border-blue-100 rounded-xl p-4 flex items-start">
                   <Check size={16} className="text-blue-500 mt-0.5 mr-3 shrink-0" />
@@ -380,34 +328,31 @@ export function ProfilePage() {
                 </div>
               </div>
 
-              <div className="px-5 py-4 border-b border-slate-50">
+              <div className="px-5 py-4 border-b border-border">
                 <div className="flex justify-between items-center mb-2">
-                  <label className="text-xs font-semibold text-slate-500">Short Bio</label>
-                  <span className="text-[10px] text-slate-300 uppercase tracking-wider font-extrabold">Optional</span>
+                  <label className="text-xs font-semibold text-muted-foreground">Short Bio</label>
+                  <span className="text-[10px] text-muted-foreground/50 uppercase tracking-wider font-extrabold">Optional</span>
                 </div>
                 <input
                   type="text"
                   value={bio}
                   onChange={(e) => setBio(e.target.value)}
                   placeholder="Tell us about yourself..."
-                  className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-xl text-slate-900 font-bold text-sm focus:outline-none focus:border-indigo-200 transition-all placeholder:text-slate-300"
+                  className="w-full px-5 py-3.5 bg-muted border border-border rounded-xl text-foreground font-bold text-sm focus:outline-none focus:border-primary transition-all placeholder:text-muted-foreground/50"
                 />
               </div>
               
-              <div className="px-5 py-4 border-b border-slate-50 flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-500">Biological Gender</span>
-                <div className="flex bg-slate-50 p-1.5 rounded-xl border border-slate-100/50 shadow-inner">
+              <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+                <span className="text-xs font-bold text-muted-foreground">Biological Gender</span>
+                <div className="flex bg-muted p-1.5 rounded-xl border border-border/50 shadow-inner">
                   {(['M', 'F'] as const).map((opt) => (
                     <button 
                       key={opt} 
-                      onClick={() => {
-                        handleGenderChange(opt)
-                        updateField('gender', opt === 'M' ? 'MALE' : 'FEMALE')
-                      }} 
+                      onClick={() => handleGenderChange(opt)} 
                       className={`px-5 py-2 flex-1 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
                         gender === opt 
-                          ? 'bg-white text-indigo-600 shadow-md border border-slate-200' 
-                          : 'text-slate-400 hover:text-slate-600'
+                          ? 'bg-card text-primary shadow-md border border-border/80' 
+                          : 'text-muted-foreground hover:text-foreground'
                       }`}
                     >
                       {gender === opt && <Check size={13} className="stroke-[3]" />} {opt === 'M' ? 'Male' : 'Female'}
@@ -417,19 +362,16 @@ export function ProfilePage() {
               </div>
 
               <div className="px-5 py-4 flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-500">Roommate Preference</span>
-                <div className="flex bg-slate-50 p-1.5 rounded-xl border border-slate-100/50 shadow-inner">
+                <span className="text-xs font-bold text-muted-foreground">Roommate Preference</span>
+                <div className="flex bg-muted p-1.5 rounded-xl border border-border/50 shadow-inner">
                   {(['same', 'any'] as const).map((opt) => (
                     <button 
                       key={opt} 
-                      onClick={() => {
-                        setMatchPref(opt)
-                        updateField('gender_pref', opt === 'same' ? 'SAME_GENDER' : 'ANY_GENDER')
-                      }} 
+                      onClick={() => setMatchPref(opt)} 
                       className={`px-5 py-2 flex-1 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
                         matchPref === opt 
-                          ? 'bg-white text-indigo-600 shadow-md border border-slate-200' 
-                          : 'text-slate-400 hover:text-slate-600'
+                          ? 'bg-card text-primary shadow-md border border-border/80' 
+                          : 'text-muted-foreground hover:text-foreground'
                       }`}
                     >
                       {matchPref === opt && <Check size={13} className="stroke-[3]" />} {opt === 'same' ? 'Same Sex' : 'Any Sex'}
@@ -442,41 +384,38 @@ export function ProfilePage() {
 
           {/* Network Status */}
           <section>
-            <h3 className="px-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Network Status</h3>
-            <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 p-2 space-y-2">
+            <h3 className="px-4 text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Network Status</h3>
+            <div className="bg-card rounded-[24px] shadow-sm border border-border p-2 space-y-2">
               
               {(['ACTIVE', 'HIDDEN', 'COMPLETED'] as const).map((status) => {
                 const isActive = matchingStatus === status
                 const colorMap = {
-                  ACTIVE: { bg: 'bg-indigo-50', border: 'border-indigo-200', text: 'text-indigo-900', sub: 'text-indigo-500', iconBg: 'bg-indigo-500' },
-                  HIDDEN: { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-900', sub: 'text-blue-500', iconBg: 'bg-blue-500' },
-                  COMPLETED: { bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-900', sub: 'text-green-600', iconBg: 'bg-green-500' }
+                  ACTIVE: { bg: 'bg-primary/5', border: 'border-primary/20', text: 'text-primary', sub: 'text-primary/70', iconBg: 'bg-primary' },
+                  HIDDEN: { bg: 'bg-blue-500/5', border: 'border-blue-500/20', text: 'text-blue-600 dark:text-blue-400', sub: 'text-blue-500', iconBg: 'bg-blue-500' },
+                  COMPLETED: { bg: 'bg-emerald-500/5', border: 'border-emerald-500/20', text: 'text-emerald-600 dark:text-emerald-400', sub: 'text-emerald-500', iconBg: 'bg-emerald-500' }
                 }
                 const current = colorMap[status]
 
                 return (
                   <button
                     key={status}
-                    onClick={() => {
-                      setMatchingStatus(status)
-                      updateField('status', status)
-                    }}
+                    onClick={() => setMatchingStatus(status)}
                     className={`w-full flex items-center p-3 rounded-2xl transition-all border ${
-                      isActive ? `${current.bg} ${current.border}` : 'bg-transparent border-transparent hover:bg-slate-50'
+                      isActive ? `${current.bg} ${current.border}` : 'bg-transparent border-transparent hover:bg-muted/50'
                     }`}
                   >
                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center mr-3 shrink-0 ${
-                      isActive ? `${current.iconBg} text-white shadow-sm` : 'bg-slate-100 text-slate-400'
+                      isActive ? `${current.iconBg} text-white shadow-sm` : 'bg-muted text-muted-foreground'
                     }`}>
                       {status === 'ACTIVE' && <User size={20} />}
                       {status === 'HIDDEN' && <Check size={20} />}
                       {status === 'COMPLETED' && <Sparkles size={20} />}
                     </div>
                     <div className="text-left flex-1">
-                      <h4 className={`text-sm font-bold ${isActive ? current.text : 'text-slate-700'}`}>
+                      <h4 className={`text-sm font-bold ${isActive ? current.text : 'text-foreground'}`}>
                         {status === 'ACTIVE' ? 'Actively Searching' : status === 'HIDDEN' ? 'Talking (Hidden)' : 'Match Found!'}
                       </h4>
-                      <p className={`text-[10px] font-extrabold uppercase tracking-widest mt-0.5 ${isActive ? current.sub : 'text-slate-400'}`}>
+                      <p className={`text-[10px] font-extrabold uppercase tracking-widest mt-0.5 ${isActive ? current.sub : 'text-muted-foreground/60'}`}>
                         {status === 'ACTIVE' ? 'Visible to campus pool' : status === 'HIDDEN' ? 'Hidden from searches' : 'Deactivate matching'}
                       </p>
                     </div>
@@ -565,7 +504,7 @@ export function ProfilePage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-100 bg-white/90 backdrop-blur-md flex flex-col items-center justify-center px-6"
+            className="fixed inset-0 z-100 bg-background/90 backdrop-blur-md flex flex-col items-center justify-center px-6"
           >
             <div className="relative">
               <div className="w-16 h-16 rounded-3xl bg-indigo-600/10 flex items-center justify-center">

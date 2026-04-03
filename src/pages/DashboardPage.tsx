@@ -355,13 +355,13 @@ export function DashboardPage() {
   
   if (!mounted || isHydrating) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 p-6 selection:bg-indigo-100 uppercase tracking-tight">
+      <div className="flex flex-col items-center justify-center min-h-screen bg-background p-6 selection:bg-indigo-100 dark:selection:bg-indigo-500/30 uppercase tracking-tight">
         <div className="relative w-28 h-28 mb-12">
           {/* Outer Ring Glow */}
           <div className="absolute inset-[-8px] rounded-[2.5rem] bg-indigo-500/10 blur-xl animate-pulse" />
           
           {/* Main Spinner */}
-          <div className="absolute inset-0 rounded-[2.5rem] border-[3px] border-slate-200" />
+          <div className="absolute inset-0 rounded-[2.5rem] border-[3px] border-border/50" />
           <motion.div 
             animate={{ rotate: 360 }}
             transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
@@ -369,7 +369,7 @@ export function DashboardPage() {
           />
           
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-sm border border-slate-100">
+            <div className="w-14 h-14 bg-card rounded-2xl flex items-center justify-center shadow-sm border border-border">
               <Sparkles className="w-7 h-7 text-indigo-600 animate-pulse" />
             </div>
           </div>
@@ -381,15 +381,15 @@ export function DashboardPage() {
           className="flex flex-col items-center text-center"
         >
           <h2 className="text-[12px] font-black text-indigo-600 uppercase tracking-[0.4em] mb-4">
-            Welcome Back {isDevMode && <span className="text-slate-400 tracking-normal">(DEV)</span>}
+            Welcome Back {isDevMode && <span className="text-muted-foreground tracking-normal">(DEV)</span>}
           </h2>
           <div className="flex flex-col items-center gap-2">
-            <span className="text-[32px] font-black tracking-tighter text-slate-900 leading-none">Starting Roommate Link</span>
-            <p className="text-[14px] font-bold text-slate-400">Synchronizing your matching preferences</p>
+            <span className="text-[32px] font-black tracking-tighter text-foreground leading-none">Starting Roommate Link</span>
+            <p className="text-[14px] font-bold text-muted-foreground">Synchronizing your matching preferences</p>
           </div>
           
           {/* Premium Progress Bar */}
-          <div className="mt-8 w-48 h-1.5 bg-slate-200 rounded-full overflow-hidden relative">
+          <div className="mt-8 w-48 h-1.5 bg-muted rounded-full overflow-hidden relative">
             <motion.div 
               initial={{ x: "-100%" }}
               animate={{ x: "100%" }}

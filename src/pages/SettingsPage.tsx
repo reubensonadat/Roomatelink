@@ -145,7 +145,7 @@ export function SettingsPage() {
   };
 
   return (
-    <div className="flex flex-col w-full min-h-screen bg-slate-50 selection:bg-indigo-100">
+    <div className="flex flex-col w-full min-h-screen bg-background selection:bg-indigo-100 dark:selection:bg-indigo-500/30">
       <TopHeader title="Settings" showBackButton />
 
       <div className="flex-1 overflow-y-auto w-full md:max-w-2xl lg:max-w-3xl mx-auto px-4 pt-8 pb-32">
