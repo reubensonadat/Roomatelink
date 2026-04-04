@@ -5,6 +5,7 @@ import { Check, ChevronLeft, Loader2, Edit2, Sparkles } from 'lucide-react'
 import { questions as sourceQuestions, Question } from '../lib/questions'
 import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
+import { useAuth } from '../context/AuthContext'
 
 // Fisher-Yates shuffle
 function shuffle<T>(arr: T[]): T[] {
@@ -28,6 +29,7 @@ const STORAGE_KEY = 'roommate_answers'
 const ORDER_KEY = 'roommate_question_order'
 
 export function QuestionnairePage() {
+  const { user, profile, session } = useAuth()
   const [questions, setQuestions] = useState<Question[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [answers, setAnswers] = useState<Record<string, string>>({})
@@ -89,20 +91,15 @@ export function QuestionnairePage() {
   const progressPercent = ((currentIndex) / questions.length) * 100
 
   const performSubmission = async (currentAnswers: Record<string, string>) => {
+    if (!user || !profile || !session) {
+      toast.error('Session expired or identity missing. Please refresh the page.')
+      return
+    }
+
     setIsSubmitting(true)
     setSubmitError(null)
     
     try {
-      const { data: { user } } = await withTimeout(supabase.auth.getUser(), 15000, "Auth handshake timeout.")
-      if (!user) throw new Error('Session expired.')
-
-      const { data: profile } = await withTimeout(
-        supabase.from('users').select('id').eq('auth_id', user.id).maybeSingle(),
-        20000,
-        "Database handshake timeout."
-      )
-      if (!profile) throw new Error('Identity Hub not found.')
-
       const { error: upsertError } = await withTimeout(
         supabase.from('questionnaire_responses').upsert({
           user_id: profile.id,
@@ -113,9 +110,6 @@ export function QuestionnairePage() {
         "Data transfer timeout."
       )
       if (upsertError) throw upsertError
-
-      const { data: { session } } = await withTimeout(supabase.auth.getSession(), 15000, "Security timeout.")
-      if (!session) throw new Error('Verification failed.')
 
       const response = await withTimeout(
         fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/match-calculate`, {

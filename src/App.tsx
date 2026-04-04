@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { LandingPage } from './pages/LandingPage'
 import { AuthPage } from './pages/AuthPage'
@@ -22,6 +23,16 @@ import { ScrollToReset } from './components/ui/ScrollToReset'
 import { InstallPrompt } from './components/ui/InstallPrompt'
 
 export default function App() {
+  // Initialize theme from localStorage on app boot
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme')
+    if (savedTheme === 'dark') {
+      document.documentElement.classList.add('dark')
+    } else {
+      document.documentElement.classList.remove('dark')
+    }
+  }, [])
+
   return (
     <BrowserRouter>
       <ScrollToReset />

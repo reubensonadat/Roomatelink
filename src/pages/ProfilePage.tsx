@@ -39,7 +39,7 @@ function withTimeout<T>(promise: PromiseLike<T>, ms: number, message: string): P
 }
 
 export function ProfilePage() {
-  const { user, refreshProfile } = useAuth()
+  const { user, profile, refreshProfile } = useAuth()
   const navigate = useNavigate()
 
   const STORAGE_KEY = 'roommate_profile_data'
@@ -133,11 +133,7 @@ export function ProfilePage() {
     setSaveError(null)
     
     try {
-      const { data: existingProfile } = await withTimeout(
-        supabase.from('users').select('id').eq('auth_id', user.id).maybeSingle(),
-        30000,
-        "Network timed out."
-      )
+      const profileId = profile?.id || null
 
       const profileData: any = {
         full_name: displayName,
@@ -151,9 +147,9 @@ export function ProfilePage() {
         status: matchingStatus
       }
 
-      if (existingProfile) {
+      if (profileId) {
         const { error } = await withTimeout(
-          supabase.from('users').update(profileData).eq('id', existingProfile.id),
+          supabase.from('users').update(profileData).eq('id', profileId),
           6000,
           "Update timed out after 6s. Network unstable."
         )

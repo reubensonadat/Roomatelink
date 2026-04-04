@@ -57,6 +57,7 @@ export function DashboardPage() {
   const [hasPaid, setHasPaid] = useState(false)
   const [selectedMatch, setSelectedMatch] = useState<MatchProfile | null>(null)
   const [isPioneerUser, setIsPioneerUser] = useState(false)
+  const [hasQuestionnaire, setHasQuestionnaire] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [isDevMode, setIsDevMode] = useState(false)
   const [devClickCount, setDevClickCount] = useState(0)
@@ -120,6 +121,15 @@ export function DashboardPage() {
 
       if (activeProfile) {
         setHasPaid(activeProfile.has_paid)
+        
+        // Check if user has completed questionnaire
+        const { data: qResp } = await supabase
+          .from('questionnaire_responses')
+          .select('id')
+          .eq('user_id', activeProfile.id)
+          .maybeSingle()
+          
+        setHasQuestionnaire(!!qResp)
         
         // Step 3: Fetch Matches
         const { data: dbMatches, error: matchesError } = await supabase
@@ -475,7 +485,7 @@ export function DashboardPage() {
                     Setup Profile Now <Sparkles className="w-4 h-4 ml-1" />
                   </Link>
                 </motion.div>
-              ) : !profile?.has_questionnaire ? (
+              ) : !hasQuestionnaire ? (
                 <motion.div
                   key="questionnaire-incomplete"
                   initial={{ opacity: 0, y: 10 }}
