@@ -52,8 +52,11 @@ export function DashboardPage() {
   const { user, profile, loading: authLoading } = useAuth()
 
   // ─── Core State ──────────────────────────────────────────────────────
-  const [isLoading, setIsLoading] = useState(true)
-  const [matches, setMatches] = useState<MatchProfile[]>([])
+  const [matches, setMatches] = useState<MatchProfile[]>(() => {
+    const cached = sessionStorage.getItem('matchesCache')
+    return cached ? JSON.parse(cached) : []
+  })
+  const [isLoading, setIsLoading] = useState(() => !sessionStorage.getItem('matchesCache'))
   const [hasPaid, setHasPaid] = useState(false)
   const [selectedMatch, setSelectedMatch] = useState<MatchProfile | null>(null)
   const [isPioneerUser, setIsPioneerUser] = useState(false)
@@ -167,8 +170,10 @@ export function DashboardPage() {
               categoryScores: m.match_details?.categoryScores || []
             }))
           setMatches(mappedMatches)
+          sessionStorage.setItem('matchesCache', JSON.stringify(mappedMatches))
         } else {
           setMatches([])
+          sessionStorage.setItem('matchesCache', '[]')
         }
 
         // Check Pioneer Status (Try/Catch for Edge Function stability)

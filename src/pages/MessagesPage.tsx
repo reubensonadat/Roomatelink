@@ -44,20 +44,36 @@ export function MessagesPage() {
 
         // Only fetch messages if the user has paid
         if (profile.has_paid) {
-          const { data: msgs } = await supabase
+          const { data: msgs, error: msgsError } = await supabase
             .from('messages')
-            .select(`
-              *,
-              sender:users!sender_id (id, full_name, avatar_url),
-              receiver:users!receiver_id (id, full_name, avatar_url)
-            `)
+            .select('*')
             .or(`sender_id.eq.${profile.id},receiver_id.eq.${profile.id}`)
             .order('created_at', { ascending: false })
 
-          if (msgs) {
+          if (msgsError) {
+             console.error("Messages fetch error:", msgsError);
+          }
+
+          if (msgs && msgs.length > 0) {
+            // Collect unique user IDs to fetch their profiles
+            const idsToFetch = new Set<string>();
+            msgs.forEach(m => {
+               if (m.sender_id !== profile.id) idsToFetch.add(m.sender_id);
+               if (m.receiver_id !== profile.id) idsToFetch.add(m.receiver_id);
+            });
+
+            const { data: chatUsers } = await supabase
+              .from('users')
+              .select('id, full_name, avatar_url')
+              .in('id', Array.from(idsToFetch));
+
+            const usersMap = new Map((chatUsers || []).map(u => [u.id, u]));
+
             const threads: Record<string, any> = {}
             msgs.forEach((m: any) => {
-              const other = m.sender_id === profile.id ? m.receiver : m.sender
+              const otherId = m.sender_id === profile.id ? m.receiver_id : m.sender_id
+              const other = usersMap.get(otherId) as any
+
               if (other && !threads[other.id]) {
                 threads[other.id] = {
                   id: other.id,
@@ -154,7 +170,7 @@ export function MessagesPage() {
           <div className="space-y-2">
             {chats.map((chat, i) => (
               <motion.div key={chat.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}>
-                <Link to={`/messages/${chat.id}`} className="flex items-center gap-5 p-4 rounded-[2rem] hover:bg-card hover:shadow-sm transition-all group active:scale-[0.98] border border-transparent hover:border-border">
+                <Link to={`/dashboard/messages/${chat.id}`} className="flex items-center gap-5 p-4 rounded-[2rem] hover:bg-card hover:shadow-sm transition-all group active:scale-[0.98] border border-transparent hover:border-border">
                   <div className="relative shrink-0">
                     <div className="w-16 h-16 rounded-[1.5rem] bg-card border border-border overflow-hidden shadow-sm">
                       <img src={chat.avatar} alt="" className="w-full h-full object-cover" />

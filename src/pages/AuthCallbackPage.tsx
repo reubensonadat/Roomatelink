@@ -126,11 +126,11 @@ export function AuthCallbackPage() {
 
   if (status === 'error') {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 p-6 selection:bg-indigo-100 uppercase tracking-tight">
+      <div className="flex flex-col items-center justify-center min-h-screen bg-background p-6 selection:bg-indigo-100 uppercase tracking-tight">
         <motion.div 
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="w-20 h-20 bg-red-50 rounded-[24px] flex items-center justify-center mb-10 shadow-sm border border-red-100"
+          className="w-20 h-20 bg-red-500/10 rounded-[24px] flex items-center justify-center mb-10 shadow-sm border border-red-500/20"
         >
           <AlertCircle className="w-10 h-10 text-red-500" />
         </motion.div>
@@ -143,16 +143,16 @@ export function AuthCallbackPage() {
           <h2 className="text-[12px] font-black text-red-500 uppercase tracking-[0.4em] mb-4">
             Connection Interrupted
           </h2>
-          <span className="text-[32px] font-black tracking-tighter text-slate-900 leading-tight mb-4">
+          <span className="text-[32px] font-black tracking-tighter text-foreground leading-tight mb-4">
             Security Block
           </span>
-          <p className="text-slate-500 font-bold text-[15px] leading-relaxed mb-10 text-pretty">
+          <p className="text-muted-foreground font-bold text-[15px] leading-relaxed mb-10 text-pretty">
             {errorDetails || "We couldn't verify your credentials. Please attempt to re-authenticate."}
           </p>
           
           <button 
             onClick={() => navigate('/auth')}
-            className="px-8 py-4 bg-slate-900 text-white font-black rounded-2xl shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all text-[13px] tracking-widest uppercase"
+            className="px-8 py-4 bg-foreground text-background font-black rounded-2xl shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all text-[13px] tracking-widest uppercase"
           >
             Return to Auth
           </button>
@@ -162,16 +162,16 @@ export function AuthCallbackPage() {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-vh-screen min-h-[100vh] bg-slate-50 p-6 selection:bg-indigo-100 uppercase tracking-tight text-left">
+    <div className="flex flex-col items-center justify-center min-vh-screen min-h-[100vh] bg-background p-6 selection:bg-indigo-100 uppercase tracking-tight text-left">
       <div className="relative w-28 h-28 mb-12">
         {/* Outer Ring Glow */}
         <div className="absolute inset-[-8px] rounded-[2.5rem] bg-indigo-500/10 blur-xl animate-pulse" />
         
         {/* Smooth Circular Spinner */}
-        <div className="absolute inset-0 rounded-full border-[3px] border-slate-200/50" />
-        <div className="absolute inset-0 rounded-full border-[3px] border-transparent border-t-indigo-600 shadow-[0_0_15px_rgba(79,70,229,0.3)] animate-spin" />
+        <div className="absolute inset-0 rounded-full border-[3px] border-muted/50" />
+        <div className="absolute inset-0 rounded-full border-[3px] border-transparent border-t-primary shadow-[0_0_15px_rgba(79,70,229,0.3)] animate-spin" />
         
-        <div className="absolute inset-0 flex items-center justify-center text-indigo-600">
+        <div className="absolute inset-0 flex items-center justify-center text-primary">
           <Fingerprint className="w-12 h-12" />
         </div>
       </div>
@@ -181,20 +181,20 @@ export function AuthCallbackPage() {
         animate={{ opacity: 1, y: 0 }}
         className="flex flex-col items-center text-center"
       >
-        <h2 className="text-[12px] font-black text-indigo-600 uppercase tracking-[0.4em] mb-4">
+        <h2 className="text-[12px] font-black text-primary uppercase tracking-[0.4em] mb-4">
           Identity Sync
         </h2>
         <div className="flex flex-col items-center gap-2">
-          <span className="text-[32px] font-black tracking-tighter text-slate-900 leading-none">Confirming Identity</span>
-          <p className="text-[14px] font-bold text-slate-400">Establishing your secure Roommate Link session</p>
+          <span className="text-[32px] font-black tracking-tighter text-foreground leading-none">Confirming Identity</span>
+          <p className="text-[14px] font-bold text-muted-foreground">Establishing your secure Roommate Link session</p>
         </div>
         
-        <div className="mt-10 w-48 h-1 bg-slate-200/50 rounded-full overflow-hidden relative">
+        <div className="mt-10 w-48 h-1 bg-muted/50 rounded-full overflow-hidden relative">
           <motion.div 
             initial={{ left: "-100%" }}
             animate={{ left: "100%" }}
             transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-            className="absolute top-0 bottom-0 bg-indigo-600 w-1/2 rounded-full shadow-[0_0_15px_rgba(79,70,229,0.4)]"
+            className="absolute top-0 bottom-0 bg-primary w-1/2 rounded-full shadow-[0_0_15px_rgba(79,70,229,0.4)]"
           />
         </div>
       </motion.div>
