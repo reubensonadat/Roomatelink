@@ -511,7 +511,7 @@ export function ProfilePage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-100 bg-background/90 backdrop-blur-md flex flex-col items-center justify-center px-6"
+            className="fixed inset-0 z-[9999] bg-background/90 backdrop-blur-md flex flex-col items-center justify-center px-6"
           >
             <div className="relative">
               <div className="w-16 h-16 rounded-3xl bg-indigo-600/10 flex items-center justify-center">
