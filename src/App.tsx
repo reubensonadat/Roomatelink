@@ -5,6 +5,7 @@ import { AuthPage } from './pages/AuthPage'
 import { AuthCallbackPage } from './pages/AuthCallbackPage'
 import { QuestionnairePage } from './pages/QuestionnairePage'
 import CalculationPage from './pages/CalculationPage'
+import { QuestionnaireReviewPage } from './pages/QuestionnaireReviewPage'
 import { OnboardingPage } from './pages/OnboardingPage'
 import { ProfilePage } from './pages/ProfilePage'
 import { DashboardPage } from './pages/DashboardPage'
@@ -51,6 +52,7 @@ export default function App() {
         {/* Protected routes with DashboardLayout */}
         <Route element={<ProtectedRoute />}>
           <Route path="/questionnaire" element={<QuestionnairePage />} />
+          <Route path="/questionnaire/review" element={<QuestionnaireReviewPage />} />
           <Route path="/questionnaire/calculation" element={<CalculationPage />} />
           <Route element={<DashboardLayout />}>
             <Route path="/dashboard" element={<DashboardPage />} />

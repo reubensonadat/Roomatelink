@@ -62,12 +62,13 @@ export function ProfilePage() {
   const [displayName, setDisplayName] = useState(initialState.displayName || '')
   const [course, setCourse] = useState(initialState.course || '')
   const [bio, setBio] = useState(initialState.bio || '')
-  const [matchingStatus, setMatchingStatus] = useState<'ACTIVE' | 'HIDDEN' | 'COMPLETED' | null>(initialState.matchingStatus || null)
+  const [matchingStatus, setMatchingStatus] = useState<string>(initialState.matchingStatus || 'ACTIVE')
   const [phone, setPhone] = useState(initialState.phone || '')
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false)
   
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [hasQuestionnaire, setHasQuestionnaire] = useState<boolean | null>(null)
   const [mounted, setMounted] = useState(false)
 
 
@@ -77,36 +78,30 @@ export function ProfilePage() {
   }, [])
 
   useEffect(() => {
-    const fetchProfile = async () => {
-      if (!user) return
-      try {
-        const { data: dbProfile } = await withTimeout(
-          supabase.from('users').select('*').eq('auth_id', user.id).maybeSingle(),
-          30000,
-          "Profile handshake timeout."
-        )
-
-        if (dbProfile) {
-          if (dbProfile.full_name) setDisplayName(dbProfile.full_name)
-          if (dbProfile.phone_number) setPhone(dbProfile.phone_number)
-          if (dbProfile.course) setCourse(dbProfile.course)
-          if (dbProfile.level) setLevel(dbProfile.level.toString() as any)
-          if (dbProfile.bio) setBio(dbProfile.bio)
-          if (dbProfile.avatar_url) setSelectedAvatar(dbProfile.avatar_url)
-          if (dbProfile.gender) {
-            setGender(dbProfile.gender === 'MALE' ? 'M' : 'F')
-          }
-          if (dbProfile.gender_pref) {
-            setMatchPref(dbProfile.gender_pref === 'SAME_GENDER' ? 'same' : 'any')
-          }
-          if (dbProfile.status) setMatchingStatus(dbProfile.status as any)
-        }
-      } catch (err) {
-        console.error("Fetch failed:", err)
+    if (profile) {
+      if (profile.full_name) setDisplayName(profile.full_name)
+      if (profile.phone_number) setPhone(profile.phone_number)
+      if (profile.course) setCourse(profile.course)
+      if (profile.level) setLevel(profile.level.toString() as any)
+      if (profile.bio) setBio(profile.bio)
+      if (profile.avatar_url) setSelectedAvatar(profile.avatar_url)
+      if (profile.gender) {
+        setGender(profile.gender === 'MALE' ? 'M' : 'F')
       }
+      if (profile.gender_pref) {
+        setMatchPref(profile.gender_pref === 'SAME_GENDER' ? 'same' : 'any')
+      }
+      if (profile.status) setMatchingStatus(profile.status)
+      
+      // Async check for questionnaire completion
+      supabase
+        .from('questionnaire_responses')
+        .select('id')
+        .eq('user_id', profile.id)
+        .maybeSingle()
+        .then(({ data, error }) => setHasQuestionnaire(!error && !!data))
     }
-    fetchProfile()
-  }, [user])
+  }, [profile])
 
   useEffect(() => {
     if (!mounted) return
@@ -451,6 +446,21 @@ export function ProfilePage() {
               </div>
               {!isSaving && <ChevronRight size={22} className="text-indigo-200/80 group-hover:translate-x-1 transition-transform" />}
             </button>
+
+            {/* Questionnaire Action Button */}
+            {hasQuestionnaire !== null && (
+              <button
+                onClick={() => navigate(hasQuestionnaire ? '/questionnaire/review' : '/questionnaire')}
+                className="w-full mt-4 h-[64px] rounded-[22px] flex items-center justify-center gap-3 border-2 border-slate-200 hover:border-indigo-200 hover:bg-indigo-50/50 transition-all group active:scale-[0.98]"
+              >
+                <div className="flex flex-col items-center">
+                  <span className="text-[14px] font-black text-slate-800 transition-colors group-hover:text-indigo-600">
+                    {hasQuestionnaire ? 'Review My Match Responses' : 'Start Campus DNA Questionnaire'}
+                  </span>
+                </div>
+                <ChevronRight size={18} className="text-slate-400 group-hover:text-indigo-500 group-hover:translate-x-1 transition-transform" />
+              </button>
+            )}
           </div>
         </div>
       </div>

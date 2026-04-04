@@ -283,11 +283,13 @@ export function QuestionnairePage() {
         <header className="px-6 pt-12 pb-6 flex items-center justify-between">
           <button
             onClick={() => {
-              if (Object.keys(answers).length > 0 && currentIndex > 0) {
-                 // Navigate to the previously answered question
+              const answeredCount = Object.keys(answers).length;
+              if (answeredCount === questions.length) {
+                 setIsReviewing(true); // Return to review page
+              } else if (currentIndex > 0) {
                  setCurrentIndex(prev => prev - 1);
               } else {
-                 navigate(-1);
+                 navigate('/dashboard'); // Explicit exit
               }
             }}
             className="w-12 h-12 rounded-[1.5rem] bg-muted/50 border border-border/50 flex items-center justify-center active:scale-90 transition-all hover:bg-muted"

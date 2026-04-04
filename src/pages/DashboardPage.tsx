@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Sparkles, Lock as LockIcon, Flame, UserCheck } from 'lucide-react'
+import { Sparkles, Lock as LockIcon, Flame, UserCheck, Loader2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../lib/supabase'
@@ -61,6 +61,7 @@ export function DashboardPage() {
   const [mounted, setMounted] = useState(false)
   const [isDevMode, setIsDevMode] = useState(false)
   const [devClickCount, setDevClickCount] = useState(0)
+  const [isRecalculating, setIsRecalculating] = useState(false)
 
   // ─── Modal States ────────────────────────────────────────────────────
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false)
@@ -189,6 +190,35 @@ export function DashboardPage() {
       setMatches([])
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const forceRecalculate = async () => {
+    if (!profile) return
+    setIsRecalculating(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) throw new Error("No active session")
+      
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/match-calculate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ userId: profile.id })
+      })
+
+      if (!res.ok) throw new Error("Edge function failed")
+      
+      toast.success("Algorithm triggered!")
+      // Reload dashboard
+      setIsLoading(true)
+      await initializeDashboard()
+    } catch (err: any) {
+      toast.error(`Refresh failed: ${err.message}`)
+    } finally {
+      setIsRecalculating(false)
     }
   }
 
@@ -518,9 +548,17 @@ export function DashboardPage() {
                     <LockIcon className="w-10 h-10 text-primary animate-pulse" />
                   </div>
                   <h3 className="text-[20px] font-black text-foreground mb-2">You're Early!</h3>
-                  <p className="text-muted-foreground text-[14px] font-medium leading-relaxed max-w-[280px]">
+                  <p className="text-muted-foreground text-[14px] font-medium leading-relaxed max-w-[280px] mb-6">
                     We're still mapping the campus DNA. Check back soon for your perfect roommate matches!
                   </p>
+                  <button 
+                    onClick={forceRecalculate}
+                    disabled={isRecalculating}
+                    className="mt-2 px-6 py-3 bg-muted text-foreground border border-border/50 rounded-xl font-bold flex items-center gap-2 hover:bg-muted/80 transition-all active:scale-95 disabled:opacity-50"
+                  >
+                    {isRecalculating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                    {isRecalculating ? "Running Algorithm..." : "Force Run Algorithm"}
+                  </button>
                 </motion.div>
               ) : (
                 <motion.div key="feed" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
