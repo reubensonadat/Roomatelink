@@ -61,7 +61,7 @@ serve(async (req: Request) => {
     // ── STEP 1: Fetch the new user's profile and answers ─────────────────
     const { data: userProfile, error: profileError } = await supabase
       .from('users')
-      .select('id, gender, gender_preference, has_paid')
+      .select('id, gender, gender_pref, has_paid')
       .eq('id', userId)
       .single();
 
@@ -94,10 +94,10 @@ serve(async (req: Request) => {
 
     // Build the gender filter based on user's preference
     let genderFilter: { gender?: string } = {};
-    if (userProfile.gender_preference === 'SAME_GENDER') {
+    if (userProfile.gender_pref === 'SAME_GENDER') {
       genderFilter = { gender: userProfile.gender };
     }
-    // If gender_preference is 'ANY_GENDER', no filter applied
+    // If gender_pref is 'ANY_GENDER', no filter applied
 
     // Fetch only ACTIVE, PAID users who match gender preference
     // This is a critical scalability optimization
