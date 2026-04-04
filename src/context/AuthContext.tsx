@@ -188,10 +188,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     try {
-      // 1. Let Supabase properly invalidate the token on server and wipe its internal caching
-      await supabase.auth.signOut()
+      // 1. Let Supabase properly invalidate the token on server, with a 2s timeout to prevent locks
+      const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 2000));
+      await Promise.race([supabase.auth.signOut(), timeout]);
     } catch (error) {
-      console.warn('Signout error:', error)
+      console.warn('Signout logic timeout/error:', error)
     } finally {
       // 2. Wipe memory states immediately
       setSession(null)
@@ -199,9 +200,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setProfile(null)
       setLoading(false)
       
-      // 3. Clear our custom Profile cache explicitly
+      // 3. Forcefully clear ALL relevant caches (Profile and orphaned Supabase Auth tokens)
       for (const key of Object.keys(localStorage)) {
-        if (key.startsWith('roommate_profile_')) {
+        if (key.startsWith('roommate_profile_') || key.startsWith('sb-')) {
           localStorage.removeItem(key)
         }
       }
