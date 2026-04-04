@@ -57,7 +57,11 @@ export function QuestionnaireReviewPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col relative selection:bg-primary/20">
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="min-h-screen bg-background flex flex-col relative selection:bg-primary/20"
+    >
       <header className="px-6 pt-12 pb-6 flex items-center gap-4 bg-background z-20 sticky top-0 border-b border-border/40 shrink-0">
         <button
           onClick={() => navigate('/dashboard/profile')}
@@ -72,13 +76,33 @@ export function QuestionnaireReviewPage() {
       </header>
 
       <div className="w-full max-w-3xl mx-auto flex flex-col flex-1 relative z-10 px-6 pt-8 pb-24">
-        <div className="space-y-4">
+        <motion.div 
+          className="space-y-4"
+          initial="hidden"
+          animate="visible"
+          variants={{
+            hidden: { opacity: 0 },
+            visible: {
+              opacity: 1,
+              transition: {
+                staggerChildren: 0.05
+              }
+            }
+          }}
+        >
           {sourceQuestions.map((q, idx) => {
             const answeredId = answers[q.id]
             const selectedOpt = q.options.find(o => o.id === answeredId)
             
             return (
-              <div key={q.id} className="p-5 rounded-[1.5rem] border-2 border-border/40 bg-card flex flex-col gap-3">
+              <motion.div 
+                key={q.id}
+                variants={{
+                  hidden: { opacity: 0, y: 20 },
+                  visible: { opacity: 1, y: 0 }
+                }}
+                className="p-5 rounded-[1.5rem] border-2 border-border/40 bg-card flex flex-col gap-3"
+              >
                 <h3 className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
                   <Check className="w-3 h-3 text-primary" /> Question {idx + 1}
                 </h3>
@@ -88,11 +112,11 @@ export function QuestionnaireReviewPage() {
                     {selectedOpt?.text || <span className="text-muted-foreground">Unanswered</span>}
                   </span>
                 </div>
-              </div>
+              </motion.div>
             )
           })}
-        </div>
+        </motion.div>
       </div>
-    </div>
+    </motion.div>
   )
 }
