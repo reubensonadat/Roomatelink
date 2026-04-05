@@ -8,9 +8,9 @@ const SupportCard = ({ icon: Icon, title, description }: { icon: React.ElementTy
     initial={{ opacity: 0, y: 20 }}
     whileInView={{ opacity: 1, y: 0 }}
     viewport={{ once: true }}
-    className="bg-card rounded-[2.5rem] border border-border/50 p-8 flex flex-col gap-6 hover:shadow-xl transition-all group"
+    className="bg-card rounded-boutique border border-border/50 p-8 flex flex-col gap-6 hover:shadow-xl transition-all group"
   >
-    <div className="w-14 h-14 rounded-2xl bg-foreground/5 flex items-center justify-center group-hover:scale-110 transition-transform">
+    <div className="w-14 h-14 rounded-xl bg-muted flex items-center justify-center group-hover:scale-110 transition-transform">
       <Icon className="w-7 h-7 text-foreground" />
     </div>
     <div>
@@ -98,10 +98,10 @@ export function SupportPage() {
         </div>
 
         {/* Commitment Section */}
-        <div className="bg-muted/30 rounded-[3rem] p-8 md:p-12 border border-border/50 mb-24">
+        <div className="bg-muted/40 rounded-boutique p-8 md:p-12 border border-border/50 mb-24">
           <div className="flex flex-col md:flex-row items-center gap-10">
             <div className="w-full md:w-1/2">
-              <h2 className="text-3xl font-black mb-6 tracking-tight">Our Support Commitment</h2>
+              <h2 className="text-3xl font-black mb-6 tracking-tight dark:text-foreground">Our Support Commitment</h2>
               <ul className="space-y-6">
                 <li className="flex gap-4">
                   <Clock className="w-6 h-6 text-foreground shrink-0" />
@@ -113,18 +113,18 @@ export function SupportPage() {
                 <li className="flex gap-4">
                   <MessageCircle className="w-6 h-6 text-foreground shrink-0" />
                   <div>
-                    <p className="font-bold">Human-to-Human Support</p>
-                    <p className="text-muted-foreground text-[14px]">No complex bots. You'll talk to a real person who understands campus life.</p>
+                    <p className="font-bold">Direct Student Support</p>
+                    <p className="text-muted-foreground text-[14px]">All inquiries are handled by our dedicated student welfare team for authentic assistance.</p>
                   </div>
                 </li>
               </ul>
             </div>
-            <div className="w-full md:w-1/2 bg-background p-8 rounded-[2rem] border border-border shadow-sm">
+            <div className="w-full md:w-1/2 bg-card p-8 rounded-boutique border border-border/50 shadow-sm">
               <p className="text-[12px] font-black text-muted-foreground uppercase tracking-widest mb-4">Direct Access</p>
               <div className="space-y-6">
                 <div className="flex flex-col">
                   <span className="text-[13px] font-bold text-muted-foreground">Support Email</span>
-                  <a href="mailto:synaptech25@gmail.com" className="text-xl font-black hover:text-primary transition-colors">synaptech25@gmail.com</a>
+                  <a href="mailto:synaptech25@gmail.com" className="text-lg font-bold hover:text-primary transition-colors break-all">synaptech25@gmail.com</a>
                 </div>
                 <div className="flex flex-col">
                   <span className="text-[13px] font-bold text-muted-foreground">Call or WhatsApp</span>
@@ -141,7 +141,7 @@ export function SupportPage() {
           <div className="divide-y divide-border/50">
             <FAQItem
               question="Why is there a one-time verification fee?"
-              answer="To definitively restrict bots, scammers, and actors who aren't serious about finding a roommate. This fee sustains our optimized matching system and student verification process."
+              answer="To definitively exclude non-student accounts and ensure every member of the link is a verified, serious applicant. This fee sustains our optimized matching system and rigorous student security protocols."
             />
             <FAQItem
               question="Can my matches see my phone number?"
@@ -159,11 +159,11 @@ export function SupportPage() {
         </section>
 
         {/* CTA Footer */}
-        <div className="text-center">
-          <p className="text-muted-foreground font-bold mb-4">Ready to find your perfect campus partner?</p>
+        <div className="text-center pt-8 border-t border-border/40">
+          <p className="text-muted-foreground font-bold mb-6">Ready to find your perfect campus partner?</p>
           <button
             onClick={() => navigate('/dashboard')}
-            className="px-10 py-5 bg-foreground text-background rounded-full font-black hover:scale-105 active:scale-95 transition-all shadow-xl shadow-foreground/10"
+            className="px-10 py-5 bg-foreground text-background rounded-xl font-black hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-foreground/10 uppercase tracking-widest text-[14px]"
           >
             Explore Dashboard
           </button>

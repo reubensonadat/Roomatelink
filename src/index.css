@@ -32,9 +32,10 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 221.2 83.2% 53.3%;
 
-    --radius: 12px;
+    --radius: 22px;
     --shadow-premium: 0 20px 50px -12px rgba(0, 0, 0, 0.12);
     --shadow-elevated: 0 30px 60px -12px rgba(0, 0, 0, 0.18);
+    --shadow-luminous: 0 0 40px -10px rgba(79, 70, 229, 0.3);
     --glass-border: rgba(255, 255, 255, 0.08);
   }
 
@@ -96,27 +97,25 @@
   }
 
   /* Universal Flaccid Fixes: Global Inputs */
+  /* Universal Flaccid Fixes: Global Inputs */
   input[type="text"],
   input[type="email"],
+  input[type="tel"],
   input[type="password"],
   input[type="number"],
   textarea {
     border-radius: 12px;
-    border-bottom-width: 3px;
-    border-bottom-color: hsl(var(--border));
+    border: 1.5px solid hsl(var(--border));
     background-color: hsl(var(--muted) / 0.5);
     transition: all 0.2s ease-out;
+    font-weight: 500;
   }
 
   input:focus,
   textarea:focus {
-    border-bottom-color: hsl(var(--primary));
+    border-color: hsl(var(--primary));
     background-color: hsl(var(--background));
-    /* The lift/weight effect */
-    transform: translateY(1px);
-    border-bottom-width: 2px;
-    margin-bottom: 1px;
-    box-shadow: 0 8px 24px -8px hsl(var(--primary)/0.2);
+    box-shadow: 0 0 0 4px hsl(var(--primary) / 0.1);
   }
 
   /* Premium Tactical Buttons */
@@ -131,19 +130,23 @@
     padding-left: 2.5rem;
     padding-right: 2.5rem;
     border-radius: 12px;
-    font-weight: 900;
-    font-size: 18px;
-    border-bottom-width: 4px;
-    border-color: rgba(0, 0, 0, 0.2) !important;
+    font-weight: 700;
+    font-size: 16px;
     transform: translateY(0);
   }
 
   .premium-btn:active,
   .premium-btn.active-press {
-    transform: translateY(4px);
-    border-bottom-width: 0px;
-    margin-bottom: 4px;
-    box-shadow: none !important;
+    transform: scale(0.98);
+  }
+
+  /* Boutique Utility */
+  .rounded-boutique {
+    border-radius: 22px !important;
+  }
+
+  .rounded-boutique-large {
+    border-radius: 32px !important;
   }
 }
 
@@ -154,46 +157,6 @@
 
   .rounded-5xl {
     border-radius: 16px !important;
-  }
-
-  .shadow-premium {
-    box-shadow: var(--shadow-premium);
-  }
-
-  .shadow-elevated {
-    box-shadow: var(--shadow-elevated);
-  }
-
-  .glass-v2 {
-    @apply bg-card/60 backdrop-blur-2xl border;
-    border-color: var(--glass-border);
-  }
-
-  /* Tactile Button (Alternative for smaller buttons) */
-  .tactile-btn {
-    border-radius: 12px;
-    border-bottom-width: 3px;
-    border-color: rgba(0, 0, 0, 0.1) !important;
-    transition: all 0.15s ease-out;
-  }
-
-  .tactile-btn:active {
-    transform: translateY(3px);
-    border-bottom-width: 0px;
-    margin-bottom: 3px;
-  }
-
-  /* Mobile Safe Area Utilities */
-  .pt-safe-top {
-    padding-top: env(safe-area-inset-top);
-  }
-
-  .pb-safe-bottom {
-    padding-bottom: env(safe-area-inset-bottom);
-  }
-
-  .mt-safe-top {
-    margin-top: env(safe-area-inset-top);
   }
 
   .mb-safe-bottom {

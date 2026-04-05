@@ -170,12 +170,12 @@ export function DashboardPage() {
               level: String(m.roommate.level || 'Unknown').replace(/level/i, '').trim(),
               avatar: m.roommate.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.roommate.full_name || 'S')}&background=random`,
               bio: m.roommate.bio || 'No bio provided yet.',
-              trait: m.top_shared_trait || 'Highly Compatible',
+              trait: (m as any).top_shared_trait || 'Highly Compatible',
               lifestyle: [{ icon: Sparkles, text: 'Cleanliness: 90%' }],
               tags: [m.roommate.course, 'Verified'].filter(Boolean),
-              sharedTraits: m.common_traits || [],
-              tensions: m.tensions || ['None Detected'],
-              categoryScores: m.match_details?.categoryScores || []
+              sharedTraits: (m as any).common_traits || [],
+              tensions: (m as any).tensions || ['None Detected'],
+              categoryScores: m.category_scores || []
             }))
           setMatches(mappedMatches)
           sessionStorage.setItem('matchesCache', JSON.stringify(mappedMatches))

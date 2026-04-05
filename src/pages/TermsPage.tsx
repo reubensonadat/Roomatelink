@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { Scale, ShieldCheck, Banknote, Ban, AlertTriangle, ChevronLeft, ArrowRight, Gavel } from 'lucide-react'
+import { Scale, ShieldCheck, Banknote, Ban, AlertTriangle, ChevronLeft, ChevronRight, Gavel } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 const LegalSection = ({ icon: Icon, title, content }: { icon: any, title: string, content: React.ReactNode }) => (
@@ -47,7 +47,7 @@ export function TermsPage() {
             Back
           </button>
           <div className="text-[12px] font-black uppercase tracking-widest text-muted-foreground/60">
-            Agreement Framework v1.0
+            Terms & Conditions
           </div>
         </div>
       </header>
@@ -101,7 +101,7 @@ export function TermsPage() {
             icon={Banknote}
             title="02 Access"
             content={
-              <div className="bg-muted/30 border border-border/50 rounded-[2.5rem] p-8 md:p-12">
+              <div className="bg-muted/30 border border-border/50 rounded-boutique p-8 md:p-12">
                 <h3 className="text-3xl font-black mb-6 tracking-tight">Verification Fees</h3>
                 <div className="space-y-6 text-muted-foreground font-medium leading-relaxed">
                   <p>
@@ -182,9 +182,9 @@ export function TermsPage() {
           <p className="text-[13px] font-black text-muted-foreground uppercase tracking-[0.2em] mb-4">Legal Inquiry?</p>
           <button 
             onClick={() => navigate('/support')}
-            className="inline-flex items-center gap-3 px-8 py-4 bg-foreground text-background rounded-2xl font-bold hover:scale-105 active:scale-95 transition-all shadow-lg shadow-foreground/10"
+            className="inline-flex items-center gap-3 px-8 py-4 bg-foreground text-background rounded-xl font-bold hover:scale-[1.02] active:scale-95 transition-all shadow-lg shadow-foreground/10 uppercase tracking-widest text-[14px]"
           >
-            Review Support Hub <ArrowRight className="w-4 h-4" />
+            Review Support Hub <ChevronRight className="w-4 h-4" />
           </button>
         </div>
       </main>

@@ -81,9 +81,9 @@ export function DashboardNav() {
               <div className="relative flex items-center justify-center">
                 {isActive && (
                   <motion.div
-                    layoutId="navActivePill"
-                    className="absolute inset-0 -mx-2 -my-0.5 bg-primary/10 rounded-2xl"
-                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                    layoutId="activeTab"
+                    className="absolute inset-0 bg-primary/10 rounded-[22px]"
+                    transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                   />
                 )}
                 <motion.div

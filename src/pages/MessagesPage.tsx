@@ -142,17 +142,18 @@ export function MessagesPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="space-y-4 px-5 max-w-lg mx-auto"
             >
-              {[1, 2, 3].map(i => (
-                <div key={i} className="flex items-center gap-4 p-5 bg-card/50 backdrop-blur-md rounded-[2rem] border border-border/40 animate-pulse">
-                  <div className="w-14 h-14 rounded-2xl bg-muted shrink-0" />
-                  <div className="flex-1 space-y-2">
-                    <div className="h-4 bg-muted rounded w-1/4" />
-                    <div className="h-3 bg-muted rounded w-3/4" />
+              <div className="flex-1 overflow-y-auto px-4 py-8 space-y-6">
+                {[1, 2, 3, 4, 5].map(i => (
+                  <div key={i} className="flex items-center gap-4 p-5 bg-card/40 backdrop-blur-md rounded-[18px] border border-border/40 animate-pulse">
+                    <div className="w-14 h-14 rounded-[18px] bg-muted shrink-0" />
+                    <div className="flex-1 space-y-3">
+                      <div className="h-4 bg-muted rounded-full w-1/3" />
+                      <div className="h-3 bg-muted rounded-full w-2/3" />
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </motion.div>
           ) : !profileStatus.isProfileComplete ? (
             <motion.div 
@@ -228,15 +229,15 @@ export function MessagesPage() {
               <Link to="/dashboard" className="px-8 py-4 bg-primary text-primary-foreground font-black rounded-2xl shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all">Browse Matches</Link>
             </motion.div>
           ) : (
-            <div className="px-5 space-y-4 max-w-lg mx-auto">
+            <div className="px-5 space-y-4 max-w-lg mx-auto pt-6">
               {/* Search Bar Refined: Only shows with active threads */}
               <div className="pt-2 mb-8 animate-in fade-in slide-in-from-top-4 duration-700">
-                <div className="relative group w-full">
-                  <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-6 h-6 text-muted-foreground/60 transition-colors group-focus-within:text-primary z-10" />
+                <div className="relative group w-full max-w-lg mx-auto">
+                  <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-6 h-6 text-muted-foreground/60 transition-colors group-focus-within:text-primary z-10" />
                   <input
                     type="text"
                     placeholder="Search conversations..."
-                    className="w-full h-[68px] pl-14 pr-6 sm:pl-16 sm:pr-8 bg-background border-2 border-border/80 rounded-[22px] focus:outline-none focus:ring-8 focus:ring-primary/5 focus:border-primary transition-all font-black text-[15px] sm:text-[17px] text-foreground placeholder:text-muted-foreground/50 shadow-md relative z-0"
+                    className="w-full h-[60px] pl-16 pr-8 bg-background border-2 border-border/80 rounded-[18px] focus:outline-none focus:ring-8 focus:ring-primary/5 focus:border-primary transition-all font-black text-[15px] sm:text-[17px] text-foreground placeholder:text-muted-foreground/50 shadow-md relative z-0"
                   />
                 </div>
               </div>

@@ -1,6 +1,8 @@
 import { useState } from 'react'
-import { AlertTriangle, UserX, Flag, Send, Check } from 'lucide-react'
+import { AlertTriangle, UserX, Flag, Check } from 'lucide-react'
 import { toast } from 'sonner'
+import { supabase } from '../../lib/supabase'
+import { useAuth } from '../../context/AuthContext'
 import { ModalShell } from './ModalShell'
 
 interface ReportModalProps {
@@ -18,27 +20,44 @@ const REPORT_REASONS = [
 ]
 
 export function ReportModal({ isOpen, onClose, reportedName, reportedId }: ReportModalProps) {
+  const { profile } = useAuth()
   const [selectedReason, setSelectedReason] = useState('')
   const [details, setDetails] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const handleSubmit = () => {
-    if (!selectedReason || !details.trim()) return
+  const handleSubmit = async () => {
+    if (!selectedReason || !details.trim() || !profile) return
     setIsSubmitting(true)
-    
-    // In production, this would submit to your backend
-    console.log('Report submitted:', { reportedId, reason: selectedReason, details })
 
-    setTimeout(() => {
-      setIsSubmitting(false)
-      setSelectedReason('')
-      setDetails('')
-      onClose()
+    try {
+      const { error } = await supabase
+        .from('reports')
+        .insert({
+          reporter_id: profile.id,
+          reported_id: reportedId,
+          reason: selectedReason,
+          details: details.trim(),
+          status: 'PENDING'
+        })
+
+      if (error) throw error
+
       toast.success('Report submitted successfully', {
         icon: <Check className="w-5 h-5 text-white" />,
         description: 'Thank you for helping keep the Campus ecosystem safe.'
       })
-    }, 1500)
+      
+      setSelectedReason('')
+      setDetails('')
+      onClose()
+    } catch (err: any) {
+      console.error('Report submission failed:', err)
+      toast.error('Failed to submit report', {
+        description: 'Please try again later or contact support.'
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -56,15 +75,15 @@ export function ReportModal({ isOpen, onClose, reportedName, reportedId }: Repor
               <button
                 key={reason.id}
                 onClick={() => setSelectedReason(reason.id)}
-                className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all active:scale-[0.98] ${selectedReason === reason.id
+                className={`w-full flex items-center gap-4 p-4 rounded-[22px] border-2 transition-all active:scale-[0.98] ${selectedReason === reason.id
                   ? 'border-primary bg-primary/5 text-primary shadow-sm'
                   : 'border-border/60 bg-card hover:border-foreground/20'
                 }`}
               >
-                <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${selectedReason === reason.id ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'}`}>
-                  <Icon className="w-4 h-4" />
+                <div className={`w-10 h-10 rounded-[18px] flex items-center justify-center ${selectedReason === reason.id ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'}`}>
+                  <Icon className="w-5 h-5 stroke-[2.5]" />
                 </div>
-                <span className="text-sm font-black">{reason.label}</span>
+                <span className="text-[15px] font-black">{reason.label}</span>
               </button>
             )
           })}
@@ -83,13 +102,13 @@ export function ReportModal({ isOpen, onClose, reportedName, reportedId }: Repor
         <button
           onClick={handleSubmit}
           disabled={!selectedReason || isSubmitting}
-          className={`w-full py-5 rounded-[2rem] bg-gradient-to-r from-red-600 to-red-500 text-white font-black text-[16px] sm:text-[18px] transition-all flex items-center justify-center gap-3 shadow-xl shadow-red-600/30 active:scale-[0.98] uppercase tracking-[0.2em] ${!selectedReason || isSubmitting ? 'opacity-50 grayscale cursor-not-allowed' : 'hover:scale-[1.02] hover:shadow-2xl hover:shadow-red-600/40'}`}
+          className={`w-full h-[64px] rounded-[22px] bg-red-600 text-white font-black text-[17px] transition-all flex items-center justify-center gap-3 shadow-xl shadow-red-600/20 active:scale-[0.98] uppercase tracking-[0.2em] ${!selectedReason || isSubmitting ? 'opacity-40 grayscale cursor-not-allowed' : 'hover:scale-[1.02] hover:bg-red-700'}`}
         >
           {isSubmitting ? (
             <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
           ) : (
             <>
-              Submit Report <Send className="w-5 h-5 opacity-80" />
+              Submit Report <Flag className="w-5 h-5 fill-current" />
             </>
           )}
         </button>

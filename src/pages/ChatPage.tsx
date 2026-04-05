@@ -11,7 +11,7 @@ export function ChatPage() {
   const { id: receiverId } = useParams()
   const navigate = useNavigate()
   const { user, profile } = useAuth()
-  
+
   const [messages, setMessages] = useState<any[]>([])
   const [otherUser, setOtherUser] = useState<any>(null)
   const [input, setInput] = useState("")
@@ -29,16 +29,16 @@ export function ChatPage() {
     if (!lastActive) return { label: 'Offline', isOnline: false }
     const lastActiveDate = new Date(lastActive)
     const diff = new Date().getTime() - lastActiveDate.getTime()
-    
+
     if (diff < 5 * 60 * 1000) return { label: 'Online', isOnline: true }
-    
+
     const timeStr = lastActiveDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     const dayStr = lastActiveDate.toLocaleDateString([], { month: 'short', day: 'numeric' })
     const isToday = new Date().toDateString() === lastActiveDate.toDateString()
-    
-    return { 
-      label: `Last seen ${isToday ? 'today' : dayStr} at ${timeStr}`, 
-      isOnline: false 
+
+    return {
+      label: `Last seen ${isToday ? 'today' : dayStr} at ${timeStr}`,
+      isOnline: false
     }
   }
 
@@ -68,7 +68,7 @@ export function ChatPage() {
 
       try {
         if (isMounted) setIsSyncing(true)
-        
+
         // --- 10 Second Fail-Safe Timeout ---
         syncTimeout = setTimeout(() => {
           if (isMounted) setIsSyncing(false)
@@ -77,7 +77,7 @@ export function ChatPage() {
         // 2. Determine "Delta" starting point safely
         const cachedSlice = localStorage.getItem(`roommate_chat_${receiverId}`)
         let lastTimestamp = '1970-01-01T00:00:00Z'
-        
+
         if (cachedSlice) {
           try {
             const parsed = JSON.parse(cachedSlice)
@@ -101,17 +101,17 @@ export function ChatPage() {
             .order('created_at', { ascending: true })
         ])
 
-        if (!isMounted) return 
+        if (!isMounted) return
 
         const me = profile
         const them = themRes.data
-        
+
         if (!me || !them) {
           if (!me) {
-             console.error("Current profile missing from context");
+            console.error("Current profile missing from context");
           } else {
-             toast.error("User not found")
-             navigate('/dashboard/messages')
+            toast.error("User not found")
+            navigate('/dashboard/messages')
           }
           return
         }
@@ -143,7 +143,7 @@ export function ChatPage() {
             const filteredPrev = prev.filter(m => !existingIds.has(m.id))
             const combined = [...filteredPrev, ...fetchedMessages]
             const final = combined.slice(-100)
-            
+
             localStorage.setItem(`roommate_chat_${receiverId}`, JSON.stringify({
               messages: final,
               otherUser: them
@@ -153,13 +153,13 @@ export function ChatPage() {
         }
 
         // Mark incoming messages as read
-        supabase.from('messages').update({ status: 'READ' }).eq('receiver_id', me.id).eq('sender_id', them.id).neq('status', 'READ').then(() => {})
+        supabase.from('messages').update({ status: 'READ' }).eq('receiver_id', me.id).eq('sender_id', them.id).neq('status', 'READ').then(() => { })
 
         channel = supabase
           .channel(`chat:${me.id}:${them.id}`)
-          .on('postgres_changes', { 
-            event: 'INSERT', 
-            schema: 'public', 
+          .on('postgres_changes', {
+            event: 'INSERT',
+            schema: 'public',
             table: 'messages',
             filter: `receiver_id=eq.${me.id}`
           }, (payload: any) => {
@@ -181,7 +181,7 @@ export function ChatPage() {
                 return updated
               })
               // Mark as read immediately if chat is open
-              supabase.from('messages').update({ status: 'READ' }).eq('id', payload.new.id).then(() => {})
+              supabase.from('messages').update({ status: 'READ' }).eq('id', payload.new.id).then(() => { })
             }
           })
           .on('postgres_changes', {
@@ -190,7 +190,7 @@ export function ChatPage() {
             table: 'messages'
           }, (payload: any) => {
             // Update message status in real-time (e.g. from SENT to READ)
-            setMessages(prev => prev.map(msg => 
+            setMessages(prev => prev.map(msg =>
               msg.id === payload.new.id ? { ...msg, status: payload.new.status } : msg
             ))
           })
@@ -238,7 +238,7 @@ export function ChatPage() {
       timestamp: now.toISOString(),
       status: 'PENDING'
     }
-    
+
     setMessages(prev => [...prev, myNewMessage])
 
     // 2. Server Sync
@@ -286,10 +286,10 @@ export function ChatPage() {
             </div>
           </div>
         </div>
-        <div className="flex-1 p-4 space-y-6">
-          {[1, 2, 3, 4].map(i => (
+        <div className="flex-1 p-4 pt-8 space-y-6">
+          {[1, 2, 3, 4, 5, 6].map(i => (
             <div key={i} className={`flex ${i % 2 === 0 ? 'justify-end' : 'justify-start'}`}>
-              <div className={`h-10 w-48 rounded-2xl bg-muted/40 animate-pulse ${i % 2 === 0 ? 'rounded-tr-none' : 'rounded-tl-none'}`} />
+              <div className={`h-12 w-48 rounded-[18px] bg-muted/40 animate-pulse ${i % 2 === 0 ? 'rounded-tr-none' : 'rounded-tl-none'}`} />
             </div>
           ))}
         </div>
@@ -354,7 +354,7 @@ export function ChatPage() {
         <span className="text-[10px] font-bold text-muted-foreground/40 uppercase tracking-wider">End-to-end encrypted</span>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 py-6 flex flex-col gap-3">
+      <div className="flex-1 overflow-y-auto px-4 py-8 flex flex-col gap-4">
         <AnimatePresence initial={false}>
           {messages.map((msg) => {
             const isMe = msg.sender === 'me'
@@ -386,25 +386,24 @@ export function ChatPage() {
         <div ref={bottomRef} />
       </div>
 
-      <div className="px-4 py-8 sm:px-6 bg-background/95 backdrop-blur-2xl border-t border-border/40 sticky bottom-0 z-50">
-        <form onSubmit={handleSend} className="flex items-center gap-3 md:gap-4 max-w-lg mx-auto">
+      <div className="px-3 pt-3 pb-5 sm:px-6 bg-background/95 backdrop-blur-2xl border-t border-border/40 sticky bottom-0 z-50">
+        <form onSubmit={handleSend} className="flex items-center gap-2 sm:gap-3 max-w-lg mx-auto w-full">
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Type a message..."
-            className="flex-1 h-[68px] bg-background border-2 border-border/80 rounded-[22px] pl-8 sm:pl-10 pr-6 sm:pr-8 font-black text-[16px] sm:text-[17px] text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-8 focus:ring-primary/5 focus:border-primary transition-all shadow-md min-w-0"
+            className="flex-1 min-w-0 h-[50px] bg-background border-2 border-border/80 rounded-[25px] pl-6 pr-4 font-bold text-[15px] sm:text-[16px] text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-8 focus:ring-primary/5 focus:border-primary transition-all shadow-sm"
           />
-          <button 
-            type="submit" 
-            disabled={!input.trim()} 
-            className={`w-[68px] h-[68px] rounded-[22px] flex items-center justify-center transition-all shrink-0 ${
-              input.trim() 
-                ? 'bg-foreground text-background shadow-2xl hover:scale-[1.05] active:scale-[0.95]' 
+          <button
+            type="submit"
+            disabled={!input.trim()}
+            className={`w-[50px] h-[50px] rounded-[25px] flex items-center justify-center transition-all shrink-0 ${input.trim()
+                ? 'bg-foreground text-background shadow-lg hover:scale-[1.05] active:scale-[0.95]'
                 : 'bg-muted text-muted-foreground/10'
-            }`}
+              }`}
           >
-            <Send className="w-6 h-6 ml-1" strokeWidth={3} />
+            <Send className="w-5 h-5 ml-0.5" strokeWidth={2.5} />
           </button>
         </form>
       </div>

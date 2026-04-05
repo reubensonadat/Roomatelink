@@ -217,7 +217,7 @@ export function ProfilePage() {
         {/* Identity Section */}
         <div className="flex flex-col items-center pt-2 pb-8">
           <div className="relative mb-3 group">
-            <div className={`w-20 h-20 bg-indigo-50 rounded-[24px] flex items-center justify-center border-4 border-white shadow-sm overflow-hidden relative transition-all ${!gender ? 'opacity-40 grayscale animate-pulse' : 'hover:ring-4 hover:ring-indigo-100'
+            <div className={`w-20 h-20 bg-indigo-50 rounded-boutique flex items-center justify-center border-4 border-white shadow-sm overflow-hidden relative transition-all ${!gender ? 'opacity-40 grayscale animate-pulse' : 'hover:ring-4 hover:ring-indigo-100'
               }`}>
               {selectedAvatar ? (
                 <img src={selectedAvatar} alt="Avatar" className="absolute inset-0 w-full h-full object-cover" />
@@ -240,7 +240,7 @@ export function ProfilePage() {
           <button
             onClick={() => gender && setIsAvatarModalOpen(true)}
             disabled={!gender}
-            className={`mt-3 px-8 py-3 bg-foreground text-background rounded-xl text-sm font-bold transition-all shadow-md active:scale-95 ${!gender ? 'opacity-30 cursor-not-allowed' : 'hover:opacity-80'
+            className={`mt-3 px-8 py-3 bg-foreground text-background rounded-xl text-sm font-bold transition-all shadow-sm active:scale-95 ${!gender ? 'opacity-30 cursor-not-allowed' : 'hover:opacity-80'
               }`}
           >
             Refresh Identity
@@ -252,7 +252,7 @@ export function ProfilePage() {
           {/* Institutional Creds */}
           <section>
             <h3 className="px-5 text-[11px] font-black text-muted-foreground uppercase tracking-widest mb-3">Institutional Creds</h3>
-            <div className="bg-card rounded-[32px] shadow-sm border border-border p-6 space-y-6">
+            <div className="bg-card rounded-boutique shadow-sm border border-border p-6 space-y-6">
               <div>
                 <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Academic Programme</label>
                 <input
@@ -270,9 +270,9 @@ export function ProfilePage() {
                     <button
                       key={lvl}
                       onClick={() => setLevel(lvl as any)}
-                      className={`w-14 py-2.5 rounded-lg text-sm font-bold transition-all border ${level === lvl
-                          ? 'bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/20'
-                          : 'bg-muted text-muted-foreground border-muted hover:bg-accent'
+                      className={`w-14 py-2.5 rounded-xl text-sm font-bold transition-all border ${level === lvl
+                        ? 'bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/20'
+                        : 'bg-muted text-muted-foreground border-muted hover:bg-accent'
                         }`}
                     >
                       {lvl}
@@ -286,7 +286,7 @@ export function ProfilePage() {
           {/* Personal Details */}
           <section>
             <h3 className="px-5 text-[11px] font-black text-muted-foreground uppercase tracking-widest mb-3">Personal Details</h3>
-            <div className="bg-card rounded-[32px] shadow-sm border border-border overflow-hidden">
+            <div className="bg-card rounded-boutique shadow-sm border border-border overflow-hidden">
 
               <div className="px-5 py-4 border-b border-border">
                 <label className="text-xs font-semibold text-muted-foreground mb-2 block">Full Name</label>
@@ -337,9 +337,9 @@ export function ProfilePage() {
                     <button
                       key={opt}
                       onClick={() => handleGenderChange(opt)}
-                      className={`px-5 py-2 flex-1 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 ${gender === opt
-                          ? 'bg-card text-primary shadow-md border border-border/80'
-                          : 'text-muted-foreground hover:text-foreground'
+                      className={`px-5 py-2 flex-1 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${gender === opt
+                        ? 'bg-card text-primary shadow-md border border-border/80'
+                        : 'text-muted-foreground hover:text-foreground'
                         }`}
                     >
                       {gender === opt && <Check size={13} className="stroke-[3]" />} {opt === 'M' ? 'Male' : 'Female'}
@@ -355,9 +355,9 @@ export function ProfilePage() {
                     <button
                       key={opt}
                       onClick={() => setMatchPref(opt)}
-                      className={`px-5 py-2 flex-1 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 ${matchPref === opt
-                          ? 'bg-card text-primary shadow-md border border-border/80'
-                          : 'text-muted-foreground hover:text-foreground'
+                      className={`px-5 py-2 flex-1 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${matchPref === opt
+                        ? 'bg-card text-primary shadow-md border border-border/80'
+                        : 'text-muted-foreground hover:text-foreground'
                         }`}
                     >
                       {matchPref === opt && <Check size={13} className="stroke-[3]" />} {opt === 'same' ? 'Same Sex' : 'Any Sex'}
@@ -371,7 +371,7 @@ export function ProfilePage() {
           {/* Network Status */}
           <section>
             <h3 className="px-5 text-[11px] font-black text-muted-foreground uppercase tracking-widest mb-3">Network Status</h3>
-            <div className="bg-card rounded-[32px] shadow-sm border border-border p-3 space-y-3">
+            <div className="bg-card rounded-boutique shadow-sm border border-border p-3 space-y-3">
 
               {(['ACTIVE', 'HIDDEN', 'COMPLETED'] as const).map((status) => {
                 const isActive = matchingStatus === status
@@ -386,7 +386,7 @@ export function ProfilePage() {
                   <button
                     key={status}
                     onClick={() => setMatchingStatus(status)}
-                    className={`w-full flex items-center p-3 rounded-2xl transition-all border ${isActive ? `${current.bg} ${current.border}` : 'bg-transparent border-transparent hover:bg-muted/50'
+                    className={`w-full flex items-center p-3 rounded-xl transition-all border ${isActive ? `${current.bg} ${current.border}` : 'bg-transparent border-transparent hover:bg-muted/50'
                       }`}
                   >
                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center mr-3 shrink-0 ${isActive ? `${current.iconBg} text-white shadow-sm` : 'bg-muted text-muted-foreground'
@@ -419,9 +419,9 @@ export function ProfilePage() {
             <button
               onClick={handleSave}
               disabled={!isComplete || isSaving}
-              className={`w-full py-6 rounded-[22px] flex items-center justify-center gap-3 shadow-premium transition-all duration-500 active:scale-[0.96] relative overflow-hidden group ${!isComplete || isSaving
-                  ? 'bg-muted text-muted-foreground/30 cursor-not-allowed border border-border/40'
-                  : 'bg-foreground text-background hover:bg-primary hover:text-primary-foreground hover:shadow-elevated'
+              className={`w-full py-6 rounded-boutique flex items-center justify-center gap-3 shadow-md transition-all duration-500 active:scale-[0.96] relative overflow-hidden group ${!isComplete || isSaving
+                ? 'bg-muted text-muted-foreground/30 cursor-not-allowed border border-border/40'
+                : 'bg-foreground text-background hover:bg-primary hover:text-primary-foreground hover:shadow-xl'
                 }`}
             >
               <div className="flex flex-col items-center">
@@ -439,7 +439,7 @@ export function ProfilePage() {
             {hasQuestionnaire !== null && (
               <button
                 onClick={() => navigate(hasQuestionnaire ? '/questionnaire/review' : '/questionnaire')}
-                className="w-full mt-4 h-[64px] rounded-[22px] flex items-center justify-center gap-3 border-2 border-slate-200 hover:border-indigo-200 hover:bg-indigo-50/50 transition-all group active:scale-[0.98]"
+                className="w-full mt-4 h-[64px] rounded-boutique flex items-center justify-center gap-3 border-2 border-slate-200 hover:border-indigo-200 hover:bg-indigo-50/50 transition-all group active:scale-[0.98]"
               >
                 <div className="flex flex-col items-center">
                   <span className="text-[14px] font-black text-slate-800 transition-colors group-hover:text-indigo-600">

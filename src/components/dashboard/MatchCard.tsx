@@ -1,4 +1,4 @@
-import { Check, Flag, Lock } from 'lucide-react'
+import { Check, Lock } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 interface MatchCardProps {
@@ -97,15 +97,6 @@ export function MatchCard({ match, isRevealed, onSelect, index }: MatchCardProps
         </div>
 
         {/* Quick Actions (Report Flag) */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onSelect();
-          }}
-          className="absolute top-2 right-2 p-2 text-muted-foreground/20 hover:text-red-500/40 transition-colors z-20"
-        >
-          <Flag className="w-3 h-3" />
-        </button>
       </button>
     </motion.div>
   )
