@@ -89,36 +89,44 @@ serve(async (req: Request) => {
     const newUserAnswers: AnswerVector = encodeAnswers(userResponses.answers);
 
     // ── STEP 2: THE BOUNCER — Filter at DATABASE level ───────────────
-    // The database is infinitely faster at filtering than TypeScript code.
-    // We eliminate anyone who fails strict dealbreakers BEFORE any math happens.
+    // We only fetch "Fresh" users (created in the last 60 days) to keep the pool relevant.
+    const sixtyDaysAgo = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString();
 
-    // Build the gender filter based on user's preference
-    let genderFilter: { gender?: string } = {};
-    if (userProfile.gender_pref === 'SAME_GENDER') {
-      genderFilter = { gender: userProfile.gender };
-    }
-    // If gender_pref is 'ANY_GENDER', no filter applied
-
-    // Fetch only ACTIVE, PAID users who match gender preference
-    // This is a critical scalability optimization
-    const { data: activeCandidates, error: candidatesError } = await supabase
+    // 1. Fetch only ACTIVE, PAID, FRESH users
+    // This is the primary scalability filter.
+    let query = supabase
       .from('users')
-      .select('id, gender, has_paid')
+      .select('id, gender, gender_pref, has_paid')
       .eq('status', 'ACTIVE')
       .eq('has_paid', true)
-      .neq('id', userId)
-      // Apply gender filter if needed
-      .match(genderFilter);
+      .gt('created_at', sixtyDaysAgo)
+      .neq('id', userId);
+
+    // 2. Apply current user's gender preference
+    if (userProfile.gender_pref === 'SAME_GENDER') {
+      query = query.eq('gender', userProfile.gender);
+    }
+
+    const { data: activeCandidates, error: candidatesError } = await query;
 
     if (candidatesError) {
       throw new Error(`Failed to fetch candidates: ${candidatesError.message}`);
     }
 
-    if (!activeCandidates || activeCandidates.length === 0) {
-      // No eligible candidates - return early
+    // 3. RECIPROCAL GENDER FILTER:
+    // If a candidate only wants "SAME_GENDER", but the current user is NOT their gender,
+    // they should be filtered out from this specific match.
+    const reciprocalCandidates = (activeCandidates || []).filter(candidate => {
+      if (candidate.gender_pref === 'SAME_GENDER') {
+        return candidate.gender === userProfile.gender;
+      }
+      return true; // They want ANY_GENDER, so the current user is fine.
+    });
+
+    if (reciprocalCandidates.length === 0) {
       return new Response(JSON.stringify({
         matches: [],
-        message: 'No eligible candidates found. Check back later.',
+        message: 'No fresh, eligible candidates found in your area. Check back later!',
         candidatesFound: 0
       }), {
         status: 200,
@@ -126,8 +134,8 @@ serve(async (req: Request) => {
       });
     }
 
-    // Fetch questionnaire answers for all filtered candidates
-    const candidateIds = activeCandidates.map((u: { id: string }) => u.id);
+    // Fetch questionnaire answers only for those who passed the reciprocal filter
+    const candidateIds = reciprocalCandidates.map((u: { id: string }) => u.id);
     const { data: candidateResponses, error: responsesError } = await supabase
       .from('questionnaire_responses')
       .select('user_id, answers')

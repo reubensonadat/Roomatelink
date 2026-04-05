@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Flag, ArrowLeft, Send, ShieldCheck, Lock } from 'lucide-react'
+import { Flag, ChevronRight, Send, ShieldCheck, Lock, Check, CheckCheck, Clock } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
@@ -67,7 +67,6 @@ export function ChatPage() {
         if (isMounted) setIsSyncing(true)
         
         // --- 10 Second Fail-Safe Timeout ---
-        // If the database hangs or connection drops, forcefully clear the badge.
         syncTimeout = setTimeout(() => {
           if (isMounted) setIsSyncing(false)
         }, 10000)
@@ -99,7 +98,7 @@ export function ChatPage() {
             .order('created_at', { ascending: true })
         ])
 
-        if (!isMounted) return // Prevent state updates if component unmounted while fetching
+        if (!isMounted) return 
 
         const me = profile
         const them = themRes.data
@@ -114,7 +113,7 @@ export function ChatPage() {
           return
         }
 
-        // ── Payment guard: only paid users can message ────────────────
+        // ── Payment guard ────────────────
         if (!me.has_paid) {
           setIsLocked(true)
           setOtherUser(them)
@@ -129,7 +128,8 @@ export function ChatPage() {
             text: m.content,
             sender: m.sender_id === me.id ? 'me' : 'them',
             time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            timestamp: m.created_at
+            timestamp: m.created_at,
+            status: m.status
           }))
 
           // Merge: Cache + Delta
@@ -137,7 +137,7 @@ export function ChatPage() {
             const existingIds = new Set(fetchedMessages.map(m => m.id))
             const filteredPrev = prev.filter(m => !existingIds.has(m.id))
             const combined = [...filteredPrev, ...fetchedMessages]
-            const final = combined.slice(-100) // Keep cache size healthy
+            const final = combined.slice(-100)
             
             localStorage.setItem(`roommate_chat_${receiverId}`, JSON.stringify({
               messages: final,
@@ -147,8 +147,8 @@ export function ChatPage() {
           })
         }
 
-        // Mark as read in background without blocking UI
-        supabase.from('messages').update({ status: 'READ' }).eq('receiver_id', me.id).eq('sender_id', them.id).then(() => {})
+        // Mark incoming messages as read
+        supabase.from('messages').update({ status: 'READ' }).eq('receiver_id', me.id).eq('sender_id', them.id).neq('status', 'READ').then(() => {})
 
         channel = supabase
           .channel(`chat:${me.id}:${them.id}`)
@@ -164,7 +164,8 @@ export function ChatPage() {
                 text: payload.new.content,
                 sender: 'them',
                 time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                timestamp: payload.new.created_at
+                timestamp: payload.new.created_at,
+                status: payload.new.status
               }
               setMessages(prev => {
                 const updated = [...prev, newMessage]
@@ -174,7 +175,19 @@ export function ChatPage() {
                 }))
                 return updated
               })
+              // Mark as read immediately if chat is open
+              supabase.from('messages').update({ status: 'READ' }).eq('id', payload.new.id).then(() => {})
             }
+          })
+          .on('postgres_changes', {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'messages'
+          }, (payload: any) => {
+            // Update message status in real-time (e.g. from SENT to READ)
+            setMessages(prev => prev.map(msg => 
+              msg.id === payload.new.id ? { ...msg, status: payload.new.status } : msg
+            ))
           })
           .subscribe()
 
@@ -191,7 +204,6 @@ export function ChatPage() {
 
     setupChat()
 
-    // Proper Synchronous Cleanup for React Strict Mode and Navigation
     return () => {
       isMounted = false
       if (syncTimeout) clearTimeout(syncTimeout)
@@ -208,42 +220,54 @@ export function ChatPage() {
     if (!input.trim() || !receiverId || !profile) return
 
     const text = input
+    const tempId = Date.now().toString()
     setInput("")
 
-    // Optimistic update
-    const tempId = Date.now()
+    // 1. Optimistic Update (PENDING)
     const now = new Date()
     const myNewMessage = {
       id: tempId,
       text,
       sender: 'me',
       time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      timestamp: now.toISOString()
+      timestamp: now.toISOString(),
+      status: 'PENDING'
     }
     
-    setMessages(prev => {
-      const updated = [...prev, myNewMessage]
-      localStorage.setItem(`roommate_chat_${receiverId}`, JSON.stringify({
-        messages: updated,
-        otherUser: otherUser
-      }))
-      return updated
-    })
+    setMessages(prev => [...prev, myNewMessage])
 
-    const { error } = await supabase.from('messages').insert({
+    // 2. Server Sync
+    const { data, error } = await supabase.from('messages').insert({
       sender_id: profile.id,
       receiver_id: receiverId,
       content: text,
       status: 'SENT'
-    })
+    }).select().single()
 
     if (error) {
       toast.error("Failed to send message")
       setMessages(prev => prev.filter(m => m.id !== tempId))
+      return
+    }
+
+    // 3. Update status to SENT and replace tempId with real ID
+    if (data) {
+      setMessages(prev => {
+        const updated = prev.map(m => m.id === tempId ? {
+          ...m,
+          id: data.id,
+          status: 'SENT'
+        } : m)
+        localStorage.setItem(`roommate_chat_${receiverId}`, JSON.stringify({
+          messages: updated,
+          otherUser: otherUser
+        }))
+        return updated
+      })
     }
   }
 
-  // ── Loading Skeleton (Boutique UI) ───────────────────────────────
+  // ── Loading Skeleton ───────────────────────────────
   if (loading && !otherUser) {
     return (
       <div className="flex flex-col h-[100dvh] bg-background max-w-2xl mx-auto border-x border-border/40">
@@ -271,38 +295,20 @@ export function ChatPage() {
     )
   }
 
-  // ── Locked state: user hasn't paid ───────────────────────────────
+  // ── Locked state ───────────────────────────────
   if (isLocked) {
     return (
       <div className="flex flex-col h-[100dvh] bg-background max-w-2xl mx-auto border-x border-border/40 items-center justify-center p-8 text-center">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="flex flex-col items-center gap-6"
-        >
+        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center gap-6">
           <div className="w-20 h-20 rounded-[2rem] bg-primary/10 flex items-center justify-center">
             <Lock className="w-9 h-9 text-primary" />
           </div>
           <div>
-            <h2 className="text-2xl font-black text-foreground mb-2">
-              Unlock to Message {otherUser?.full_name?.split(' ')[0] || 'this match'}
-            </h2>
-            <p className="text-muted-foreground font-semibold text-sm max-w-xs mx-auto">
-              Unlock your matches for GHS 25 to start private conversations and see full profiles.
-            </p>
+            <h2 className="text-2xl font-black text-foreground mb-2">Unlock to Message {otherUser?.full_name?.split(' ')[0] || 'this match'}</h2>
+            <p className="text-muted-foreground font-semibold text-sm max-w-xs mx-auto">Unlock your matches for GHS 25 to start private conversations and see full profiles.</p>
           </div>
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="px-8 py-4 bg-primary text-primary-foreground font-black rounded-2xl shadow-xl active:scale-95 transition-all"
-          >
-            Unlock Matches — GHS 25
-          </button>
-          <button
-            onClick={() => navigate(-1)}
-            className="text-sm font-bold text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Go Back
-          </button>
+          <button onClick={() => navigate('/dashboard')} className="px-8 py-4 bg-primary text-primary-foreground font-black rounded-2xl shadow-xl active:scale-95 transition-all">Unlock Matches — GHS 25</button>
+          <button onClick={() => navigate(-1)} className="text-sm font-bold text-muted-foreground hover:text-foreground transition-colors">Go Back</button>
         </motion.div>
       </div>
     )
@@ -315,7 +321,7 @@ export function ChatPage() {
       <header className="px-4 py-3 sticky top-0 bg-background/80 backdrop-blur-xl border-b border-border/40 z-40 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button onClick={() => navigate('/dashboard/messages')} className="p-2 rounded-xl hover:bg-muted transition-colors active:scale-95 group">
-            <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+            <ChevronRight className="w-5 h-5 rotate-180 group-hover:-translate-x-0.5 transition-transform" />
           </button>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-card border border-border overflow-hidden shadow-sm">
@@ -324,24 +330,14 @@ export function ChatPage() {
             <div className="flex flex-col">
               <span className="text-[15px] font-bold leading-tight text-foreground truncate max-w-[150px]">{otherUser?.full_name || 'Roommate'}</span>
               <div className="flex items-center gap-1.5 mt-0.5">
-                {status.isOnline ? (
-                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                ) : (
-                  <div className="w-2 h-2 rounded-full bg-muted-foreground/30" />
-                )}
-                <span className={`text-[11px] font-medium leading-none ${status.isOnline ? 'text-emerald-500' : 'text-muted-foreground/60'}`}>
-                  {status.label}
-                </span>
+                <div className={`w-2 h-2 rounded-full ${status.isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-muted-foreground/30'}`} />
+                <span className={`text-[11px] font-medium leading-none ${status.isOnline ? 'text-emerald-500' : 'text-muted-foreground/60'}`}>{status.label}</span>
               </div>
             </div>
           </div>
         </div>
         <div className="flex items-center gap-1">
-          {isSyncing && (
-             <div className="px-2 py-1 bg-muted rounded-full text-[9px] font-bold text-muted-foreground animate-pulse mr-2 uppercase tracking-tighter">
-               Syncing
-             </div>
-          )}
+          {isSyncing && <div className="px-2 py-1 bg-muted rounded-full text-[9px] font-bold text-muted-foreground animate-pulse mr-2 uppercase tracking-tighter">Syncing</div>}
           <button onClick={() => setIsReportModalOpen(true)} className="p-2 text-muted-foreground/40 hover:text-red-500 transition-colors active:scale-95">
             <Flag className="w-5 h-5" />
           </button>
@@ -368,7 +364,16 @@ export function ChatPage() {
                 <div className={`px-4 py-2.5 rounded-2xl text-[14.5px] font-medium leading-relaxed break-all overflow-hidden ${isMe ? 'bg-primary text-primary-foreground rounded-tr-sm' : 'bg-muted/50 text-foreground rounded-tl-sm'}`}>
                   {msg.text}
                 </div>
-                <span className="text-[9px] font-bold text-muted-foreground/40 mt-1 px-1 uppercase tracking-tighter">{msg.time}</span>
+                <div className="flex items-center gap-1 mt-1 px-1">
+                  <span className="text-[9px] font-bold text-muted-foreground/40 uppercase tracking-tighter">{msg.time}</span>
+                  {isMe && (
+                    <div className="flex items-center">
+                      {msg.status === 'PENDING' && <Clock className="w-2.5 h-2.5 text-muted-foreground/20 animate-pulse" />}
+                      {msg.status === 'SENT' && <Check className="w-2.5 h-2.5 text-primary" />}
+                      {msg.status === 'READ' && <CheckCheck className="w-2.5 h-2.5 text-indigo-500" />}
+                    </div>
+                  )}
+                </div>
               </motion.div>
             )
           })}
@@ -387,22 +392,13 @@ export function ChatPage() {
               className="w-full bg-transparent border-none outline-none py-2 font-medium text-sm text-foreground placeholder:text-muted-foreground/30"
             />
           </div>
-          <button
-            type="submit"
-            disabled={!input.trim()}
-            className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${input.trim() ? 'bg-primary text-primary-foreground shadow-lg active:scale-90' : 'bg-muted text-muted-foreground/20'}`}
-          >
+          <button type="submit" disabled={!input.trim()} className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${input.trim() ? 'bg-primary text-primary-foreground shadow-lg active:scale-90' : 'bg-muted text-muted-foreground/20'}`}>
             <Send className="w-4 h-4 ml-0.5" />
           </button>
         </form>
       </div>
 
-      <ReportModal
-        isOpen={isReportModalOpen}
-        onClose={() => setIsReportModalOpen(false)}
-        reportedName={otherUser?.full_name || ''}
-        reportedId={receiverId || ''}
-      />
+      <ReportModal isOpen={isReportModalOpen} onClose={() => setIsReportModalOpen(false)} reportedName={otherUser?.full_name || ''} reportedId={receiverId || ''} />
     </div>
   )
 }
