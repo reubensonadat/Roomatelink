@@ -42,72 +42,76 @@ export function ChatPage() {
     async function setupChat() {
       if (!user || !receiverId) return
 
-      // Parallel fetch: Other User Profile and Message History
-      const [themRes, historyRes] = await Promise.all([
-        supabase.from('users').select('*').eq('id', receiverId).single(),
-        supabase
-          .from('messages')
-          .select('*')
-          .or(`and(sender_id.eq.${profile?.id},receiver_id.eq.${receiverId}),and(sender_id.eq.${receiverId},receiver_id.eq.${profile?.id})`)
-          .order('created_at', { ascending: true })
-      ])
+      try {
+        // Parallel fetch: Other User Profile and Message History
+        const [themRes, historyRes] = await Promise.all([
+          supabase.from('users').select('*').eq('id', receiverId).single(),
+          supabase
+            .from('messages')
+            .select('*')
+            .or(`and(sender_id.eq.${profile?.id},receiver_id.eq.${receiverId}),and(sender_id.eq.${receiverId},receiver_id.eq.${profile?.id})`)
+            .order('created_at', { ascending: true })
+        ])
 
-      const me = profile
-      const them = themRes.data
-      
-      if (!me || !them) {
-        if (!me) {
-           console.error("Current profile missing from context");
-        } else {
-           toast.error("User not found")
-           navigate('/dashboard/messages')
-        }
-        return
-      }
-
-      // ── Payment guard: only paid users can message ────────────────
-      if (!me.has_paid) {
-        setIsLocked(true)
-        setOtherUser(them)
-        setLoading(false)
-        return
-      }
-
-      setOtherUser(them)
-
-      if (historyRes.data) {
-        setMessages(historyRes.data.map((m: any) => ({
-          id: m.id,
-          text: m.content,
-          sender: m.sender_id === me.id ? 'me' : 'them',
-          time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        })))
-      }
-
-      // Mark as read in background
-      supabase.from('messages').update({ status: 'READ' }).eq('receiver_id', me.id).eq('sender_id', them.id).then(() => {})
-
-      const channel = supabase
-        .channel(`chat:${me.id}:${them.id}`)
-        .on('postgres_changes', { 
-          event: 'INSERT', 
-          schema: 'public', 
-          table: 'messages',
-          filter: `receiver_id=eq.${me.id}`
-        }, (payload: any) => {
-          if (payload.new.sender_id === them.id) {
-            setMessages(prev => [...prev, {
-              id: payload.new.id,
-              text: payload.new.content,
-              sender: 'them',
-              time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            }])
+        const me = profile
+        const them = themRes.data
+        
+        if (!me || !them) {
+          if (!me) {
+             console.error("Current profile missing from context");
+          } else {
+             toast.error("User not found")
+             navigate('/dashboard/messages')
           }
-        })
-        .subscribe()
+          return
+        }
 
-      setLoading(false)
-      return () => { supabase.removeChannel(channel) }
+        // ── Payment guard: only paid users can message ────────────────
+        if (!me.has_paid) {
+          setIsLocked(true)
+          setOtherUser(them)
+          return
+        }
+
+        setOtherUser(them)
+
+        if (historyRes.data) {
+          setMessages(historyRes.data.map((m: any) => ({
+            id: m.id,
+            text: m.content,
+            sender: m.sender_id === me.id ? 'me' : 'them',
+            time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          })))
+        }
+
+        // Mark as read in background
+        supabase.from('messages').update({ status: 'READ' }).eq('receiver_id', me.id).eq('sender_id', them.id).then(() => {})
+
+        const channel = supabase
+          .channel(`chat:${me.id}:${them.id}`)
+          .on('postgres_changes', { 
+            event: 'INSERT', 
+            schema: 'public', 
+            table: 'messages',
+            filter: `receiver_id=eq.${me.id}`
+          }, (payload: any) => {
+            if (payload.new.sender_id === them.id) {
+              setMessages(prev => [...prev, {
+                id: payload.new.id,
+                text: payload.new.content,
+                sender: 'them',
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              }])
+            }
+          })
+          .subscribe()
+
+        return () => { supabase.removeChannel(channel) }
+      } catch (err) {
+        console.error("Chat setup error:", err)
+      } finally {
+        setLoading(false)
+      }
     }
 
     setupChat()

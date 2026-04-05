@@ -162,6 +162,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  // ─── Real-Time Activity Heartbeat ────────────────────────
+  useEffect(() => {
+    if (!user || !profile) return
+
+    const updateActivity = async () => {
+      try {
+        // Silently update last_active to track online status
+        await supabase
+          .from('users')
+          .update({ last_active: new Date().toISOString() })
+          .eq('auth_id', user.id)
+      } catch (err) {
+        // Heartbeat errors should not interrupt the user experience
+      }
+    }
+
+    // Update immediately on mount/session start
+    updateActivity()
+
+    // Update every 2 minutes while the tab is active
+    const interval = setInterval(updateActivity, 2 * 60 * 1000)
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        updateActivity()
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibility)
+
+    return () => {
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', handleVisibility)
+    }
+  }, [user, profile])
+
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({
       email,
