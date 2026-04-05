@@ -239,7 +239,7 @@ export function MessagesPage() {
                         <span className={`text-[11px] font-black uppercase tracking-widest ${chat.unread > 0 ? 'text-primary' : 'text-muted-foreground/40'}`}>{chat.time}</span>
                       </div>
                       <div className="flex justify-between items-start gap-3">
-                        <p className={`text-[14px] leading-relaxed line-clamp-2 flex-1 ${chat.unread > 0 ? 'text-foreground font-bold' : 'text-muted-foreground font-medium'}`}>
+                        <p className={`text-[14px] leading-relaxed line-clamp-2 flex-1 break-all ${chat.unread > 0 ? 'text-foreground font-bold' : 'text-muted-foreground font-medium'}`}>
                           {chat.lastMessage}
                         </p>
                         {chat.unread > 0 && (

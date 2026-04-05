@@ -235,7 +235,7 @@ export function ChatPage() {
                 transition={{ duration: 0.15 }}
                 className={`flex flex-col max-w-[85%] ${isMe ? 'self-end items-end' : 'self-start items-start'}`}
               >
-                <div className={`px-4 py-2.5 rounded-2xl text-[14.5px] font-medium leading-relaxed ${isMe ? 'bg-primary text-primary-foreground rounded-tr-sm' : 'bg-muted/50 text-foreground rounded-tl-sm'}`}>
+                <div className={`px-4 py-2.5 rounded-2xl text-[14.5px] font-medium leading-relaxed break-all overflow-hidden ${isMe ? 'bg-primary text-primary-foreground rounded-tr-sm' : 'bg-muted/50 text-foreground rounded-tl-sm'}`}>
                   {msg.text}
                 </div>
                 <span className="text-[9px] font-bold text-muted-foreground/40 mt-1 px-1 uppercase tracking-tighter">{msg.time}</span>

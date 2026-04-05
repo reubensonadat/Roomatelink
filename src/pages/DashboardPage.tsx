@@ -374,7 +374,7 @@ export function DashboardPage() {
     try {
       const { error } = await supabase
         .from('users')
-        .update({ has_paid: true })
+        .update({ has_paid: true, is_pioneer: true })
         .eq('id', profile.id)
 
       if (error) throw error

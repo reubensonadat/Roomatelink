@@ -65,6 +65,12 @@ serve(async (req: Request) => {
     // PIONEER LIMIT IS SET TO 100 STUDENTS
     const isPioneer = count !== null && count <= 100
 
+    // Force sync the database so it stops reporting 'false' structurally
+    if (isPioneer) {
+      // Background update without blocking the response
+      adminClient.from('users').update({ is_pioneer: true }).eq('auth_id', user.id).then();
+    }
+
     return new Response(
       JSON.stringify({ 
         isPioneer,

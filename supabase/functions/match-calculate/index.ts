@@ -166,28 +166,46 @@ serve(async (req: Request) => {
       .eq('user_id', userId);
 
     // ── STEP 5: Store matches in database ───────────────────────────────
-    // Delete old matches for this user first
+    // Delete old matches involving this user first
     const { error: deleteError } = await supabase
       .from('matches')
       .delete()
-      .eq('user_a_id', userId);
+      .or(`user_a_id.eq.${userId},user_b_id.eq.${userId}`);
 
     if (deleteError) {
       throw new Error(`Failed to delete old matches: ${deleteError.message}`);
     }
 
-    // Insert new matches
+    // Insert new matches symmetrically
     if (matches.length > 0) {
-      const matchesToInsert = matches.map(match => ({
-        user_a_id: userId,
-        user_b_id: match.userId,
-        match_percentage: match.result.matchPercentage,
-        raw_score: match.result.rawScore,
-        cross_category_flags: match.result.patternFlags,
-        consistency_modifier: match.result.consistencyModifier,
-        category_scores: match.result.categoryBreakdown,
-        calculated_at: new Date().toISOString()
-      }));
+      const matchesToInsert: any[] = [];
+      const now = new Date().toISOString();
+
+      matches.forEach(match => {
+        // Forward Match (You -> Them)
+        matchesToInsert.push({
+          user_a_id: userId,
+          user_b_id: match.userId,
+          match_percentage: match.result.matchPercentage,
+          raw_score: match.result.rawScore,
+          cross_category_flags: match.result.patternFlags,
+          consistency_modifier: match.result.consistencyModifier,
+          category_scores: match.result.categoryBreakdown,
+          calculated_at: now
+        });
+        
+        // Reciprocal Match (Them -> You)
+        matchesToInsert.push({
+          user_a_id: match.userId,
+          user_b_id: userId,
+          match_percentage: match.result.matchPercentage,
+          raw_score: match.result.rawScore,
+          cross_category_flags: match.result.patternFlags,
+          consistency_modifier: match.result.consistencyModifier,
+          category_scores: match.result.categoryBreakdown,
+          calculated_at: now
+        });
+      });
 
       const { error: insertError } = await supabase
         .from('matches')
