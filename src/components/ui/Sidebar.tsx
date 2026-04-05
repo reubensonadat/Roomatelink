@@ -23,7 +23,7 @@ export function Sidebar() {
       {/* Brand */}
       <div className="flex flex-col mb-10 px-2">
         <Link to="/" className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity">
-          <div className="w-9 h-9 bg-white rounded-[10px] flex items-center justify-center shadow-xs overflow-hidden p-[5px] border border-border/50">
+          <div className="w-9 h-9 bg-card rounded-[10px] flex items-center justify-center shadow-xs overflow-hidden p-[5px] border border-border/50">
             <img src="/logo.png" alt="Roommate Link" className="w-full h-full object-contain" />
           </div>
           <span className="font-bold text-lg tracking-tight text-foreground">Roommate Link</span>

@@ -62,9 +62,11 @@ export function DashboardPage() {
   const [isPioneerUser, setIsPioneerUser] = useState(false)
   const [hasQuestionnaire, setHasQuestionnaire] = useState(() => sessionStorage.getItem('hasQuestionnaireCache') === 'true')
   const [mounted, setMounted] = useState(false)
+  const [isCheckingPayment, setIsCheckingPayment] = useState(false)
   const [isDevMode, setIsDevMode] = useState(false)
   const [devClickCount, setDevClickCount] = useState(0)
   const [isRecalculating, setIsRecalculating] = useState(false)
+  const [displayLimit, setDisplayLimit] = useState(10)
 
   // ─── Modal States ────────────────────────────────────────────────────
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false)
@@ -305,19 +307,27 @@ export function DashboardPage() {
 
   const handlePaymentFallbackCheck = async () => {
     if (!user || !profile) return
-    const { data: latestProfile } = await supabase
-      .from('users')
-      .select('has_paid')
-      .eq('id', profile.id)
-      .maybeSingle()
+    setIsCheckingPayment(true)
+    try {
+      const { data: latestProfile } = await supabase
+        .from('users')
+        .select('has_paid')
+        .eq('id', profile.id)
+        .maybeSingle()
 
-    if (latestProfile?.has_paid) {
-      setIsVerifyingPayment(false)
-      setHasPaid(true)
-      setIsUnlocking(true)
-      setUnlockedCount(0)
-    } else {
-      toast.error('Payment not yet confirmed. Please wait.')
+      if (latestProfile?.has_paid) {
+        setIsVerifyingPayment(false)
+        setHasPaid(true)
+        setIsUnlocking(true)
+        setUnlockedCount(0)
+        toast.success('Payment Verified! Unlocking matches...')
+      } else {
+        toast.info('Status: Pending. Webhook is still processing.')
+      }
+    } catch (err) {
+      toast.error('Could not reach verification server.')
+    } finally {
+      setIsCheckingPayment(false)
     }
   }
 
@@ -504,42 +514,58 @@ export function DashboardPage() {
             ) : !isProfileComplete ? (
               <motion.div
                 key="profile-incomplete"
-                initial={{ opacity: 0, y: 10 }}
+                initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="flex flex-col items-center justify-center pt-16 pb-20 px-6 text-center"
+                className="w-full max-w-lg mx-auto"
               >
-                <div className="w-20 h-20 bg-amber-500/10 rounded-3xl flex items-center justify-center mb-6 relative">
-                  <div className="absolute inset-0 bg-amber-500/20 animate-pulse rounded-3xl" />
-                  <UserCheck className="w-8 h-8 text-amber-500 z-10" />
+                <div className="bg-card/50 backdrop-blur-xl rounded-[2.5rem] border border-border/80 p-8 shadow-premium flex flex-col items-center text-center gap-6 relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 w-40 h-40 bg-amber-500/5 blur-[80px] -translate-y-1/2 translate-x-1/2" />
+                  <div className="w-20 h-20 bg-amber-500/10 rounded-3xl flex items-center justify-center relative group-hover:scale-110 transition-transform duration-500">
+                    <div className="absolute inset-0 bg-amber-500/20 animate-pulse rounded-3xl" />
+                    <UserCheck className="w-9 h-9 text-amber-500 z-10" />
+                  </div>
+                  <div className="space-y-2">
+                    <h2 className="text-[24px] font-black tracking-tight text-foreground leading-tight">Identity Synchronization</h2>
+                    <p className="text-muted-foreground text-[14px] font-semibold leading-relaxed max-w-[280px]">
+                      Welcome, student! Secure your institutional credentials to enter the matching pool.
+                    </p>
+                  </div>
+                  <Link 
+                    to="/dashboard/profile" 
+                    className="w-full py-5 bg-amber-500 text-white font-black text-[15px] rounded-2xl shadow-xl shadow-amber-500/20 hover:bg-amber-600 hover:shadow-amber-500/40 active:scale-95 transition-all flex items-center justify-center gap-2 uppercase tracking-widest"
+                  >
+                    Setup Identity <Sparkles className="w-4 h-4 ml-1" />
+                  </Link>
                 </div>
-                <h2 className="text-[22px] font-black tracking-tight text-foreground mb-3">Finish Your Profile</h2>
-                <p className="text-muted-foreground text-[14px] sm:text-[15px] font-medium leading-relaxed max-w-[320px] mb-8">
-                  Welcome, {profile?.full_name?.split(' ')[0] || 'Student'}! To find the right roommate, we need your course, level, and phone number.
-                </p>
-                <Link to="/dashboard/profile" className="px-8 py-4 bg-primary text-white font-bold text-[15px] rounded-2xl shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2">
-                  Setup Profile Now <Sparkles className="w-4 h-4 ml-1" />
-                </Link>
               </motion.div>
             ) : !hasQuestionnaire ? (
               <motion.div
                 key="questionnaire-incomplete"
-                initial={{ opacity: 0, y: 10 }}
+                initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="flex flex-col items-center justify-center pt-16 pb-20 px-6 text-center"
+                className="w-full max-w-lg mx-auto"
               >
-                <div className="w-20 h-20 bg-indigo-500/10 rounded-3xl flex items-center justify-center mb-6 relative">
-                  <div className="absolute inset-0 bg-indigo-500/20 animate-pulse rounded-3xl" />
-                  <Sparkles className="w-8 h-8 text-indigo-500 z-10" />
+                <div className="bg-card/50 backdrop-blur-xl rounded-[2.5rem] border border-border/80 p-8 shadow-premium flex flex-col items-center text-center gap-6 relative overflow-hidden group">
+                   <div className="absolute top-0 right-0 w-40 h-40 bg-primary/5 blur-[80px] -translate-y-1/2 translate-x-1/2" />
+                   <div className="w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center relative group-hover:scale-110 transition-transform duration-500">
+                    <div className="absolute inset-0 bg-primary/20 animate-pulse rounded-3xl" />
+                    <Sparkles className="w-9 h-9 text-primary z-10" />
+                  </div>
+                  <div className="space-y-2">
+                    <h2 className="text-[24px] font-black tracking-tight text-foreground leading-tight">DNA Mapping Required</h2>
+                    <p className="text-muted-foreground text-[14px] font-semibold leading-relaxed max-w-[280px]">
+                      Your identity is secure. Now, map your lifestyle DNA to find your perfect roommates.
+                    </p>
+                  </div>
+                  <Link 
+                    to="/questionnaire" 
+                    className="w-full py-5 bg-foreground text-background font-black text-[15px] rounded-2xl shadow-xl hover:opacity-90 active:scale-95 transition-all flex items-center justify-center gap-2 uppercase tracking-widest"
+                  >
+                    Start DNA Test <Sparkles className="w-4 h-4 ml-1" />
+                  </Link>
                 </div>
-                <h2 className="text-[22px] font-black tracking-tight text-foreground mb-3">Almost Ready!</h2>
-                <p className="text-muted-foreground text-[14px] sm:text-[15px] font-medium leading-relaxed max-w-[320px] mb-8">
-                  Your basic profile is set. Now, take the lifestyle test so our algorithm can find your perfect roommates.
-                </p>
-                <Link to="/questionnaire" className="px-8 py-4 bg-foreground text-background font-bold text-[15px] rounded-2xl shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2">
-                  Start Questionnaire <Sparkles className="w-4 h-4 ml-1" />
-                </Link>
               </motion.div>
             ) : matches.length === 0 ? (
               <motion.div
@@ -568,7 +594,36 @@ export function DashboardPage() {
               </motion.div>
             ) : (
               <motion.div key="feed" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                <MatchFeed matches={matches} hasPaid={hasPaid} onSelectMatch={handleSelectMatch} isLoading={isLoading} />
+                {!hasPaid && matches.length > 0 && (
+                  <div className="flex justify-center mb-6">
+                    <button 
+                      onClick={handlePaymentFallbackCheck}
+                      disabled={isCheckingPayment}
+                      className="px-6 py-2.5 bg-muted/40 hover:bg-muted border border-border/40 rounded-full text-[11px] font-black uppercase tracking-widest text-muted-foreground transition-all flex items-center gap-2 active:scale-95 disabled:opacity-50"
+                    >
+                      {isCheckingPayment ? <Loader2 className="w-3 h-3 animate-spin" /> : <UserCheck className="w-3 h-3" />}
+                      {isCheckingPayment ? "Checking Vault..." : "Already Paid? Verify Status"}
+                    </button>
+                  </div>
+                )}
+                <MatchFeed matches={matches.slice(0, Math.min(displayLimit, 20))} hasPaid={hasPaid} onSelectMatch={handleSelectMatch} isLoading={isLoading} />
+                
+                {matches.length > displayLimit && displayLimit < 20 && (
+                  <div className="flex justify-center mt-10 mb-20 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                    <button
+                      onClick={() => setDisplayLimit(prev => Math.min(prev + 10, 20))}
+                      className="group px-8 py-4 bg-muted/30 hover:bg-muted border border-border/40 rounded-2xl flex items-center gap-3 transition-all active:scale-95"
+                    >
+                      <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <Sparkles className="w-4 h-4 text-primary" />
+                      </div>
+                      <div className="text-left">
+                        <span className="block text-[12px] font-black uppercase tracking-widest text-foreground">Explore More Elite DNA</span>
+                        <span className="block text-[10px] font-bold text-muted-foreground">Revealing top 20 potential roommates</span>
+                      </div>
+                    </button>
+                  </div>
+                )}
               </motion.div>
             )}
           </AnimatePresence>

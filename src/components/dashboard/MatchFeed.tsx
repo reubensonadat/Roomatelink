@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { MatchCard } from './MatchCard'
 
 interface MatchFeedProps {
@@ -27,7 +28,7 @@ export function MatchFeed({ matches, hasPaid, onSelectMatch, isLoading }: MatchF
           }
           return prev + 1
         })
-      }, 500)
+      }, 300)
       return () => clearInterval(interval)
     } else {
       setUnlockedCount(0)
@@ -36,13 +37,13 @@ export function MatchFeed({ matches, hasPaid, onSelectMatch, isLoading }: MatchF
 
   if (isLoading) {
     return (
-      <div className="flex flex-col gap-3 md:gap-4">
+      <div className="flex flex-col gap-3 md:gap-4 w-full">
         {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="bg-card w-full rounded-3xl p-3 sm:p-4 flex gap-3 sm:gap-4 items-center border border-border/60 animate-pulse min-h-[110px] sm:min-h-[125px]">
-            <div className="w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-2xl bg-muted shrink-0" />
-            <div className="flex flex-col flex-1 gap-2">
-              <div className="h-3.5 sm:h-4 w-20 sm:w-24 bg-muted rounded-sm" />
-              <div className="h-2.5 sm:h-3 w-full bg-muted rounded-sm" />
+          <div key={i} className="bg-card/50 w-full rounded-[2rem] p-4 flex gap-4 items-center border border-border/40 animate-pulse min-h-[110px] sm:min-h-[125px]">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-muted shrink-0" />
+            <div className="flex flex-col flex-1 gap-3">
+              <div className="h-4 w-28 bg-muted rounded-md" />
+              <div className="h-3 w-full bg-muted rounded-md" />
             </div>
           </div>
         ))}
@@ -51,19 +52,32 @@ export function MatchFeed({ matches, hasPaid, onSelectMatch, isLoading }: MatchF
   }
 
   return (
-    <div className="flex flex-col gap-3 md:gap-4 relative">
-      {matches.map((match, i) => {
-        const isRevealed = hasPaid || (i < unlockedCount)
-        return (
-          <MatchCard
-            key={match.id}
-            match={match}
-            isRevealed={isRevealed}
-            onSelect={() => onSelectMatch(match)}
-            index={i}
-          />
-        )
-      })}
+    <div className="flex flex-col gap-3 md:gap-4 relative w-full">
+      <AnimatePresence mode="popLayout">
+        {matches.map((match, i) => {
+          const isRevealed = hasPaid || (i < unlockedCount)
+          return (
+            <motion.div
+              key={match.id}
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ 
+                delay: i * 0.1, 
+                duration: 0.6, 
+                ease: [0.22, 1, 0.36, 1] 
+              }}
+              layout
+            >
+              <MatchCard
+                match={match}
+                isRevealed={isRevealed}
+                onSelect={() => onSelectMatch(match)}
+                index={i}
+              />
+            </motion.div>
+          )
+        })}
+      </AnimatePresence>
     </div>
   )
 }

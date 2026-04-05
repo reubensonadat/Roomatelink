@@ -23,6 +23,8 @@ export function SettingsPage() {
 
   const [isVerifyModalOpen, setIsVerifyModalOpen] = useState(false);
   const [manualEmail, setManualEmail] = useState('');
+  const [verificationCode, setVerificationCode] = useState('');
+  const [verificationStep, setVerificationStep] = useState<'email' | 'code'>('email');
   const [isVerifying, setIsVerifying] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
 
@@ -115,30 +117,66 @@ export function SettingsPage() {
   };
 
   const handleVerifyEmail = async () => {
-    if (!manualEmail.includes('@')) {
-      toast.error('Please enter a valid university email address.');
+    // Step 1: UCC Domain Validation & Send Code
+    if (verificationStep === 'email') {
+      if (!manualEmail.endsWith('stu.ucc.edu.gh')) {
+        toast.error('Only @stu.ucc.edu.gh emails are supported for this launch phase.');
+        return;
+      }
+      setIsVerifying(true);
+      try {
+        const { data, error } = await supabase.functions.invoke('verify-student', {
+          body: { action: 'SEND_CODE', email: manualEmail, userId: user?.id }
+        });
+
+        if (error) throw error;
+
+        if (data?.error === 'SERVICE_BUSY') {
+          toast.error(data.message, { duration: 6000 });
+          return;
+        }
+
+        setVerificationStep('code');
+        toast.info('Verification token sent to your student mail.');
+      } catch (err: any) {
+        toast.error(err.message || 'Verification service unreachable.');
+      } finally {
+        setIsVerifying(false);
+      }
+      return;
+    }
+
+    // Step 2: Code Validation
+    if (verificationCode.length < 6) {
+      toast.error('Please enter the 6-digit token.');
       return;
     }
 
     setIsVerifying(true);
     try {
-      // Simulate verification - in real app, update 'users' table or send verification email
-      const { error } = await supabase
-        .from('users')
-        .update({ is_student_verified: true })
-        .eq('auth_id', user?.id);
-      
-      if (error) {
-        toast.error(error.message);
-      } else {
-        toast.success(`Verified! Welcome student.`, {
-          icon: <GraduationCap className="w-5 h-5 text-white" />
-        });
-        setIsVerifyModalOpen(false);
-        setManualEmail('');
+      const { data, error } = await supabase.functions.invoke('verify-student', {
+        body: { action: 'CONFIRM_CODE', email: manualEmail, code: verificationCode, userId: user?.id }
+      });
+
+      if (error) throw error;
+
+      if (data?.error === 'INVALID_CODE') {
+        toast.error(data.message);
+        return;
       }
-    } catch {
-      toast.error('Verification failed');
+
+      toast.success(`Identity Confirmed! UCC Badge active.`, {
+        icon: <GraduationCap className="w-5 h-5 text-white" />
+      });
+      setIsVerifyModalOpen(false);
+      setManualEmail('');
+      setVerificationCode('');
+      setVerificationStep('email');
+      
+      // Refresh to show the badge
+      window.location.reload(); 
+    } catch (err: any) {
+      toast.error('Verification failed: ' + err.message);
     } finally {
       setIsVerifying(false);
     }
@@ -331,30 +369,58 @@ export function SettingsPage() {
                 </p>
 
                 <div className="w-full space-y-4">
-                  <div className="relative group">
-                    <input
-                      type="email"
-                      value={manualEmail}
-                      onChange={(e) => setManualEmail(e.target.value)}
-                      placeholder="e.g. name@stu.ucc.edu.gh"
-                      className="w-full px-5 py-4 rounded-2xl bg-muted/50 border border-border focus:border-primary/50 focus:ring-4 focus:ring-primary/10 outline-none transition-all font-medium text-[15px] group-hover:bg-muted"
-                    />
-                  </div>
+                  <AnimatePresence mode="wait">
+                    {verificationStep === 'email' ? (
+                      <motion.div 
+                        key="email"
+                        initial={{ opacity: 0, x: 10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -10 }}
+                      >
+                        <input
+                          type="email"
+                          value={manualEmail}
+                          onChange={(e) => setManualEmail(e.target.value)}
+                          placeholder="e.g. name@stu.ucc.edu.gh"
+                          className="w-full px-5 py-4 rounded-2xl bg-muted/50 border border-border focus:border-primary/50 focus:ring-4 focus:ring-primary/10 outline-none transition-all font-medium text-[15px]"
+                        />
+                      </motion.div>
+                    ) : (
+                      <motion.div 
+                        key="code"
+                        initial={{ opacity: 0, x: 10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -10 }}
+                      >
+                        <input
+                          type="text"
+                          maxLength={6}
+                          value={verificationCode}
+                          onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, ''))}
+                          placeholder="0 0 0 0 0 0"
+                          className="w-full px-5 py-4 rounded-2xl bg-muted/50 border border-border focus:border-primary/50 focus:ring-4 focus:ring-primary/10 outline-none transition-all font-black text-center text-xl tracking-[0.4em]"
+                        />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
 
                   <div className="flex flex-col gap-2 pt-2">
                     <button
                       onClick={handleVerifyEmail}
-                      disabled={isVerifying || !manualEmail}
+                      disabled={isVerifying || (verificationStep === 'email' ? !manualEmail : verificationCode.length < 6)}
                       className="w-full py-4 rounded-full bg-primary text-primary-foreground font-black text-[15px] shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                     >
-                      {isVerifying ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Verify Identity'}
+                      {isVerifying ? <Loader2 className="w-5 h-5 animate-spin" /> : verificationStep === 'email' ? 'Send Link' : 'Confirm Identity'}
                     </button>
                     <button
-                      onClick={() => setIsVerifyModalOpen(false)}
+                      onClick={() => {
+                        if (verificationStep === 'code') setVerificationStep('email');
+                        else setIsVerifyModalOpen(false);
+                      }}
                       disabled={isVerifying}
                       className="w-full py-4 rounded-full bg-muted text-muted-foreground font-bold text-[14px] hover:bg-muted/80 transition-all active:scale-[0.98]"
                     >
-                      Cancel
+                      {verificationStep === 'code' ? 'Go Back' : 'Cancel'}
                     </button>
                   </div>
                 </div>

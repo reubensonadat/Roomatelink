@@ -538,7 +538,7 @@ export function ProfilePage() {
                   </button>
                   <button
                     onClick={() => { setIsSaving(false); setSaveError(null); }}
-                    className="px-6 py-2.5 bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900 rounded-xl text-sm font-bold active:scale-95 transition-all"
+                    className="px-6 py-2.5 bg-card text-foreground hover:bg-muted hover:text-foreground rounded-xl text-sm font-bold active:scale-95 transition-all"
                   >
                     Abort
                   </button>

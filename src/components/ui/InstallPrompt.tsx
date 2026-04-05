@@ -71,7 +71,7 @@ export function InstallPrompt() {
           exit={{ y: 150, opacity: 0 }}
           className="fixed bottom-28 left-4 right-4 md:left-auto md:right-4 md:w-96 bg-primary/95 backdrop-blur-md text-primary-foreground p-4 rounded-2xl shadow-2xl z-50 flex items-center gap-4 border border-white/10"
         >
-          <div className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center shrink-0">
+          <div className="w-12 h-12 bg-card/20 backdrop-blur-md rounded-xl flex items-center justify-center shrink-0">
             <Download className="w-6 h-6 text-white" />
           </div>
           
@@ -85,7 +85,7 @@ export function InstallPrompt() {
           <div className="flex flex-col gap-2 shrink-0">
             <button
               onClick={handleInstall}
-              className="bg-white text-primary px-3 py-1.5 rounded-lg text-xs font-black shadow-sm"
+              className="bg-card text-primary px-3 py-1.5 rounded-lg text-xs font-black shadow-sm"
             >
               Get App
             </button>

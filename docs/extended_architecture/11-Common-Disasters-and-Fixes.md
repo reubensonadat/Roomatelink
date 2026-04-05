@@ -21,9 +21,30 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.0"
 ## 3. "Profile Amnesia" / "Network timed out" in Profile
 **The Symptom:** Rapid database failure during profile creation. White screens on save.
 **The Cause:** The `updateField` debounce bug. Do NOT spam the `public.users` table with auto-saves on rapid key-presses.
-**The Fix:** Never query the backend repeatedly without `withTimeout()`. If you need to edit states rapidly natively, use synchronous `localStorage.setItem` overrides and deploy a mass `.upsert()` ONLY via an explicit save button.
+**The Fix**: Implement `withTimeout()` helpers for all Supabase calls and always provide a `LoadingOverlay` that includes a "Retry" and "Abort" button to let the user break the loop manually.
 
-## 4. "White Flash" / Missing Dark Mode Colors
+## 4. The Infinite Syncing Deadlock (Chat)
+If a user has a massive amount of unread messages and a poor connection, the `ChatPage` might hang indefinitely while trying to merge the delta.
+- **The Disaster**: The PURE client-side loading spinner never ends.
+- **The Fix**: 
+  1. Use **Cache-First** rendering (show `localStorage` immediately).
+  2. Implement a **10s Fail-Safe Timeout**. If the sync isn't finished in 10 seconds, hide the spinner and show the current state anyway.
+  3. Use a subtle "Syncing" pill in the header instead of a full-page blocker.
+
+## 5. The Reciprocal Gender Filter (Matching)
+A male student might match with a female student even if she only wants "Same Gender" roommates.
+- **The Disaster**: Awkward, irrelevant matches that ignore user safety preferences.
+- **The Fix**: All matching filters MUST be reciprocal. The algorithm checks:
+  1. Does User A like User B's Gender?
+  2. Does User B's preference allow User A's Gender?
+  *This is enforced at the database level in the "Bouncer" (match-calculate edge function).*
+
+## 6. The Clock Skew (401 Unauthorized)
+Users with fast or slow device clocks get blocked from calling Edge Functions by the Supabase API Gateway.
+- **The Disaster**: Function fails before it even starts.
+- **The Fix**: Deploy all Edge Functions with `--no-verify-jwt` and perform manual verification inside the Deno code using the `auth.getUser()` internal engine.
+
+## 7. "White Flash" / Missing Dark Mode Colors
 **The Symptom:** A random modal or background acts like a flashlight on the eyes when toggling to dark mode.
 **The Cause:** You or the AI hallucinated and wrote `<div className="bg-white">` out of habit. 
 **The Fix:** Run a global project search for `bg-white` and `bg-slate-50`. Change them to `bg-card` and `bg-background` respectively.

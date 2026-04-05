@@ -22,13 +22,13 @@ export function ProtectedRoute() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 p-6 selection:bg-indigo-100 uppercase tracking-tight">
+      <div className="flex flex-col items-center justify-center min-h-screen bg-background p-6 selection:bg-indigo-100 uppercase tracking-tight">
         <div className="relative w-28 h-28 mb-12">
           {/* Outer Ring Glow */}
           <div className="absolute inset-[-8px] rounded-[2.5rem] bg-indigo-500/10 blur-xl animate-pulse" />
           
           {/* Main Spinner */}
-          <div className="absolute inset-0 rounded-full border-[3px] border-slate-200/50" />
+          <div className="absolute inset-0 rounded-full border-[3px] border-border/50" />
           <div className="absolute inset-0 rounded-full border-[3px] border-transparent border-t-indigo-600 shadow-[0_0_15px_rgba(79,70,229,0.3)] animate-spin" />
           
           <div className="absolute inset-0 flex items-center justify-center text-indigo-600">
@@ -41,8 +41,8 @@ export function ProtectedRoute() {
             Security Check
           </h2>
           <div className="flex flex-col items-center gap-2">
-            <span className="text-[32px] font-black tracking-tighter text-slate-900 leading-none">Verifying Account</span>
-            <p className="text-[14px] font-bold text-slate-400">Ensuring your Roommate Link session is active</p>
+            <span className="text-[32px] font-black tracking-tighter text-foreground leading-none">Verifying Account</span>
+            <p className="text-[14px] font-bold text-muted-foreground">Ensuring your Roommate Link session is active</p>
           </div>
           
           {showFallback && (
@@ -51,13 +51,13 @@ export function ProtectedRoute() {
               animate={{ opacity: 1, y: 0 }}
               className="mt-12 flex flex-col items-center"
             >
-              <p className="text-[14px] font-bold text-slate-900 mb-6">Taking longer than expected?</p>
+              <p className="text-[14px] font-bold text-foreground mb-6">Taking longer than expected?</p>
               <button
                 onClick={async () => {
                   await signOut()
                   window.location.href = '/auth'
                 }}
-                className="flex items-center gap-2 px-8 py-4 bg-slate-900 text-white rounded-2xl text-[13px] font-black hover:scale-105 transition-all active:scale-95 shadow-xl shadow-slate-900/10 uppercase tracking-widest"
+                className="flex items-center gap-2 px-8 py-4 bg-primary text-primary-foreground rounded-2xl text-[13px] font-black hover:scale-105 transition-all active:scale-95 shadow-xl shadow-primary/10 uppercase tracking-widest"
               >
                 <LogOut className="w-5 h-5" /> Sign Out & Restart
               </button>

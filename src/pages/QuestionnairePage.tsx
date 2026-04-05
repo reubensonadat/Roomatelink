@@ -41,6 +41,11 @@ export function QuestionnairePage() {
   const [editCount, setEditCount] = useState(0)
   const navigate = useNavigate()
 
+  // 1. Auto-Scroll to Top on Question Change
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [currentIndex])
+
   useEffect(() => {
     const savedAnswers = localStorage.getItem(STORAGE_KEY)
     const savedOrder = localStorage.getItem(ORDER_KEY)
@@ -142,6 +147,15 @@ export function QuestionnairePage() {
   const handleSelect = (optionId: string) => {
     if (selectedAnswer !== null && selectedAnswer === optionId) return
     setSelectedAnswer(optionId)
+    
+    // Play boutique click sound and vibrate
+    try {
+      const CLICK_SOUND = "data:audio/wav;base64,UklGRl9vT19XQVZFRm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YTdvT18AZABkAGQAZABkAGQAZABkAGQAZABkAGQAZABkAGQAZABkAGQAZABkAGQAZABkAGQAZABkAGQAZABkAGQAZABkAGQAZABkAGQAZABkAGQAZABkAGQAZABkAGQAZABkAGQAZABkAGQAZABkAGQAZABkAGQAZABkAGQAZABkAGQAZABkAGQAZABkAGQAZABkAGQAZABkAGQAZABkAGQAZABkAGQAZABkAGQAZABkAGQAZABkAGQAZABkAGQAZABkAGQAZABkAGQAZABkAGQAZABkAGQAZABkAGQAZABkAGQAZABkAGQAZABkAGQAZABkAGQAZABk"
+      const audio = new Audio(CLICK_SOUND)
+      audio.volume = 0.1
+      audio.play().catch(() => {})
+      if (navigator.vibrate) navigator.vibrate(10)
+    } catch (e) {}
 
     const nextAnswers = { ...answers, [currentQ.id]: optionId }
     setAnswers(nextAnswers)
@@ -181,7 +195,7 @@ export function QuestionnairePage() {
                <p className="mt-2 text-[13px] font-medium text-muted-foreground animate-pulse">Syncing with campus records...</p>
             ) : (
                <div className="mt-4 flex flex-col items-center">
-                  <p className="text-sm font-bold text-red-500 mb-6 bg-red-50 px-4 py-2 rounded-xl">{submitError}</p>
+                  <p className="text-sm font-bold text-red-500 mb-6 bg-red-500/10 dark:bg-red-500/20 px-4 py-2 rounded-xl">{submitError}</p>
                   <div className="flex gap-4">
                      <button onClick={() => performSubmission(answers)} className="px-6 py-2.5 bg-primary text-primary-foreground rounded-lg font-bold shadow-sm">Retry Sync</button>
                      <button onClick={() => { setIsSubmitting(false); setSubmitError(null); }} className="px-6 py-2.5 bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/80 rounded-lg font-bold">Abort</button>
@@ -269,14 +283,29 @@ export function QuestionnairePage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center relative selection:bg-primary/20">
-      <div className="fixed top-0 left-0 w-full h-[4px] bg-muted/30 z-50">
-        <motion.div
-          initial={{ width: 0 }}
-          animate={{ width: `${progressPercent}%` }}
-          transition={{ duration: 0.5, ease: "easeOut" }}
-          className="h-full bg-primary shadow-[0_0_15px_rgba(59,130,246,0.5)]"
-        />
+    <div className="min-h-screen bg-background flex flex-col items-center relative selection:bg-primary/20 overflow-x-hidden">
+      {/* Floating Glass Progress Pill */}
+      <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] w-fit">
+        <motion.div 
+          initial={{ y: -20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          className="bg-card/40 backdrop-blur-xl border border-border/40 px-5 py-2.5 rounded-full shadow-[0_8px_32px_rgba(0,0,0,0.05)] flex items-center gap-4"
+        >
+          <div className="flex flex-col gap-1">
+             <div className="flex items-center justify-between min-w-[80px]">
+                <span className="text-[10px] font-black text-primary uppercase tracking-widest leading-none">DNA Progress</span>
+                <span className="text-[10px] font-black text-foreground/40 leading-none tabular-nums ml-2">{Math.round(progressPercent)}%</span>
+             </div>
+             <div className="w-full h-1 bg-muted/40 rounded-full overflow-hidden">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${progressPercent}%` }}
+                  transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+                  className="h-full bg-primary shadow-[0_0_8px_rgba(59,130,246,0.5)]"
+                />
+             </div>
+          </div>
+        </motion.div>
       </div>
 
       <div className="w-full max-w-[480px] md:max-w-2xl lg:max-w-3xl mx-auto flex flex-col flex-1 relative z-10">
@@ -309,23 +338,23 @@ export function QuestionnairePage() {
           <div className="w-12 h-12" />
         </header>
 
-        <main className="flex-1 px-6 pt-10 pb-16 flex flex-col">
+        <main className="flex-1 px-6 pt-24 pb-16 flex flex-col min-h-screen">
           <AnimatePresence mode="wait">
             <motion.div
               key={currentQ.id}
-              initial={{ opacity: 0, scale: 0.98, filter: 'blur(10px)' }}
-              animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
-              exit={{ opacity: 0, scale: 0.96, filter: 'blur(10px)' }}
-              transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+              initial={{ opacity: 0, y: 30, scale: 0.95, filter: 'blur(10px)' }}
+              animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
+              exit={{ opacity: 0, y: -30, scale: 0.95, filter: 'blur(10px)' }}
+              transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
               className="flex-1 flex flex-col"
             >
-              <div className="flex-1 flex flex-col justify-center min-h-[35vh]">
-                <h1 className="text-[34px] md:text-[52px] font-black leading-[1.05] tracking-tight text-foreground">
+              <div className="flex-1 flex flex-col justify-center items-center text-center py-20">
+                <h1 className="text-[32px] md:text-[48px] font-black leading-[1.1] tracking-tight text-foreground max-w-[90%] mx-auto">
                   {currentQ.question}
                 </h1>
               </div>
 
-              <div className="flex flex-col gap-4 mt-auto">
+              <div className="flex flex-col gap-3.5 mt-auto max-w-lg mx-auto w-full pb-10">
                 {currentQ.options.map((opt: any, idx: number) => {
                   const isSelected = selectedAnswer === opt.id
                   const isDimmed = selectedAnswer !== null && !isSelected
@@ -333,29 +362,34 @@ export function QuestionnairePage() {
                   return (
                     <motion.div
                       key={opt.id}
-                      initial={{ opacity: 0, y: 20 }}
+                      initial={{ opacity: 0, y: 15 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: idx * 0.08, duration: 0.4 }}
-                      whileTap={{ scale: 0.98 }}
+                      transition={{ 
+                        delay: 0.1 + (idx * 0.05), 
+                        type: "spring",
+                        stiffness: 260,
+                        damping: 20 
+                      }}
+                      whileTap={{ scale: 0.97 }}
                     >
                       <button
                         onClick={() => handleSelect(opt.id)}
                         disabled={selectedAnswer !== null && selectedAnswer !== opt.id}
                         className={`
-                          relative w-full p-7 rounded-[1.5rem] border-2 text-left transition-all duration-400 group flex items-center gap-5 shadow-sm
+                          relative w-full p-6 md:p-7 rounded-[1.8rem] border-2 text-left transition-all duration-300 group flex items-center gap-5 shadow-sm
                           ${isSelected 
-                            ? 'border-primary bg-primary/5 shadow-lg shadow-primary/10 ring-[6px] ring-primary/5 z-10' 
+                            ? 'border-primary bg-primary/5 shadow-xl shadow-primary/5 ring-[8px] ring-primary/5 z-10' 
                             : 'border-border/40 bg-card hover:border-primary/30 hover:bg-muted/40'}
                           ${isDimmed ? 'opacity-20 grayscale-[80%]' : 'opacity-100'}
                         `}
                       >
                         <div className={`
-                          w-7 h-7 rounded-[0.8rem] border-2 flex items-center justify-center shrink-0 transition-all duration-400
-                          ${isSelected ? 'border-primary bg-primary scale-110 shadow-md' : 'border-muted-foreground/20 group-hover:border-primary/40'}
+                          w-6 h-6 rounded-[0.7rem] border-2 flex items-center justify-center shrink-0 transition-all duration-300
+                          ${isSelected ? 'border-primary bg-primary scale-110 shadow-md' : 'border-muted-foreground/30 group-hover:border-primary/40'}
                         `}>
-                          {isSelected && <Check className="w-4 h-4 text-primary-foreground stroke-[4]" />}
+                          {isSelected && <Check className="w-3.5 h-3.5 text-primary-foreground stroke-[4]" />}
                         </div>
-                        <span className={`text-[17px] md:text-[20px] font-black transition-colors tracking-tight ${isSelected ? 'text-primary' : 'text-foreground/90'}`}>
+                        <span className={`text-[16px] md:text-[19px] font-black transition-colors tracking-tight ${isSelected ? 'text-primary' : 'text-foreground/90'}`}>
                           {opt.text}
                         </span>
                       </button>

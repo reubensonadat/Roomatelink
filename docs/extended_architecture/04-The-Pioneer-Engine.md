@@ -27,3 +27,15 @@ const { data: pcData } = await supabase.functions.invoke('pioneer-check', { body
 if (pcData?.isPioneer) setIsPioneerUser(true)
 ```
 If `isPioneerUser` is true, the dashboard displays a golden "Claim Pioneer Status" banner. Clicking the banner updates `has_paid: true` instantly without popping the Paystack modal.
+
+## 5. The Pioneer Math (Launch Season)
+
+We have verified the sustainability of our "First 100 Free" model.
+
+- **The Math**:
+  - 100 Pioneers = GHS 0
+  - Next 50 Paid Users = GHS 1,250 (GHS 25 x 50)
+  - **Operating Cost**: ~GHS 340 (Supabase Pro Tier $25)
+  - **The Result**: At just 150 users, we are making **3.6x Profit** over costs.
+
+- **Scale Strategy**: At 2,000 users, the income would be ~GHS 47,500/season, allowing for dedicated server upgrades or marketing expansion.

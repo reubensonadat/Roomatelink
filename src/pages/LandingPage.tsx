@@ -54,7 +54,7 @@ export function LandingPage() {
                 <div className="max-w-7xl mx-auto px-6 h-[72px] flex items-center justify-between">
 
                     <div className="flex items-center gap-3 cursor-pointer" onClick={() => scrollTo('hero')}>
-                        <div className="w-9 h-9 bg-white rounded-xl flex items-center justify-center shadow-sm border border-border/50 overflow-hidden p-1.5">
+                        <div className="w-9 h-9 bg-card rounded-xl flex items-center justify-center shadow-sm border border-border/50 overflow-hidden p-1.5">
                             <img src="/logo.png" alt="Roommate Link" className="w-full h-full object-contain" />
                         </div>
                         <span className="font-bold text-[18px] tracking-tight text-foreground">Roommate Link</span>
