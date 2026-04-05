@@ -18,6 +18,17 @@ export function MessagesPage() {
   const navigate = useNavigate()
 
   useEffect(() => {
+    // 1. Instant Cache Load (Boutique performance)
+    const cachedThreads = localStorage.getItem('roommate_chat_threads')
+    if (cachedThreads) {
+      try {
+        setChats(JSON.parse(cachedThreads))
+        setIsLoading(false) // Hide spinner early if we have data
+      } catch (err) {
+        console.error("Cache corrupted:", err)
+      }
+    }
+
     async function fetchChats() {
       if (!user) {
         navigate('/auth')
@@ -25,7 +36,7 @@ export function MessagesPage() {
       }
 
       try {
-        // 1. Efficiently determine profile status using context profile first
+        // 2. Efficiently determine profile status using context profile first
         const currentProfile = profile || await (async () => {
           const { data } = await supabase.from('users').select('*').eq('auth_id', user.id).single()
           return data
@@ -36,7 +47,7 @@ export function MessagesPage() {
           return
         }
 
-        // 2. Parallelize Questionnaire Check and Messages Fetch
+        // 3. Parallelize Questionnaire Check and Messages Fetch
         const [questionnaireRes, messagesRes] = await Promise.all([
           supabase.from('questionnaire_responses').select('id').eq('user_id', currentProfile.id).maybeSingle(),
           currentProfile.has_paid 
@@ -89,7 +100,10 @@ export function MessagesPage() {
               threads[other.id].unread++
             }
           })
-          setChats(Object.values(threads))
+          const threadList = Object.values(threads)
+          setChats(threadList)
+          // Save to cache for next time
+          localStorage.setItem('roommate_chat_threads', JSON.stringify(threadList))
         }
       } catch (error) {
         console.error('Error fetching chats:', error)

@@ -19,6 +19,7 @@ export function ChatPage() {
   const [isReportModalOpen, setIsReportModalOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [isLocked, setIsLocked] = useState(false)
+  const [isSyncing, setIsSyncing] = useState(false)
 
   // Header status helper
   const getStatus = (lastActive: string | null) => {
@@ -38,18 +39,54 @@ export function ChatPage() {
     }
   }
 
+  // 1. Load Cache Immediately (Standard Boutique Pattern)
+  useEffect(() => {
+    if (!receiverId) return
+    const cached = localStorage.getItem(`roommate_chat_${receiverId}`)
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached)
+        setMessages(parsed.messages || [])
+        setOtherUser(parsed.otherUser || null)
+        setLoading(false) // Show cache instantly
+      } catch (e) {
+        console.error("Chat cache error:", e)
+      }
+    }
+  }, [receiverId])
+
   useEffect(() => {
     async function setupChat() {
       if (!user || !receiverId) return
 
       try {
-        // Parallel fetch: Other User Profile and Message History
-        const [themRes, historyRes] = await Promise.all([
+        setIsSyncing(true)
+
+        // 2. Determine "Delta" starting point
+        const cachedSlice = localStorage.getItem(`roommate_chat_${receiverId}`)
+        let lastTimestamp = '1970-01-01T00:00:00Z'
+        let initialMessages: any[] = []
+        
+        if (cachedSlice) {
+          try {
+            const parsed = JSON.parse(cachedSlice)
+            initialMessages = parsed.messages || []
+            if (initialMessages.length > 0) {
+              lastTimestamp = initialMessages[initialMessages.length - 1].timestamp
+            }
+          } catch (e) {
+            console.error("Cache read error:", e)
+          }
+        }
+
+        // Fetch: Other User Profile and DELTA Message History
+        const [themRes, deltaRes] = await Promise.all([
           supabase.from('users').select('*').eq('id', receiverId).single(),
           supabase
             .from('messages')
             .select('*')
             .or(`and(sender_id.eq.${profile?.id},receiver_id.eq.${receiverId}),and(sender_id.eq.${receiverId},receiver_id.eq.${profile?.id})`)
+            .gt('created_at', lastTimestamp)
             .order('created_at', { ascending: true })
         ])
 
@@ -75,13 +112,32 @@ export function ChatPage() {
 
         setOtherUser(them)
 
-        if (historyRes.data) {
-          setMessages(historyRes.data.map((m: any) => ({
+        if (deltaRes.data) {
+          const fetchedMessages = deltaRes.data.map((m: any) => ({
             id: m.id,
             text: m.content,
             sender: m.sender_id === me.id ? 'me' : 'them',
-            time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-          })))
+            time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            timestamp: m.created_at
+          }))
+
+          // Merge: Cache + Delta
+          setMessages(prev => {
+            // Filter out any messages that might have been optimistically added
+            // to avoid duplicates if they were successfully saved to DB
+            const existingIds = new Set(fetchedMessages.map(m => m.id))
+            const filteredPrev = prev.filter(m => !existingIds.has(m.id))
+            const combined = [...filteredPrev, ...fetchedMessages]
+            
+            // Limit cache to 100 messages for storage health
+            const final = combined.slice(-100)
+            
+            localStorage.setItem(`roommate_chat_${receiverId}`, JSON.stringify({
+              messages: final,
+              otherUser: them
+            }))
+            return final
+          })
         }
 
         // Mark as read in background
@@ -96,12 +152,22 @@ export function ChatPage() {
             filter: `receiver_id=eq.${me.id}`
           }, (payload: any) => {
             if (payload.new.sender_id === them.id) {
-              setMessages(prev => [...prev, {
+              const newMessage = {
                 id: payload.new.id,
                 text: payload.new.content,
                 sender: 'them',
-                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-              }])
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                timestamp: payload.new.created_at
+              }
+              setMessages(prev => {
+                const updated = [...prev, newMessage]
+                // Also update cache for offline persistence
+                localStorage.setItem(`roommate_chat_${receiverId}`, JSON.stringify({
+                  messages: updated,
+                  otherUser: them
+                }))
+                return updated
+              })
             }
           })
           .subscribe()
@@ -111,6 +177,7 @@ export function ChatPage() {
         console.error("Chat setup error:", err)
       } finally {
         setLoading(false)
+        setIsSyncing(false)
       }
     }
 
@@ -130,12 +197,23 @@ export function ChatPage() {
 
     // Optimistic update
     const tempId = Date.now()
-    setMessages(prev => [...prev, {
+    const now = new Date()
+    const myNewMessage = {
       id: tempId,
       text,
       sender: 'me',
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    }])
+      time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      timestamp: now.toISOString()
+    }
+    
+    setMessages(prev => {
+      const updated = [...prev, myNewMessage]
+      localStorage.setItem(`roommate_chat_${receiverId}`, JSON.stringify({
+        messages: updated,
+        otherUser: otherUser
+      }))
+      return updated
+    })
 
     const { error } = await supabase.from('messages').insert({
       sender_id: profile.id,
@@ -150,7 +228,33 @@ export function ChatPage() {
     }
   }
 
-  if (loading && !otherUser) return null
+  // ── Loading Skeleton (Boutique UI) ───────────────────────────────
+  if (loading && !otherUser) {
+    return (
+      <div className="flex flex-col h-[100dvh] bg-background max-w-2xl mx-auto border-x border-border/40">
+        <div className="px-4 py-3 border-b border-border/40 flex items-center gap-3">
+          <div className="w-8 h-8 rounded-xl bg-muted animate-pulse" />
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-muted animate-pulse" />
+            <div className="flex flex-col gap-2">
+              <div className="w-24 h-3 bg-muted rounded animate-pulse" />
+              <div className="w-16 h-2 bg-muted rounded animate-pulse" />
+            </div>
+          </div>
+        </div>
+        <div className="flex-1 p-4 space-y-6">
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} className={`flex ${i % 2 === 0 ? 'justify-end' : 'justify-start'}`}>
+              <div className={`h-10 w-48 rounded-2xl bg-muted/40 animate-pulse ${i % 2 === 0 ? 'rounded-tr-none' : 'rounded-tl-none'}`} />
+            </div>
+          ))}
+        </div>
+        <div className="p-4 border-t border-border/40">
+          <div className="w-full h-12 rounded-full bg-muted animate-pulse" />
+        </div>
+      </div>
+    )
+  }
 
   // ── Locked state: user hasn't paid ───────────────────────────────
   if (isLocked) {
@@ -205,7 +309,11 @@ export function ChatPage() {
             <div className="flex flex-col">
               <span className="text-[15px] font-bold leading-tight text-foreground truncate max-w-[150px]">{otherUser?.full_name || 'Roommate'}</span>
               <div className="flex items-center gap-1.5 mt-0.5">
-                {status.isOnline && <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />}
+                {status.isOnline ? (
+                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                ) : (
+                  <div className="w-2 h-2 rounded-full bg-muted-foreground/30" />
+                )}
                 <span className={`text-[11px] font-medium leading-none ${status.isOnline ? 'text-emerald-500' : 'text-muted-foreground/60'}`}>
                   {status.label}
                 </span>
@@ -213,9 +321,16 @@ export function ChatPage() {
             </div>
           </div>
         </div>
-        <button onClick={() => setIsReportModalOpen(true)} className="p-2 text-muted-foreground/40 hover:text-red-500 transition-colors active:scale-95">
-          <Flag className="w-5 h-5" />
-        </button>
+        <div className="flex items-center gap-1">
+          {isSyncing && (
+             <div className="px-2 py-1 bg-muted rounded-full text-[9px] font-bold text-muted-foreground animate-pulse mr-2 uppercase tracking-tighter">
+               Syncing
+             </div>
+          )}
+          <button onClick={() => setIsReportModalOpen(true)} className="p-2 text-muted-foreground/40 hover:text-red-500 transition-colors active:scale-95">
+            <Flag className="w-5 h-5" />
+          </button>
+        </div>
       </header>
 
       <div className="shrink-0 bg-muted/20 px-4 py-2 border-b border-border/10 flex items-center gap-2">
