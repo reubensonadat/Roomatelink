@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { ChevronRight, VolumeX, MessageCircleOff, Coffee, Menu, X, CheckCircle2, Phone, Mail } from 'lucide-react'
+import { ChevronRight, VolumeX, MessageCircleOff, Coffee, Menu, X, CheckCircle2 } from 'lucide-react'
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 
