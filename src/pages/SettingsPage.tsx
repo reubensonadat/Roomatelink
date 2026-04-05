@@ -213,10 +213,10 @@ export function SettingsPage() {
 
               <button
                 onClick={() => setIsVerifyModalOpen(true)}
-                className="flex items-center justify-between p-3 rounded-3xl hover:bg-muted/50 transition-colors text-left group"
+                className="flex items-center justify-between p-3 rounded-[18px] hover:bg-muted/50 transition-colors text-left group"
               >
                 <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-2xl bg-muted flex items-center justify-center group-hover:bg-muted/80 transition-colors">
+                  <div className="w-10 h-10 rounded-[16px] bg-muted flex items-center justify-center group-hover:bg-muted/80 transition-colors">
                     {isVerifying ? <Loader2 className="w-5 h-5 animate-spin" /> : <GraduationCap className="w-5 h-5 text-foreground" />}
                   </div>
                   <div className="flex flex-col">
@@ -229,10 +229,10 @@ export function SettingsPage() {
 
               <button
                 onClick={() => toast.success('Push notifications enabled for new matches.')}
-                className="flex items-center justify-between p-3 rounded-3xl hover:bg-muted/50 transition-colors text-left group"
+                className="flex items-center justify-between p-3 rounded-[18px] hover:bg-muted/50 transition-colors text-left group"
               >
                 <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-2xl bg-muted flex items-center justify-center group-hover:bg-muted/80 transition-colors">
+                  <div className="w-10 h-10 rounded-[16px] bg-muted flex items-center justify-center group-hover:bg-muted/80 transition-colors">
                     <Bell className="w-5 h-5 text-foreground" />
                   </div>
                   <div className="flex flex-col">
@@ -246,10 +246,10 @@ export function SettingsPage() {
               <button
                 onClick={handlePasswordReset}
                 disabled={isResetting}
-                className="flex items-center justify-between p-3 rounded-3xl hover:bg-muted/50 transition-colors text-left group disabled:opacity-50"
+                className="flex items-center justify-between p-3 rounded-[18px] hover:bg-muted/50 transition-colors text-left group disabled:opacity-50"
               >
                 <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-2xl bg-muted flex items-center justify-center group-hover:bg-muted/80 transition-colors">
+                  <div className="w-10 h-10 rounded-[16px] bg-muted flex items-center justify-center group-hover:bg-muted/80 transition-colors">
                     {isResetting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Lock className="w-5 h-5 text-foreground" />}
                   </div>
                   <div className="flex flex-col">
@@ -267,11 +267,11 @@ export function SettingsPage() {
           {/* Support & Legal */}
           <section>
             <h2 className="text-[12px] font-bold text-muted-foreground uppercase tracking-widest pl-1 mb-3">Support & Legal</h2>
-            <div className="bg-card rounded-4xl shadow-premium border border-border flex flex-col p-2 gap-1 overflow-hidden">
-              <Link to="/support" className="flex items-center justify-between p-3 rounded-3xl hover:bg-muted/50 transition-colors text-left group border-b border-border/40 pb-4 mb-1">
+            <div className="bg-card rounded-[22px] shadow-premium border border-border flex flex-col p-2 gap-1 overflow-hidden">
+              <Link to="/support" className="flex items-center justify-between p-3 rounded-[18px] hover:bg-muted/50 transition-colors text-left group border-b border-border/40 pb-4 mb-1">
                 <div className="flex flex-col gap-1 w-full relative">
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                    <div className="w-10 h-10 rounded-[16px] bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
                       <FileText className="w-5 h-5 text-primary" />
                     </div>
                     <div className="flex flex-col">
@@ -283,9 +283,9 @@ export function SettingsPage() {
                 </div>
               </Link>
 
-              <Link to="/privacy" className="flex items-center justify-between p-3 rounded-3xl hover:bg-muted/50 transition-colors text-left group">
+              <Link to="/privacy" className="flex items-center justify-between p-3 rounded-[18px] hover:bg-muted/50 transition-colors text-left group">
                 <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-2xl bg-muted flex items-center justify-center group-hover:bg-muted/80 transition-colors">
+                  <div className="w-10 h-10 rounded-[16px] bg-muted flex items-center justify-center group-hover:bg-muted/80 transition-colors">
                     <Shield className="w-5 h-5 text-foreground" />
                   </div>
                   <div className="flex flex-col">
@@ -295,9 +295,9 @@ export function SettingsPage() {
                 <ChevronRight className="w-4 h-4 text-muted-foreground/50 mr-2" />
               </Link>
 
-              <Link to="/terms" className="flex items-center justify-between p-3 rounded-3xl hover:bg-muted/50 transition-colors text-left group">
+              <Link to="/terms" className="flex items-center justify-between p-3 rounded-[18px] hover:bg-muted/50 transition-colors text-left group">
                 <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-2xl bg-muted flex items-center justify-center group-hover:bg-muted/80 transition-colors">
+                  <div className="w-10 h-10 rounded-[16px] bg-muted flex items-center justify-center group-hover:bg-muted/80 transition-colors">
                     <FileText className="w-5 h-5 text-foreground" />
                   </div>
                   <div className="flex flex-col">
@@ -312,13 +312,13 @@ export function SettingsPage() {
           {/* Danger Zone */}
           <section>
             <h2 className="text-[12px] font-bold text-red-500/70 uppercase tracking-widest pl-1 mb-3">Danger Zone</h2>
-            <div className="bg-red-500/5 rounded-4xl border border-red-500/10 flex flex-col p-2 gap-1 overflow-hidden">
+            <div className="bg-red-500/5 rounded-[22px] border border-red-500/10 flex flex-col p-2 gap-1 overflow-hidden">
               <button
                 onClick={() => setIsDeleteOpen(true)}
-                className="flex items-center justify-between p-3 rounded-3xl hover:bg-red-500/10 transition-colors text-left group"
+                className="flex items-center justify-between p-3 rounded-[18px] hover:bg-red-500/10 transition-colors text-left group"
               >
                 <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-2xl bg-red-500/10 flex items-center justify-center transition-colors">
+                  <div className="w-10 h-10 rounded-[16px] bg-red-500/10 flex items-center justify-center transition-colors">
                     <UserX className="w-5 h-5 text-red-500" />
                   </div>
                   <div className="flex flex-col">
@@ -334,7 +334,7 @@ export function SettingsPage() {
           <div className="mt-4 mb-8 text-center w-full">
             <button
               onClick={() => setIsLogoutOpen(true)}
-              className="w-full py-4 rounded-full bg-muted text-foreground hover:bg-foreground hover:text-background transition-colors font-bold text-[15px] active:scale-95 shadow-sm"
+              className="w-full h-[60px] bg-card border border-border/40 rounded-[22px] shadow-sm text-[15px] font-bold text-foreground active:scale-[0.98] transition-all flex items-center justify-center hover:bg-muted/50"
             >
               Log Out
             </button>
@@ -345,52 +345,53 @@ export function SettingsPage() {
         {/* --- MODALS --- */}
         <AnimatePresence>
           {isVerifyModalOpen && (
-            <div className="fixed inset-0 z-100 flex items-center justify-center px-4">
+            <div className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center p-0 sm:p-6">
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+                className="fixed inset-0 bg-background/60 backdrop-blur-xl"
                 onClick={() => !isVerifying && setIsVerifyModalOpen(false)}
               />
               <motion.div
-                initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                className="relative w-full max-w-sm bg-card border border-border p-6 rounded-[2.5rem] shadow-2xl"
+                initial={{ y: "100%", opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: "100%", opacity: 0 }}
+                transition={{ type: "spring", damping: 30, stiffness: 300, mass: 0.8 }}
+                className="relative w-full max-w-lg bg-card border-t sm:border border-border/80 rounded-t-[2.5rem] sm:rounded-[2.5rem] shadow-premium p-8 md:p-12 mb-0 sm:mb-8"
               >
                 <div className="flex flex-col items-center text-center">
-                  <div className="w-16 h-16 rounded-3xl bg-primary/10 flex items-center justify-center mb-4">
-                    <GraduationCap className="w-8 h-8 text-primary" />
+                  <div className="w-20 h-20 rounded-[22px] bg-primary/10 flex items-center justify-center mb-6">
+                    <GraduationCap className="w-10 h-10 text-primary" />
                   </div>
-                  <h3 className="text-xl font-black text-foreground mb-2">Student Verification</h3>
-                  <p className="text-[14px] font-medium text-muted-foreground mb-6">
-                    Type your official university email below to verify your student status.
+                  <h3 className="text-2xl font-black text-foreground mb-3 tracking-tight uppercase">Student ID Hub</h3>
+                  <p className="text-[14px] font-bold text-muted-foreground/70 mb-10 leading-relaxed uppercase tracking-wide">
+                    Type your official university email below to synchronize your student status.
                   </p>
 
-                  <div className="w-full space-y-4">
+                  <div className="w-full space-y-6">
                     <AnimatePresence mode="wait">
                       {verificationStep === 'email' ? (
                         <motion.div
                           key="email"
-                          initial={{ opacity: 0, x: 10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          exit={{ opacity: 0, x: -10 }}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -10 }}
                         >
                           <input
                             type="email"
                             value={manualEmail}
                             onChange={(e) => setManualEmail(e.target.value)}
-                            placeholder="e.g. name@stu.ucc.edu.gh"
-                            className="w-full px-5 py-4 rounded-2xl bg-muted/50 border border-border focus:border-primary/50 focus:ring-4 focus:ring-primary/10 outline-none transition-all font-medium text-[15px]"
+                            placeholder="E.G. NAME@STU.UCC.EDU.GH"
+                            className="w-full px-6 py-5 rounded-[22px] bg-muted/40 border border-border focus:border-primary/50 outline-none transition-all font-black text-[15px] uppercase tracking-widest placeholder:text-muted-foreground/30"
                           />
                         </motion.div>
                       ) : (
                         <motion.div
                           key="code"
-                          initial={{ opacity: 0, x: 10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          exit={{ opacity: 0, x: -10 }}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -10 }}
                         >
                           <input
                             type="text"
@@ -398,19 +399,19 @@ export function SettingsPage() {
                             value={verificationCode}
                             onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, ''))}
                             placeholder="0 0 0 0 0 0"
-                            className="w-full px-5 py-4 rounded-2xl bg-muted/50 border border-border focus:border-primary/50 focus:ring-4 focus:ring-primary/10 outline-none transition-all font-black text-center text-xl tracking-[0.4em]"
+                            className="w-full px-6 py-5 rounded-[22px] bg-muted/40 border border-border focus:border-primary/50 outline-none transition-all font-black text-center text-2xl tracking-[0.6em]"
                           />
                         </motion.div>
                       )}
                     </AnimatePresence>
 
-                    <div className="flex flex-col gap-2 pt-2">
+                    <div className="flex flex-col gap-4 pt-4">
                       <button
                         onClick={handleVerifyEmail}
                         disabled={isVerifying || (verificationStep === 'email' ? !manualEmail : verificationCode.length < 6)}
-                        className="w-full py-4 rounded-full bg-primary text-primary-foreground font-black text-[15px] shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                        className="w-full py-5.5 rounded-[22px] bg-primary text-white font-black text-[15px] shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-3 uppercase tracking-widest"
                       >
-                        {isVerifying ? <Loader2 className="w-5 h-5 animate-spin" /> : verificationStep === 'email' ? 'Send Link' : 'Confirm Identity'}
+                        {isVerifying ? <Loader2 className="w-5 h-5 animate-spin" /> : verificationStep === 'email' ? 'Generate Handshake' : 'Finalize Identity'}
                       </button>
                       <button
                         onClick={() => {
@@ -418,9 +419,9 @@ export function SettingsPage() {
                           else setIsVerifyModalOpen(false);
                         }}
                         disabled={isVerifying}
-                        className="w-full py-4 rounded-full bg-muted text-muted-foreground font-bold text-[14px] hover:bg-muted/80 transition-all active:scale-[0.98]"
+                        className="w-full py-4 rounded-[22px] bg-muted/40 text-muted-foreground font-black text-[12px] hover:text-foreground transition-all active:scale-[0.98] uppercase tracking-[0.3em]"
                       >
-                        {verificationStep === 'code' ? 'Go Back' : 'Cancel'}
+                        {verificationStep === 'code' ? 'Reverse' : 'Cancel'}
                       </button>
                     </div>
                   </div>
@@ -430,42 +431,41 @@ export function SettingsPage() {
           )}
 
           {isLogoutOpen && (
-            <div className="fixed inset-0 z-100 flex items-center justify-center px-4">
+            <div className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center p-0 sm:p-6">
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+                className="fixed inset-0 bg-background/60 backdrop-blur-xl"
                 onClick={() => !isLoggingOut && setIsLogoutOpen(false)}
               />
               <motion.div
-                initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                className="w-full max-w-sm bg-card border border-border/60 shadow-2xl rounded-3xl p-6 relative z-10 flex flex-col items-center text-center"
+                initial={{ y: "100%", opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: "100%", opacity: 0 }}
+                transition={{ type: "spring", damping: 30, stiffness: 300 }}
+                className="relative w-full max-w-sm bg-card border-t sm:border border-border/80 shadow-premium rounded-t-[2.5rem] sm:rounded-[2.5rem] p-8 flex flex-col items-center text-center"
               >
-                <div className="w-14 h-14 bg-muted rounded-2xl flex items-center justify-center mb-4">
-                  <LogOut className="w-6 h-6 text-foreground" />
+                <div className="w-16 h-16 bg-muted/40 rounded-[22px] flex items-center justify-center mb-6">
+                  <LogOut className="w-7 h-7 text-foreground" />
                 </div>
-                <h2 className="text-xl font-black text-foreground mb-2">Log out of account?</h2>
-                <p className="text-sm text-muted-foreground font-medium mb-8">
-                  You will need to use your email to log back in next time.
-                </p>
-
-                <div className="w-full flex flex-col gap-2">
+                <h3 className="text-xl font-black text-foreground mb-2 tracking-tight uppercase">Terminate Session</h3>
+                <p className="text-[13px] font-bold text-muted-foreground/60 mb-8 uppercase tracking-widest">Are you sure you want to exit?</p>
+                
+                <div className="w-full flex flex-col gap-3">
                   <button
                     onClick={handleLogout}
                     disabled={isLoggingOut}
-                    className="w-full py-3.5 bg-foreground text-background font-bold rounded-2xl hover:opacity-90 transition-all flex items-center justify-center disabled:opacity-50"
+                    className="w-full py-5 rounded-[22px] bg-red-500 text-white font-black text-[14px] shadow-xl shadow-red-500/20 hover:scale-105 active:scale-95 transition-all uppercase tracking-widest"
                   >
-                    {isLoggingOut ? <Loader2 className="w-5 h-5 animate-spin" /> : "Yes, log out"}
+                    {isLoggingOut ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Log Out Now'}
                   </button>
                   <button
-                    onClick={() => !isLoggingOut && setIsLogoutOpen(false)}
+                    onClick={() => setIsLogoutOpen(false)}
                     disabled={isLoggingOut}
-                    className="w-full py-3.5 bg-muted text-foreground font-bold rounded-2xl hover:bg-muted/80 transition-all"
+                    className="w-full py-4 rounded-[22px] text-muted-foreground font-black text-[12px] hover:text-foreground transition-all uppercase tracking-[0.2em]"
                   >
-                    Cancel
+                    Hold on
                   </button>
                 </div>
               </motion.div>

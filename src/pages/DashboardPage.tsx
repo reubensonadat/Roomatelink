@@ -313,22 +313,32 @@ export function DashboardPage() {
     if (!user || !profile) return
     setIsCheckingPayment(true)
     try {
-      const { data: latestProfile } = await supabase
-        .from('users')
-        .select('has_paid')
-        .eq('id', profile.id)
-        .maybeSingle()
+      // 1. Trigger the upgraded paystack-webhook GET sync
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) throw new Error("No active session")
 
-      if (latestProfile?.has_paid) {
-        setIsVerifyingPayment(false)
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/paystack-webhook?email=${encodeURIComponent(user.email || '')}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+        }
+      })
+
+      const result = await res.json()
+
+      if (result.success) {
+        // 2. Refresh local state on success
         setHasPaid(true)
+        setIsVerifyingPayment(false)
         setIsUnlocking(true)
         setUnlockedCount(0)
-        toast.success('Payment Verified! Unlocking matches...')
+        toast.success(result.message || 'Payment Verified! Access Restored.')
       } else {
-        toast.info('Status: Pending. Webhook is still processing.')
+        toast.info(result.message || 'No payment found yet. Please wait a moment.')
       }
-    } catch (err) {
+    } catch (err: any) {
+      console.error('Handshake failed:', err)
       toast.error('Could not reach verification server.')
     } finally {
       setIsCheckingPayment(false)
@@ -647,13 +657,13 @@ export function DashboardPage() {
             ) : (
               <motion.div key="feed" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 {!hasPaid && matches.length > 0 && (
-                  <div className="flex justify-center mb-6">
+                  <div className="flex justify-center mb-8">
                     <button 
                       onClick={handlePaymentFallbackCheck}
                       disabled={isCheckingPayment}
-                      className="px-6 py-2.5 bg-muted/40 hover:bg-muted border border-border/40 rounded-full text-[11px] font-black uppercase tracking-widest text-muted-foreground transition-all flex items-center gap-2 active:scale-95 disabled:opacity-50"
+                      className="group px-8 py-4 bg-card border border-border/40 rounded-[22px] text-[11px] font-black uppercase tracking-widest text-muted-foreground transition-all flex items-center gap-2.5 active:scale-[0.98] disabled:opacity-50 hover:text-foreground hover:bg-muted/50 shadow-sm"
                     >
-                      {isCheckingPayment ? <Loader2 className="w-3 h-3 animate-spin" /> : <UserCheck className="w-3 h-3" />}
+                      {isCheckingPayment ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserCheck className="w-4 h-4" />}
                       {isCheckingPayment ? "Checking Vault..." : "Already Paid? Verify Status"}
                     </button>
                   </div>

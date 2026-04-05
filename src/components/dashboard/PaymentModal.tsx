@@ -1,6 +1,6 @@
-import { ShieldCheck, Lock, Check, ChevronRight, CreditCard } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { ShieldCheck, Check, ChevronRight, X, Sparkles } from 'lucide-react'
 import PaystackPaymentButton from '../PaystackPaymentButton'
-import { ModalShell } from '../ui/ModalShell'
 
 interface PaymentModalProps {
   isOpen: boolean
@@ -36,136 +36,159 @@ export function PaymentModal({
   onPaymentClose
 }: PaymentModalProps) {
   return (
-    <ModalShell
-      isOpen={isOpen}
-      onClose={onClose}
-      title="Secure Checkout"
-      subtitle="Institutional Access Hub"
-      maxWidth="md:w-[940px]"
-    >
-      <div className="flex flex-col md:flex-row min-h-0">
-        {/* Left Column (Desktop - Feature Area) */}
-        <div className="hidden md:flex md:w-[400px] bg-muted/20 p-10 flex-col justify-center border-r border-border/40 relative shrink-0">
-          <div className="relative z-10 flex flex-col items-center text-center">
-            <div className="w-20 h-20 bg-foreground text-background rounded-3xl flex items-center justify-center mb-8 shadow-premium">
-              <CreditCard className="w-8 h-8" />
-            </div>
-            
-            <h2 className="text-[26px] font-black text-foreground tracking-tight leading-none mb-3 uppercase">Institutional Access</h2>
-            <p className="text-[13px] font-medium text-muted-foreground leading-relaxed mb-10">
-              A one-time verification fee secures the hub and ensures every synchronization is with a real campus student.
-            </p>
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-[60] flex items-end justify-center sm:items-center p-0 sm:p-6">
+          {/* Backdrop Blur */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="fixed inset-0 bg-background/60 backdrop-blur-xl"
+          />
 
-            <div className="w-full space-y-3">
-              {[
-                { icon: <ShieldCheck className="w-4 h-4" />, text: "Account Protection" },
-                { icon: <Lock className="w-4 h-4" />, text: "Verified Campus Hub" },
-                { icon: <Check className="w-4 h-4" />, text: "Quality Match Protocol" }
-              ].map((item, i) => (
-                <div key={i} className="flex items-center gap-3.5 glass-v2 p-4 rounded-xl shadow-sm border border-border/40">
-                  <div className="w-7 h-7 rounded-lg bg-foreground text-background flex items-center justify-center">
-                    {item.icon}
-                  </div>
-                  <span className="text-[11px] font-black text-foreground uppercase tracking-wider">{item.text}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+          {/* Bottom Sheet Modal */}
+          <motion.div
+            initial={{ y: "100%", opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: "100%", opacity: 0 }}
+            transition={{ type: "spring", damping: 30, stiffness: 300, mass: 0.8 }}
+            className="relative w-full max-w-[960px] bg-card border-t sm:border border-border/80 rounded-t-[2.5rem] sm:rounded-[2.5rem] shadow-premium overflow-hidden flex flex-col md:flex-row max-h-[92vh] sm:max-h-[85vh]"
+          >
+            {/* Left Column (Desktop - Feature Area) */}
+            <div className="hidden md:flex md:w-[420px] bg-primary/5 p-12 flex-col justify-center border-r border-border/40 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-3xl blur-3xl translate-x-1/2 -translate-y-1/2" />
+              <div className="absolute bottom-0 left-0 w-64 h-64 bg-primary/5 rounded-3xl blur-3xl -translate-x-1/2 translate-y-1/2" />
 
-        {/* Right Column (Payment Area) */}
-        <div className="flex-1 flex flex-col bg-card relative min-h-0">
-          <div className="flex-1 p-8 md:p-12 overflow-y-auto flex flex-col justify-center scroll-smooth">
-            <div className="mb-10 text-center md:text-left">
-              <h3 className="text-[11px] font-black text-primary uppercase tracking-[0.3em] mb-2">Checkout Hub</h3>
-              <h4 className="text-[22px] font-black text-foreground tracking-tight uppercase">Secure Verification</h4>
-            </div>
-
-            {/* Discount Code Area */}
-            {!discountApplied ? (
-              <div className="w-full mb-10">
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={discountCode}
-                    onChange={(e) => onDiscountCodeChange(e.target.value)}
-                    placeholder="PROMO CODE"
-                    className="flex-1 px-6 py-4.5 bg-muted/40 border border-border/60 rounded-2xl text-[14px] font-black outline-none focus:border-primary/50 transition-all placeholder:text-muted-foreground/30 uppercase tracking-widest"
+              <div className="relative z-10 flex flex-col items-center text-center">
+                <div className="relative mb-10 w-48 h-48">
+                  <motion.img
+                    initial={{ y: 0 }}
+                    animate={{ y: [0, -12, 0] }}
+                    transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                    src="/Savings.png"
+                    alt="Savings"
+                    className="w-full h-full object-contain drop-shadow-2xl"
                   />
-                  <button
-                    onClick={onApplyDiscount}
-                    disabled={!discountCode.trim() || isApplyingDiscount}
-                    className="px-8 py-4.5 bg-foreground text-background font-black rounded-2xl hover:bg-primary hover:text-white transition-all disabled:opacity-30 text-[13px] uppercase tracking-widest"
-                  >
-                    {isApplyingDiscount ? '...' : 'Verify'}
-                  </button>
                 </div>
-                {discountError && <p className="text-[10px] text-red-500 font-black mt-2 pl-1 uppercase tracking-wider">{discountError}</p>}
-              </div>
-            ) : (
-              <div className="w-full mb-10">
-                <div className="flex items-center justify-between glass-v2 border border-emerald-500/30 rounded-2xl p-5 shadow-sm">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/20">
-                      <Check className="w-5 h-5 text-white stroke-[4]" />
-                    </div>
-                    <div>
-                      <p className="text-[13px] font-black text-emerald-600 uppercase tracking-tight italic">Elite Discount Applied</p>
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase">{discountCode}</p>
-                    </div>
-                  </div>
-                  <button onClick={onRemoveDiscount} className="text-[11px] font-black text-muted-foreground hover:text-red-500 transition-colors uppercase tracking-widest">Remove</button>
-                </div>
-              </div>
-            )}
+                <h2 className="text-[28px] font-black text-foreground leading-tight mb-4 tracking-tight uppercase">The Smart Move.</h2>
+                <p className="text-[14px] font-bold text-muted-foreground/70 leading-relaxed mb-10 text-center uppercase tracking-wide">
+                  A small verification fee ensures every student is real and Campus-Verified.
+                </p>
 
-            {/* Summary Area */}
-            <div className="flex flex-col gap-5 mb-10">
-              <div className="flex justify-between items-center text-[13px] font-black text-muted-foreground uppercase tracking-[0.2em]">
-                <span>Verification Fee</span>
-                <span>₵{amount.toFixed(2)}</span>
-              </div>
-              {discountApplied && (
-                <div className="flex justify-between items-center text-[13px] font-black text-emerald-600 uppercase tracking-[0.2em]">
-                  <span>Privilege Discount</span>
-                  <span>-₵10.00</span>
+                <div className="w-full space-y-4">
+                  {[
+                    { icon: <ShieldCheck className="w-4 h-4" />, text: "Institutional Protection" },
+                    { icon: <Sparkles className="w-4 h-4" />, text: "Elite DNA Matching" },
+                    { icon: <Check className="w-4 h-4" />, text: "Campus-Verified Hub" }
+                  ].map((item, i) => (
+                    <div key={i} className="flex items-center gap-4 bg-background/40 backdrop-blur-md border border-border/40 p-4 rounded-[22px] shadow-sm group hover:border-primary/30 transition-all">
+                      <div className="w-9 h-9 rounded-2xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                        {item.icon}
+                      </div>
+                      <span className="text-[11px] font-black text-foreground uppercase tracking-widest">{item.text}</span>
+                    </div>
+                  ))}
                 </div>
-              )}
-              <div className="h-px bg-border/40" />
-              <div className="flex justify-between items-baseline pt-2">
-                <span className="text-[15px] font-black text-foreground uppercase tracking-[0.3em]">Total Due</span>
-                <span className="text-[32px] font-black text-foreground tracking-tighter">₵{finalPrice.toFixed(2)}</span>
               </div>
             </div>
 
-            {/* Action Hub */}
-            <div className="space-y-4">
-              <PaystackPaymentButton
-                email={email}
-                amount={finalPrice}
-                onSuccess={onPaymentSuccess}
-                onClose={onPaymentClose}
-                className="w-full py-5.5 bg-foreground text-background font-black rounded-2xl shadow-elevated hover:bg-primary hover:text-white transition-all active:scale-[0.98] text-[16px] flex items-center justify-center gap-3 uppercase tracking-[0.2em] border border-white/5"
-              >
-                Confirm & Synchronize <ChevronRight className="w-5 h-5" />
-              </PaystackPaymentButton>
+            {/* Right Column (Payment Area) */}
+            <div className="flex-1 flex flex-col bg-card relative min-h-0">
+              {/* Close Button */}
               <button
                 onClick={onClose}
-                className="w-full py-4 text-[11px] font-black text-muted-foreground hover:text-foreground transition-colors uppercase tracking-[0.3em] opacity-60 hover:opacity-100"
+                className="absolute top-6 right-6 w-12 h-12 rounded-[22px] bg-muted/40 flex items-center justify-center hover:bg-foreground hover:text-background transition-all active:scale-95 shadow-sm z-50 border border-border/40 backdrop-blur-sm"
               >
-                Maybe Later
+                <X className="w-5 h-5" />
               </button>
-            </div>
-            
-            <div className="mt-10 flex flex-col items-center gap-3 opacity-40">
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-muted-foreground" />
-                <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Encrypted Checkout</span>
+
+              <div className="flex-1 p-8 md:p-14 overflow-y-auto flex flex-col justify-center scroll-smooth">
+                <div className="mb-12 text-center md:text-left">
+                  <h3 className="text-[12px] font-black text-primary uppercase tracking-[0.4em] mb-4">Verification Hub</h3>
+                  <h4 className="text-[32px] font-black text-foreground tracking-tighter uppercase leading-none">Checkout Securely</h4>
+                </div>
+
+                {/* Discount Code Area */}
+                {!discountApplied ? (
+                  <div className="w-full mb-12">
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <input
+                          type="text"
+                          value={discountCode}
+                          onChange={(e) => onDiscountCodeChange(e.target.value.toUpperCase())}
+                          placeholder="PROMO CODE"
+                          className="w-full px-6 py-5 bg-muted/30 border-2 border-border/40 rounded-[22px] text-[15px] font-black outline-none focus:border-primary/50 transition-all placeholder:text-muted-foreground/30 uppercase tracking-widest"
+                        />
+                      </div>
+                      <button
+                        onClick={onApplyDiscount}
+                        disabled={!discountCode.trim() || isApplyingDiscount}
+                        className="px-8 py-5 bg-foreground text-background font-black rounded-[22px] hover:bg-primary hover:text-white transition-all disabled:opacity-30 text-[13px] uppercase tracking-widest shadow-xl active:scale-95"
+                      >
+                        {isApplyingDiscount ? '...' : 'Apply'}
+                      </button>
+                    </div>
+                    {discountError && <p className="text-[11px] text-red-500 font-black mt-3 pl-2 uppercase tracking-wider animate-pulse">{discountError}</p>}
+                  </div>
+                ) : (
+                  <div className="w-full mb-12 animate-in slide-in-from-top-4 duration-500">
+                    <div className="flex items-center justify-between bg-primary/5 border border-primary/20 rounded-[22px] p-6 shadow-inner">
+                      <div className="flex items-center gap-5">
+                        <div className="w-12 h-12 rounded-[18px] bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
+                          <Check className="w-6 h-6 text-white stroke-[4]" />
+                        </div>
+                        <div>
+                          <p className="text-[14px] font-black text-primary uppercase tracking-tight italic leading-none">Privilege Applied</p>
+                          <p className="text-[11px] font-bold text-muted-foreground uppercase mt-1 tracking-widest">{discountCode}</p>
+                        </div>
+                      </div>
+                      <button onClick={onRemoveDiscount} className="px-4 py-2 text-[11px] font-black text-muted-foreground hover:text-red-500 transition-colors uppercase tracking-[0.2em]">Remove</button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Summary Area */}
+                <div className="flex flex-col gap-6 mb-12">
+                  <div className="flex justify-between items-center text-[13px] font-black text-muted-foreground/60 uppercase tracking-[0.3em]">
+                    <span>Campus Entry Fee</span>
+                    <span>₵{amount.toFixed(2)}</span>
+                  </div>
+                  {discountApplied && (
+                    <div className="flex justify-between items-center text-[14px] font-black text-primary uppercase tracking-[0.3em] bg-primary/5 p-3 rounded-xl border border-primary/10">
+                      <span>Elite Reward</span>
+                      <span>-₵{(amount - finalPrice).toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className="h-px bg-border/40 w-full" />
+                  <div className="flex justify-between items-baseline pt-4">
+                    <span className="text-[16px] font-black text-foreground uppercase tracking-[0.4em]">Total Duo</span>
+                    <span className="text-[42px] font-black text-foreground tracking-tighter tabular-nums leading-none">₵{finalPrice.toFixed(2)}</span>
+                  </div>
+                </div>
+
+                {/* Action Hub */}
+                <div className="space-y-5">
+                  <PaystackPaymentButton
+                    email={email}
+                    amount={finalPrice}
+                    onSuccess={onPaymentSuccess}
+                    onClose={onPaymentClose}
+                    className="w-full py-6 bg-foreground text-background font-black rounded-[22px] shadow-2xl hover:bg-primary hover:text-white transition-all active:scale-[0.98] text-[16px] flex items-center justify-center gap-4 uppercase tracking-[0.3em] border border-white/5 group"
+                  >
+                    Confirm access <ChevronRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
+                  </PaystackPaymentButton>
+                  <p className="text-[10px] font-bold text-muted-foreground/40 text-center uppercase tracking-[0.4em] leading-relaxed px-6">
+                    Verified through institutional node. Encrypted by Paystack.
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
+          </motion.div>
         </div>
-      </div>
-    </ModalShell>
+      )}
+    </AnimatePresence>
   )
 }

@@ -125,12 +125,12 @@ export function MessagesPage() {
 
       <div className="flex-1 overflow-y-auto w-full md:max-w-2xl lg:max-w-4xl mx-auto pb-40">
         <div className="px-5 pt-8 mb-8">
-          <div className="relative group max-w-lg mx-auto">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50 transition-colors group-focus-within:text-primary" />
-            <input 
-              type="text" 
-              placeholder="Search conversations..." 
-              className="w-full bg-card/50 backdrop-blur-md border border-border/40 rounded-[22px] pl-12 pr-5 py-4 font-bold text-sm shadow-sm outline-none focus:ring-4 focus:ring-primary/5 focus:border-primary/20 transition-all placeholder:text-muted-foreground/30 text-foreground"
+          <div className="relative group">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/60 transition-colors group-focus-within:text-primary" />
+            <input
+              type="text"
+              placeholder="Search conversations..."
+              className="w-full pl-12 pr-4 py-4.5 bg-card/60 backdrop-blur-xl border border-border/40 rounded-[22px] focus:outline-none focus:ring-4 focus:ring-primary/5 focus:border-primary/40 transition-all font-bold text-sm text-foreground placeholder:text-muted-foreground/30 shadow-sm"
             />
           </div>
         </div>
@@ -145,7 +145,7 @@ export function MessagesPage() {
               className="space-y-4 px-5 max-w-lg mx-auto"
             >
               {[1, 2, 3].map(i => (
-                <div key={i} className="flex items-center gap-4 p-5 bg-card rounded-[2rem] border border-border/40 animate-pulse">
+                <div key={i} className="flex items-center gap-4 p-5 bg-card/50 backdrop-blur-md rounded-[2rem] border border-border/40 animate-pulse">
                   <div className="w-14 h-14 rounded-2xl bg-muted shrink-0" />
                   <div className="flex-1 space-y-2">
                     <div className="h-4 bg-muted rounded w-1/4" />

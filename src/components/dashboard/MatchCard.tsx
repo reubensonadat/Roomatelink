@@ -1,4 +1,4 @@
-import { Lock, Check, Flag, Sparkles } from 'lucide-react'
+import { Check, Flag, Lock } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 interface MatchCardProps {
@@ -29,14 +29,6 @@ export function MatchCard({ match, isRevealed, onSelect, index }: MatchCardProps
         onClick={onSelect}
         className="group w-full bg-card rounded-3xl p-3 sm:p-3.5 md:p-4 flex gap-3 sm:gap-3.5 md:gap-4 items-center border border-border/80 shadow-premium transition-all hover:border-primary/40 hover:shadow-elevated active:scale-[0.98] min-h-[100px] sm:min-h-[110px] md:min-h-[125px] overflow-hidden relative text-left"
       >
-        {/* Elite Badge Overlay (Boutique Glass) */}
-        {index < 3 && (
-          <div className="absolute top-3 right-3 pointer-events-none z-10 transition-transform group-hover:translate-y-[-2px]">
-            <span className="flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 dark:bg-amber-500/20 backdrop-blur-md text-amber-600 dark:text-amber-400 text-[10px] font-black uppercase tracking-[0.15em] rounded-xl border border-amber-500/20 shadow-premium">
-              <Sparkles className="w-3 h-3 animate-pulse" /> Best Match
-            </span>
-          </div>
-        )}
         {/* Avatar Wrapper */}
         <div className="relative w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 lg:w-20 lg:h-20 shrink-0">
           <div className={`w-full h-full rounded-3xl border-2 border-primary/20 bg-muted overflow-hidden relative shadow-inner transition-all duration-1000 ease-out ${!isRevealed ? 'blur-lg grayscale saturate-0' : 'blur-0 grayscale-0 saturate-100'}`}>
