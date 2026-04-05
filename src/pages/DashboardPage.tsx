@@ -60,7 +60,7 @@ export function DashboardPage() {
   const [hasPaid, setHasPaid] = useState(false)
   const [selectedMatch, setSelectedMatch] = useState<MatchProfile | null>(null)
   const [isPioneerUser, setIsPioneerUser] = useState(false)
-  const [hasQuestionnaire, setHasQuestionnaire] = useState(false)
+  const [hasQuestionnaire, setHasQuestionnaire] = useState(() => sessionStorage.getItem('hasQuestionnaireCache') === 'true')
   const [mounted, setMounted] = useState(false)
   const [isDevMode, setIsDevMode] = useState(false)
   const [devClickCount, setDevClickCount] = useState(0)
@@ -134,6 +134,7 @@ export function DashboardPage() {
           .maybeSingle()
 
         setHasQuestionnaire(!!qResp)
+        sessionStorage.setItem('hasQuestionnaireCache', String(!!qResp))
 
         // Step 3: Fetch Matches
         const { data: dbMatches, error: matchesError } = await supabase
@@ -159,7 +160,7 @@ export function DashboardPage() {
               matchPercent: m.match_percentage,
               gender: m.roommate.gender,
               course: m.roommate.course || 'Unspecified Course',
-              level: m.roommate.level && !String(m.roommate.level).toLowerCase().includes('level') ? `Level ${m.roommate.level}` : (m.roommate.level || 'Unknown Level'),
+              level: String(m.roommate.level || 'Unknown').replace(/level/i, '').trim(),
               avatar: m.roommate.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.roommate.full_name || 'S')}&background=random`,
               bio: m.roommate.bio || 'No bio provided yet.',
               trait: m.top_shared_trait || 'Highly Compatible',

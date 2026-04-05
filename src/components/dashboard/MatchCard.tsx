@@ -56,9 +56,9 @@ export function MatchCard({ match, isRevealed, onSelect, index }: MatchCardProps
                   <h3 className="text-[14px] sm:text-[15px] md:text-[17px] lg:text-[18px] font-bold text-foreground truncate">{match.name}</h3>
                   {match.verified && <Check className="w-3.5 h-3.5 text-blue-500 fill-blue-500/10 stroke-[3]" />}
                 </div>
-                <span className="text-[10px] sm:text-[11px] font-bold text-primary/80 truncate mb-1">
+                <p className="text-[10px] sm:text-[11px] font-bold text-primary/80 truncate mb-1 w-full">
                   Level {match.level} • {match.course}
-                </span>
+                </p>
                 <div className="flex flex-wrap gap-1 mt-1">
                   <span className="px-2 py-0.5 rounded-lg bg-muted text-[10px] font-bold text-muted-foreground border border-border/40">
                     {match.trait || "Potential Roommate"}

@@ -99,7 +99,7 @@ export function MessagesPage() {
 
 
   return (
-    <div className="flex flex-col w-full min-h-screen bg-background relative selection:bg-indigo-100 dark:selection:bg-indigo-500/30 uppercase tracking-tight">
+    <div className="flex flex-col w-full min-h-screen bg-background relative selection:bg-indigo-100 dark:selection:bg-indigo-500/30">
       <TopHeader title="Messages" />
 
       <div className="flex-1 overflow-y-auto w-full md:max-w-2xl lg:max-w-3xl mx-auto px-4 pt-6 pb-32">
