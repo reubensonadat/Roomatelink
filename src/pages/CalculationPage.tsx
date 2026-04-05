@@ -91,7 +91,7 @@ export default function CalculationPage() {
             <motion.div
               animate={{ scale: [1, 1.12, 1], opacity: [0.3, 0.15, 0.3] }}
               transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
-              className="absolute w-36 h-36 sm:w-40 sm:h-40 rounded-[44px] border-2 border-primary/30"
+              className="absolute w-36 h-36 sm:w-40 sm:h-40 rounded-[22px] border-2 border-primary/30"
             />
           )}
 
@@ -100,7 +100,7 @@ export default function CalculationPage() {
             initial={{ scale: 0.85, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ type: "spring", stiffness: 200, damping: 20 }}
-            className="w-28 h-28 sm:w-32 sm:h-32 rounded-[36px] bg-card border border-border/60 shadow-2xl flex items-center justify-center relative overflow-hidden"
+            className="w-28 h-28 sm:w-32 sm:h-32 rounded-[22px] bg-card border border-border/60 shadow-2xl flex items-center justify-center relative overflow-hidden"
           >
             {/* Spinning gradient backdrop */}
             <motion.div
@@ -132,7 +132,7 @@ export default function CalculationPage() {
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="absolute inset-0 bg-emerald-500/90 backdrop-blur-sm flex items-center justify-center z-30 rounded-[36px]"
+                  className="absolute inset-0 bg-emerald-500/90 backdrop-blur-sm flex items-center justify-center z-30 rounded-[22px]"
                 >
                   <motion.div
                     initial={{ scale: 0, rotate: -90 }}
@@ -154,7 +154,7 @@ export default function CalculationPage() {
             className="flex flex-col items-center gap-2.5 mt-5"
           >
             {/* Shield badge */}
-            <div className="px-4 py-1.5 rounded-2xl bg-card border border-border shadow-lg flex items-center gap-2">
+            <div className="px-5 py-2.5 rounded-[22px] bg-card border border-border shadow-lg flex items-center gap-2">
               <ShieldCheck className="w-3.5 h-3.5 text-primary" />
               <span className="text-[11px] font-black uppercase tracking-[0.15em] text-foreground">
                 {complete ? "Synthesis Complete" : "Secure Verification"}
@@ -250,7 +250,7 @@ export default function CalculationPage() {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.95 }}
                   transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                  className={`flex items-center gap-4 px-5 py-4 rounded-2xl border transition-all duration-300
+                  className={`flex items-center gap-5 px-6 py-5 rounded-[22px] border transition-all duration-300
                     ${isActive
                       ? 'bg-card border-primary/30 shadow-lg shadow-primary/5'
                       : 'bg-muted/20 border-border/30 opacity-50'
@@ -288,7 +288,7 @@ export default function CalculationPage() {
                   </div>
 
                   {/* Step detail badge */}
-                  <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-lg shrink-0
+                  <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-[22px] shrink-0
                     ${isActive
                       ? 'bg-primary/10 text-primary'
                       : isDone
@@ -315,11 +315,11 @@ export default function CalculationPage() {
             >
               <button
                 onClick={() => navigate('/dashboard')}
-                className="w-full py-4.5 rounded-2xl bg-foreground text-background font-black text-[16px] shadow-2xl transition-all hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-3 group"
+                className="w-full py-6 rounded-[22px] bg-foreground text-background font-black text-[15px] shadow-2xl transition-all hover:scale-[1.02] active:scale-[0.95] flex items-center justify-center gap-4 group uppercase tracking-[0.3em] border border-white/5"
               >
-                <Sparkles className="w-5 h-5" />
+                <Sparkles className="w-5 h-5 opacity-60" />
                 Explore Your Matches
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform" />
               </button>
             </motion.div>
           )}

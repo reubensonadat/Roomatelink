@@ -67,7 +67,7 @@ export function LandingPage() {
                     </nav>
 
                     <div className="hidden md:flex items-center gap-4">
-                        <Link to="/auth" className="px-5 py-2.5 rounded-2xl bg-primary text-primary-foreground font-medium text-[14px] hover:bg-primary/90 transition-colors shadow-sm">
+                        <Link to="/auth" className="px-8 py-4 rounded-[22px] bg-primary text-primary-foreground font-bold text-[14px] hover:bg-primary/90 transition-all shadow-lg active:scale-95">
                             Get Started
                         </Link>
                     </div>
@@ -141,8 +141,8 @@ export function LandingPage() {
                     </motion.p>
 
                     <motion.div variants={fadeUp}>
-                        <Link to="/auth" className="w-full sm:w-auto px-10 py-4 rounded-2xl bg-foreground text-background font-medium text-[16px] transition-transform hover:scale-[1.02] active:scale-95 shadow-md flex justify-center items-center gap-2">
-                            Get Started Now <ChevronRight className="w-4 h-4 ml-1" />
+                        <Link to="/auth" className="w-full sm:w-auto px-12 py-6 rounded-[22px] bg-foreground text-background font-black text-[16px] transition-transform hover:scale-[1.02] active:scale-95 shadow-2xl flex justify-center items-center gap-3 uppercase tracking-widest">
+                            Get Started Now <ChevronRight className="w-5 h-5 ml-1" />
                         </Link>
                     </motion.div>
 
@@ -375,7 +375,7 @@ export function LandingPage() {
                                     </li>
                                 </ul>
 
-                                <Link to="/auth" className="w-full py-4 rounded-2xl bg-foreground text-background font-bold text-[16px] transition-transform hover:scale-[1.02] active:scale-95 shadow-md flex justify-center items-center">
+                                <Link to="/auth" className="w-full py-6 rounded-[22px] bg-foreground text-background font-black text-[16px] transition-transform hover:scale-[1.02] active:scale-95 shadow-xl flex justify-center items-center uppercase tracking-widest">
                                     Get Started
                                 </Link>
                             </div>
@@ -431,9 +431,9 @@ export function LandingPage() {
                                 A revolutionary algorithm designed exclusively for university students. Eradicating terrible living situations, one perfectly matched dorm at a time.
                             </p>
                             <div className="flex gap-3">
-                                <a href="#" className="w-10 h-10 flex items-center justify-center bg-muted rounded-2xl hover:bg-foreground hover:text-background transition-colors text-foreground"><InstagramIcon /></a>
-                                <a href="#" className="w-10 h-10 flex items-center justify-center bg-muted rounded-2xl hover:bg-foreground hover:text-background transition-colors text-foreground"><TwitterIcon /></a>
-                                <a href="#" className="w-10 h-10 flex items-center justify-center bg-muted rounded-2xl hover:bg-foreground hover:text-background transition-colors text-foreground"><LinkedinIcon /></a>
+                                <a href="#" className="w-12 h-12 flex items-center justify-center bg-muted rounded-[22px] hover:bg-foreground hover:text-background transition-all text-foreground shadow-sm"><InstagramIcon /></a>
+                                <a href="#" className="w-12 h-12 flex items-center justify-center bg-muted rounded-[22px] hover:bg-foreground hover:text-background transition-all text-foreground shadow-sm"><TwitterIcon /></a>
+                                <a href="#" className="w-12 h-12 flex items-center justify-center bg-muted rounded-[22px] hover:bg-foreground hover:text-background transition-all text-foreground shadow-sm"><LinkedinIcon /></a>
                             </div>
                         </div>
 

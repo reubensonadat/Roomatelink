@@ -230,7 +230,7 @@ export function QuestionnairePage() {
             {questions.map((q, idx) => {
               const selectedOpt = q.options.find(o => o.id === answers[q.id])
               return (
-                <div key={q.id} className="p-5 rounded-2xl border-2 border-border/40 bg-card flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div key={q.id} className="p-6 rounded-[22px] border-2 border-border/40 bg-card flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-sm">
                   <div className="flex-1">
                     <h3 className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 flex items-center gap-2">
                       <Check className="w-3 h-3 text-primary" /> Question {idx + 1}
@@ -254,13 +254,13 @@ export function QuestionnairePage() {
                       setCurrentIndex(idx)
                       setIsReviewing(false)
                     }}
-                    className={`flex items-center justify-center gap-2 px-6 py-4 rounded-[22px] font-bold group shrink-0 transition-all ${
+                    className={`flex items-center justify-center gap-3 px-8 py-5 rounded-[22px] font-black text-[14px] uppercase tracking-widest group shrink-0 transition-all ${
                       editCount >= 2 
                         ? 'bg-muted/30 text-muted-foreground/30 cursor-not-allowed' 
                         : 'bg-muted/60 text-muted-foreground hover:bg-primary/10 hover:text-primary active:scale-95'
                     }`}
                   >
-                    <Edit2 className="w-4 h-4" /> {editCount >= 2 ? 'Locked' : 'Edit'}
+                    <Edit2 className="w-4 h-4" /> {editCount >= 2 ? 'Locked' : 'Revise'}
                   </button>
                 </div>
               )
@@ -270,9 +270,9 @@ export function QuestionnairePage() {
           <div className="sticky bottom-6 mt-4">
             <button
                onClick={() => performSubmission(answers)}
-               className="w-full py-5 bg-foreground text-background rounded-[22px] font-black uppercase tracking-widest shadow-[0_10px_40px_rgba(0,0,0,0.1)] active:scale-95 transition-all text-sm flex justify-center items-center gap-3"
+               className="w-full py-6 bg-foreground text-background rounded-[22px] font-extrabold uppercase tracking-[0.3em] shadow-2xl hover:bg-primary hover:text-white active:scale-95 transition-all text-[15px] flex justify-center items-center gap-4 border border-white/5"
             >
-               <Sparkles className="w-5 h-5 opacity-60" /> Submit & Calculate Matches
+               <Sparkles className="w-5 h-5 opacity-60" /> Synchronize DNA
             </button>
           </div>
         </div>
@@ -285,52 +285,33 @@ export function QuestionnairePage() {
   return (
     <div className="min-h-screen bg-background flex flex-col items-center relative selection:bg-primary/20 overflow-x-hidden">
       {/* Floating Glass Progress Pill */}
-      <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] w-fit">
-        <motion.div 
-          initial={{ y: -20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          className="bg-card/40 backdrop-blur-xl border border-border/40 px-5 py-2.5 rounded-full shadow-[0_8px_32px_rgba(0,0,0,0.05)] flex items-center gap-4"
-        >
-          <div className="flex flex-col gap-1">
-             <div className="flex items-center justify-between min-w-[80px]">
-                <span className="text-[10px] font-black text-primary uppercase tracking-widest leading-none">DNA Progress</span>
-                <span className="text-[10px] font-black text-foreground/40 leading-none tabular-nums ml-2">{Math.round(progressPercent)}%</span>
-             </div>
-             <div className="w-full h-1 bg-muted/40 rounded-full overflow-hidden">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${progressPercent}%` }}
-                  transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-                  className="h-full bg-primary shadow-[0_0_8px_rgba(59,130,246,0.5)]"
-                />
-             </div>
-          </div>
-        </motion.div>
+      {/* Top Edge Progress Bar: Boutique Cleaner UX */}
+      <div className="fixed top-0 left-0 w-full h-[4px] bg-muted/20 z-[100] overflow-hidden">
+        <motion.div
+          initial={{ width: 0 }}
+          animate={{ width: `${progressPercent}%` }}
+          transition={{ duration: 1.5, ease: [0.22, 1, 0.36, 1] }}
+          className="h-full bg-primary shadow-[0_4px_12px_rgba(59,130,246,0.3)]"
+        />
       </div>
 
       <div className="w-full max-w-[480px] md:max-w-2xl lg:max-w-3xl mx-auto flex flex-col flex-1 relative z-10">
         <header className="px-6 pt-12 pb-6 flex items-center justify-between">
           <button
             onClick={() => {
-              const answeredCount = Object.keys(answers).length;
-              if (answeredCount === questions.length) {
-                 setIsReviewing(true); // Return to review page
-              } else if (currentIndex > 0) {
-                 setCurrentIndex(prev => prev - 1);
-              } else {
-                 navigate('/dashboard'); // Explicit exit
-              }
+              // Exit questionnaire and return to dashboard
+              navigate('/dashboard');
             }}
-            className="w-12 h-12 rounded-[1.5rem] bg-muted/50 border border-border/50 flex items-center justify-center active:scale-90 transition-all hover:bg-muted"
+            className="w-14 h-14 rounded-[22px] bg-muted/50 border border-border/50 flex items-center justify-center active:scale-90 transition-all hover:bg-muted shadow-sm"
           >
             <ChevronLeft className="w-6 h-6" />
           </button>
 
-          <div className="flex bg-muted/50 border border-border/50 px-6 py-2 rounded-[1.5rem] items-center cursor-pointer hover:bg-muted transition-colors" onClick={() => {
+          <div className="flex bg-muted/50 border border-border/50 px-8 py-3 rounded-[22px] items-center cursor-pointer hover:bg-muted transition-colors shadow-sm" onClick={() => {
              // Let them peek at the review screen early if they have answered questions
              if (Object.keys(answers).length > 0) setIsReviewing(true)
           }}>
-            <span className="text-[13px] font-black text-foreground uppercase tracking-[0.2em] tabular-nums flex items-center gap-2">
+            <span className="text-[14px] font-black text-foreground uppercase tracking-[0.3em] tabular-nums flex items-center gap-2">
               {currentIndex + 1} <span className="opacity-30 text-[10px] mx-1">/</span> {questions.length}
             </span>
           </div>

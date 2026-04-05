@@ -33,7 +33,10 @@ export function Sidebar() {
       <nav className="flex flex-col gap-2 flex-1 mt-4">
         {NAV_ITEMS.map((item) => {
           // Smart matching for nested routes (like specific chat messages)
-          const isActive = location.pathname === item.url || (location.pathname.startsWith(item.url) && item.url !== '/dashboard');
+          const isActive = location.pathname === item.url || 
+                           (location.pathname.startsWith(item.url) && item.url !== '/dashboard') ||
+                           (item.name === 'Profile' && location.pathname.includes('profile')) ||
+                           (item.name === 'Settings' && location.pathname.includes('settings'));
           const Icon = item.icon;
           return (
             <Link 

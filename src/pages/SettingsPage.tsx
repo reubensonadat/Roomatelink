@@ -358,10 +358,10 @@ export function SettingsPage() {
                 animate={{ y: 0, opacity: 1 }}
                 exit={{ y: "100%", opacity: 0 }}
                 transition={{ type: "spring", damping: 30, stiffness: 300, mass: 0.8 }}
-                className="relative w-full max-w-lg bg-card border-t sm:border border-border/80 rounded-t-[2.5rem] sm:rounded-[2.5rem] shadow-premium p-8 md:p-12 mb-0 sm:mb-8"
+                className="relative w-full max-w-lg bg-card border-t sm:border border-border/80 rounded-[22px] shadow-premium p-8 md:p-12 mb-0 sm:mb-8"
               >
                 <div className="flex flex-col items-center text-center">
-                  <div className="w-20 h-20 rounded-[22px] bg-primary/10 flex items-center justify-center mb-6">
+                  <div className="w-20 h-20 rounded-[22px] bg-primary/10 flex items-center justify-center mb-6 shadow-inner">
                     <GraduationCap className="w-10 h-10 text-primary" />
                   </div>
                   <h3 className="text-2xl font-black text-foreground mb-3 tracking-tight uppercase">Student ID Hub</h3>
@@ -383,7 +383,7 @@ export function SettingsPage() {
                             value={manualEmail}
                             onChange={(e) => setManualEmail(e.target.value)}
                             placeholder="E.G. NAME@STU.UCC.EDU.GH"
-                            className="w-full px-6 py-5 rounded-[22px] bg-muted/40 border border-border focus:border-primary/50 outline-none transition-all font-black text-[15px] uppercase tracking-widest placeholder:text-muted-foreground/30"
+                            className="w-full px-8 py-6 rounded-[22px] bg-muted/40 border border-border focus:border-primary/50 outline-none transition-all font-black text-[15px] uppercase tracking-widest placeholder:text-muted-foreground/30 shadow-inner"
                           />
                         </motion.div>
                       ) : (
@@ -399,7 +399,7 @@ export function SettingsPage() {
                             value={verificationCode}
                             onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, ''))}
                             placeholder="0 0 0 0 0 0"
-                            className="w-full px-6 py-5 rounded-[22px] bg-muted/40 border border-border focus:border-primary/50 outline-none transition-all font-black text-center text-2xl tracking-[0.6em]"
+                            className="w-full px-8 py-6 rounded-[22px] bg-muted/40 border border-border focus:border-primary/50 outline-none transition-all font-black text-center text-2xl tracking-[0.6em] shadow-inner"
                           />
                         </motion.div>
                       )}
@@ -409,7 +409,7 @@ export function SettingsPage() {
                       <button
                         onClick={handleVerifyEmail}
                         disabled={isVerifying || (verificationStep === 'email' ? !manualEmail : verificationCode.length < 6)}
-                        className="w-full py-5.5 rounded-[22px] bg-primary text-white font-black text-[15px] shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-3 uppercase tracking-widest"
+                        className="w-full py-6 rounded-[22px] bg-primary text-white font-black text-[15px] shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-3 uppercase tracking-widest"
                       >
                         {isVerifying ? <Loader2 className="w-5 h-5 animate-spin" /> : verificationStep === 'email' ? 'Generate Handshake' : 'Finalize Identity'}
                       </button>
@@ -419,7 +419,7 @@ export function SettingsPage() {
                           else setIsVerifyModalOpen(false);
                         }}
                         disabled={isVerifying}
-                        className="w-full py-4 rounded-[22px] bg-muted/40 text-muted-foreground font-black text-[12px] hover:text-foreground transition-all active:scale-[0.98] uppercase tracking-[0.3em]"
+                        className="w-full py-5 rounded-[22px] bg-muted/40 text-muted-foreground font-black text-[12px] hover:text-foreground transition-all active:scale-[0.98] uppercase tracking-[0.3em]"
                       >
                         {verificationStep === 'code' ? 'Reverse' : 'Cancel'}
                       </button>

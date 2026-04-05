@@ -187,14 +187,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
         updateActivity()
+        // Proactive Session Resurrection: Refresh session on wake
+        supabase.auth.getSession().then(({ data: { session: s } }) => {
+          if (s) {
+            setSession(s)
+            setUser(s.user)
+          }
+        })
       }
     }
 
+    const handleFocus = () => {
+      // Secondary handshake for PWA/Mobile resume
+      updateActivity()
+      refreshProfile()
+    }
+
     document.addEventListener('visibilitychange', handleVisibility)
+    window.addEventListener('focus', handleFocus)
 
     return () => {
       clearInterval(interval)
       document.removeEventListener('visibilitychange', handleVisibility)
+      window.removeEventListener('focus', handleFocus)
     }
   }, [user, profile])
 

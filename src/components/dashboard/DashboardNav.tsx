@@ -51,7 +51,12 @@ export function DashboardNav() {
   
   // Smart dynamic index matching for React Router
   const activeIndex = NAV_ITEMS.reduce((bestIndex, item, index) => {
-    if (location.pathname === item.url || (location.pathname.startsWith(item.url) && item.url !== '/dashboard')) {
+    const isDirectMatch = location.pathname === item.url;
+    const isSubPathMatch = location.pathname.startsWith(item.url) && item.url !== '/dashboard';
+    const isAliasMatch = (item.name === 'Profile' && location.pathname.includes('profile')) ||
+                         (item.name === 'Settings' && location.pathname.includes('settings'));
+
+    if (isDirectMatch || isSubPathMatch || isAliasMatch) {
       if (bestIndex === -1 || item.url.length > NAV_ITEMS[bestIndex].url.length) {
         return index;
       }

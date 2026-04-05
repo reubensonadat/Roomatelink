@@ -49,7 +49,7 @@ function getTierInfo(pct: number) {
 
 
 export function DashboardPage() {
-  const { user, profile, loading: authLoading } = useAuth()
+  const { user, profile, loading: authLoading, refreshProfile } = useAuth()
 
   // ─── Core State ──────────────────────────────────────────────────────
   const [matches, setMatches] = useState<MatchProfile[]>(() => {
@@ -57,9 +57,9 @@ export function DashboardPage() {
     return cached ? JSON.parse(cached) : []
   })
   const [isLoading, setIsLoading] = useState(() => !sessionStorage.getItem('matchesCache'))
-  const [hasPaid, setHasPaid] = useState(false)
+  const [hasPaid, setHasPaid] = useState(() => !!profile?.has_paid)
   const [selectedMatch, setSelectedMatch] = useState<MatchProfile | null>(null)
-  const [isPioneerUser, setIsPioneerUser] = useState(false)
+  const [isPioneerUser, setIsPioneerUser] = useState(() => !!profile?.is_pioneer)
   const [hasQuestionnaire, setHasQuestionnaire] = useState(() => sessionStorage.getItem('hasQuestionnaireCache') === 'true')
   const [mounted, setMounted] = useState(false)
   const [isCheckingPayment, setIsCheckingPayment] = useState(false)
@@ -126,7 +126,12 @@ export function DashboardPage() {
       }
 
       if (activeProfile) {
-        setHasPaid(activeProfile.has_paid)
+        const paidStatus = !!activeProfile.has_paid
+        const pioneerStatus = !!activeProfile.is_pioneer
+        const isPaid = paidStatus || pioneerStatus
+        
+        setHasPaid(isPaid) // This matches the user's request: treat both the same way
+        setIsPioneerUser(pioneerStatus)
 
         // Check if user has completed questionnaire
         const { data: qResp } = await supabase
@@ -179,16 +184,19 @@ export function DashboardPage() {
           sessionStorage.setItem('matchesCache', '[]')
         }
 
-        // Check Pioneer Status (Try/Catch for Edge Function stability)
-        try {
-          const { data: pcData, error: pcError } = await supabase.functions.invoke('pioneer-check', {
-            body: { userId: activeProfile.id }
-          })
-          if (!pcError && pcData) {
-            setIsPioneerUser((pcData as any).isPioneer || false)
+        // Step 4: Verify Pioneer Status if not already marked
+        if (!pioneerStatus && !paidStatus) {
+          try {
+            const { data: pcData, error: pcError } = await supabase.functions.invoke('pioneer-check')
+            if (!pcError && pcData) {
+              const isPioneer = (pcData as any).isPioneer || false
+              setIsPioneerUser(isPioneer)
+              // If the function successfully found them as a pioneer, it updated the DB in background.
+              // But we can trigger a profile refresh if we want a hard sync.
+            }
+          } catch (pcErr) {
+            console.warn('Pioneer Engine sync deferred.')
           }
-        } catch (pcErr) {
-          console.warn('Pioneer Engine unreachable. Falling back to standard flow.')
         }
       } else {
         setMatches([])
@@ -328,7 +336,9 @@ export function DashboardPage() {
       const result = await res.json()
 
       if (result.success) {
-        // 2. Refresh local state on success
+        // Zero-Fliker Sync: Refresh Auth Context
+        await refreshProfile()
+        
         setHasPaid(true)
         setIsVerifyingPayment(false)
         setIsUnlocking(true)
@@ -363,20 +373,38 @@ export function DashboardPage() {
     }
   }
 
-  const handleApplyDiscount = () => {
+  const handleApplyDiscount = async () => {
+    if (!discountCode.trim()) return
     setIsApplyingDiscount(true)
-    setTimeout(() => {
-      const VALID_DISCOUNTS: Record<string, number> = { 'ROOMMATE10': 10, 'WELCOME10': 10 }
-      const amount = VALID_DISCOUNTS[discountCode.toUpperCase()]
-      if (amount) {
-        setFinalPrice(25 - amount)
+    setDiscountError('')
+    
+    try {
+      // Real-Time Database Validation (Beast Mode)
+      const { data, error } = await supabase
+        .from('promo_codes')
+        .select('*')
+        .eq('code', discountCode.toUpperCase())
+        .maybeSingle()
+
+      if (error) throw error
+
+      if (data) {
+        // Apply the requested 10 GHS discount
+        const discountAmount = data.discount_amount || 10
+        setFinalPrice(25 - discountAmount)
         setDiscountApplied(true)
-        setDiscountError('')
+        toast.success(`Success! ₵${discountAmount} Privilege Discount Applied.`, {
+          icon: <Sparkles className="w-4 h-4 text-primary" />
+        })
       } else {
-        setDiscountError('Invalid code')
+        setDiscountError('Invalid or expired privilege code.')
       }
+    } catch (err: any) {
+      console.error('Promo sync failed:', err)
+      setDiscountError('Handshake error. Check connection.')
+    } finally {
       setIsApplyingDiscount(false)
-    }, 800)
+    }
   }
 
   const handlePaymentSuccess = async (reference: any) => {
@@ -396,6 +424,9 @@ export function DashboardPage() {
           .eq('id', profile?.id)
         
         if (error) throw error
+        
+        // Zero-Fliker Sync: Refresh Auth Context
+        await refreshProfile()
         
         success = true
         setIsVerifyingPayment(false)
@@ -435,7 +466,12 @@ export function DashboardPage() {
 
       setIsPioneerModalOpen(false)
       setHasPaid(true)
+      setIsPioneerUser(true)
       setUnlockedCount(matches.length)
+      
+      // Zero-Fliker Sync: Refresh Auth Context Profile
+      await refreshProfile()
+      
       toast.success('Pioneer Access Granted!')
     } catch (err) {
       console.error('Pioneer claim failed:', err)
@@ -446,16 +482,15 @@ export function DashboardPage() {
   }
 
   const handleSelectMatch = (match: MatchProfile) => {
-    if (hasPaid) setSelectedMatch(match)
+    if (hasPaid || isPioneerUser) setSelectedMatch(match)
     else handleStartPayment()
   }
 
-  // Refined Hydration Defense
+  // Refined Hydration Defense: Prevent 'Identity Synchronization' flicker
+  // We only show the splash on cold boot (matches empty AND loading)
+  // Once matches is populated (even if empty after fetch), we stop showing it.
   const isHydrating = authLoading || (user && !profile && isLoading)
-  
-  // Handover Logic: Only show the "Starting" screen on fresh cold boot
-  // If we have matches already or it's a sub-page switch, stay silent.
-  const showSplash = isHydrating && matches.length === 0
+  const showSplash = isHydrating && matches.length === 0 && !sessionStorage.getItem('matchesCache')
 
   if (!mounted || showSplash) {
     return (
@@ -541,7 +576,7 @@ export function DashboardPage() {
               </div>
               <button
                 onClick={handlePioneerClaim}
-                className="px-6 py-3 bg-indigo-500 text-white rounded-[22px] font-black text-[13px] shadow-lg shadow-indigo-500/20 hover:scale-105 active:scale-95 transition-all uppercase tracking-widest"
+                className="px-6 py-4 bg-indigo-500 text-white rounded-[22px] font-black text-[13px] shadow-lg shadow-indigo-500/20 hover:scale-105 active:scale-95 transition-all uppercase tracking-widest"
               >
                 Claim
               </button>
@@ -581,7 +616,7 @@ export function DashboardPage() {
                   </div>
                   <Link 
                     to="/dashboard/profile" 
-                    className="w-full py-5 bg-amber-500 text-white font-black text-[15px] rounded-[22px] shadow-xl shadow-amber-500/20 hover:bg-amber-600 hover:shadow-amber-500/40 active:scale-95 transition-all flex items-center justify-center gap-2 uppercase tracking-widest"
+                    className="w-full py-6 bg-amber-500 text-white font-black text-[15px] rounded-[22px] shadow-xl shadow-amber-500/20 hover:bg-amber-600 hover:shadow-amber-500/40 active:scale-95 transition-all flex items-center justify-center gap-2 uppercase tracking-widest"
                   >
                     Setup Identity <Sparkles className="w-4 h-4 ml-1" />
                   </Link>
@@ -595,7 +630,7 @@ export function DashboardPage() {
                 exit={{ opacity: 0, scale: 0.95 }}
                 className="w-full max-w-lg mx-auto"
               >
-                <div className="bg-card/50 backdrop-blur-xl rounded-[2.5rem] border border-border/80 p-8 shadow-premium flex flex-col items-center text-center gap-6 relative overflow-hidden group">
+                <div className="bg-card/50 backdrop-blur-xl rounded-[3xl] border border-border/80 p-8 shadow-premium flex flex-col items-center text-center gap-6 relative overflow-hidden group">
                    <div className="absolute top-0 right-0 w-40 h-40 bg-primary/5 blur-[80px] -translate-y-1/2 translate-x-1/2" />
                    <div className="w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center relative group-hover:scale-110 transition-transform duration-500">
                     <div className="absolute inset-0 bg-primary/20 animate-pulse rounded-3xl" />
@@ -609,7 +644,7 @@ export function DashboardPage() {
                   </div>
                   <Link 
                     to="/questionnaire" 
-                    className="w-full py-5 bg-foreground text-background font-black text-[15px] rounded-[22px] shadow-xl hover:opacity-90 active:scale-95 transition-all flex items-center justify-center gap-2 uppercase tracking-widest"
+                    className="w-full py-6 bg-foreground text-background font-black text-[15px] rounded-[22px] shadow-xl hover:opacity-90 active:scale-95 transition-all flex items-center justify-center gap-2 uppercase tracking-widest"
                   >
                     Start DNA Test <Sparkles className="w-4 h-4 ml-1" />
                   </Link>
@@ -629,12 +664,12 @@ export function DashboardPage() {
                 </div>
                 {isPioneerUser ? (
                   <>
-                    <h3 className="text-[20px] font-black text-foreground mb-2">Pioneer Window Active</h3>
+                    <h3 className="text-[20px] font-black text-foreground mb-2">Pioneer Hub</h3>
                     <p className="text-muted-foreground text-[14px] font-medium leading-relaxed max-w-[280px] mb-3">
-                      As a pioneer user, you can only match with other users who joined within the last 60 days. This ensures everyone starts fresh!
+                      We're currently matching you with the initial wave of students. New compatible roommates appear as they join!
                     </p>
                     <p className="text-muted-foreground text-[13px] font-semibold leading-relaxed max-w-[280px] mb-6">
-                      No matches yet? New students are joining daily. Check back soon or share Roommate Link with friends!
+                      Check back daily or invite friends to speed up the process.
                     </p>
                   </>
                 ) : (
@@ -648,7 +683,7 @@ export function DashboardPage() {
                 <button
                   onClick={forceRecalculate}
                   disabled={isRecalculating}
-                  className="mt-2 px-6 py-3 bg-muted text-foreground border border-border/50 rounded-xl font-bold flex items-center gap-2 hover:bg-muted/80 transition-all active:scale-95 disabled:opacity-50"
+                  className="mt-2 px-8 py-4 bg-muted text-foreground border border-border/50 rounded-[22px] font-bold flex items-center gap-2 hover:bg-muted/80 transition-all active:scale-95 disabled:opacity-50 tracking-tight"
                 >
                   {isRecalculating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
                   {isRecalculating ? "Running Algorithm..." : "Force Run Algorithm"}
@@ -674,13 +709,12 @@ export function DashboardPage() {
                   <div className="flex justify-center mt-10 mb-20 animate-in fade-in slide-in-from-bottom-4 duration-700">
                     <button
                       onClick={() => setDisplayLimit(prev => Math.min(prev + 10, 20))}
-                      className="group px-8 py-4 bg-muted/30 hover:bg-muted border border-border/40 rounded-2xl flex items-center gap-3 transition-all active:scale-95"
+                      className="group px-8 py-5 bg-muted/40 hover:bg-muted border border-border/40 rounded-[22px] flex items-center gap-4 transition-all active:scale-95 shadow-sm"
                     >
-                      <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-                        <Sparkles className="w-4 h-4 text-primary" />
+                      <div className="w-10 h-10 rounded-[18px] bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform shadow-inner">
+                        <Sparkles className="w-5 h-5 text-primary" />
                       </div>
                       <div className="text-left">
-                        <span className="block text-[12px] font-black uppercase tracking-widest text-foreground">Explore More Elite DNA</span>
                         <span className="block text-[10px] font-bold text-muted-foreground">Revealing top 20 potential roommates</span>
                       </div>
                     </button>

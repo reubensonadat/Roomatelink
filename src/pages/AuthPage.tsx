@@ -47,7 +47,7 @@ const DirectionalHoverButton = ({ children, onClick, disabled, className, isPrim
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       whileTap={disabled ? {} : { scale: 0.98 }}
-      className={`relative overflow-hidden w-full h-[46px] rounded-[12px] font-bold transition-all text-[14px] flex justify-center items-center z-10 ${disabled ? 'opacity-50 cursor-not-allowed grayscale-[20%]' : 'cursor-pointer'} ${className}`}
+      className={`relative overflow-hidden w-full h-[64px] rounded-[22px] font-black transition-all text-[15px] flex justify-center items-center z-10 ${disabled ? 'opacity-50 cursor-not-allowed grayscale-[20%]' : 'cursor-pointer'} ${className}`}
     >
       <motion.div
         initial={false}
@@ -168,7 +168,7 @@ export function AuthPage() {
         >
            <Link 
               to="/" 
-              className="flex items-center gap-2 px-5 py-2.5 rounded-2xl border border-border/60 bg-card/40 hover:bg-muted/80 backdrop-blur-md text-[13px] font-bold text-muted-foreground hover:text-foreground transition-all group shadow-sm hover:shadow-md"
+              className="flex items-center gap-3 px-6 py-3.5 rounded-[22px] border border-border/60 bg-card/40 hover:bg-muted/80 backdrop-blur-md text-[14px] font-black text-muted-foreground hover:text-foreground transition-all group shadow-sm hover:shadow-md"
            >
               <ChevronRight className="w-[18px] h-[18px] rotate-180 group-hover:-translate-x-1 transition-transform" />
               Go back
@@ -187,7 +187,7 @@ export function AuthPage() {
           </h1>
           
           {/* Stunning Pill Segmented Control */}
-          <div className="relative flex items-center bg-muted/40 p-1.5 rounded-2xl border border-border/50 w-full max-w-[280px] shadow-inner mx-auto">
+          <div className="relative flex items-center bg-muted/40 p-2 rounded-[22px] border border-border/50 w-full max-w-[300px] shadow-inner mx-auto">
             <button 
               onClick={() => { setMode('signin'); setEmail(''); setPassword(''); setErrorMessage(''); setSuccessMessage(''); }}
               className={`flex-1 py-2.5 rounded-xl relative z-10 font-bold text-[14px] transition-colors ${mode === 'signin' ? 'text-foreground' : 'text-foreground/50 hover:text-foreground'}`}
@@ -202,7 +202,7 @@ export function AuthPage() {
             </button>
             {/* Sliding Background */}
             <div 
-              className={`absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] rounded-xl transition-all duration-300 ease-in-out shadow-[0_2px_10px_rgba(0,0,0,0.06)] border border-border/50 bg-background ${mode === 'signin' ? 'left-1.5' : 'left-[calc(50%)]'}`} 
+              className={`absolute top-2 bottom-2 w-[calc(50%-8px)] rounded-[18px] transition-all duration-300 ease-in-out shadow-[0_2px_10px_rgba(0,0,0,0.06)] border border-border/50 bg-background ${mode === 'signin' ? 'left-2' : 'left-[calc(50%)]'}`} 
             />
           </div>
         </motion.div>
@@ -212,7 +212,7 @@ export function AuthPage() {
           initial={{ opacity: 0, y: 20, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ duration: 0.4, ease: "easeOut" }}
-          className="bg-card/60 backdrop-blur-2xl border border-border/60 rounded-2xl p-6 sm:p-8 shadow-2xl relative overflow-hidden"
+          className="bg-card/60 backdrop-blur-2xl border border-border/60 rounded-[22px] p-6 sm:p-8 shadow-2xl relative overflow-hidden"
         >
           <div className="flex flex-col gap-6">
 
@@ -282,7 +282,7 @@ export function AuthPage() {
                     onChange={(e) => { setEmail(e.target.value); setErrorMessage(''); }}
                     placeholder="your.email@provider.com" 
                     required
-                    className="w-full bg-background border border-border/80 focus:border-primary/50 shadow-[0_2px_10px_rgba(0,0,0,0.02)] rounded-2xl pl-10 pr-4 py-3 text-foreground font-medium outline-none focus:ring-[3px] focus:ring-primary/10 transition-all placeholder:text-muted-foreground/40 text-[14px]"
+                    className="w-full bg-background border border-border/80 focus:border-primary/50 shadow-[0_2px_10px_rgba(0,0,0,0.02)] rounded-[22px] pl-10 pr-4 py-4 text-foreground font-black outline-none focus:ring-[3px] focus:ring-primary/10 transition-all placeholder:text-muted-foreground/40 text-[15px]"
                   />
                 </div>
               </div>
@@ -302,7 +302,7 @@ export function AuthPage() {
                     onChange={(e) => { setPassword(e.target.value); setErrorMessage(''); }}
                     placeholder="••••••••••" 
                     required
-                    className="w-full bg-background border border-border/80 focus:border-primary/50 shadow-[0_2px_10px_rgba(0,0,0,0.02)] rounded-2xl pl-10 pr-4 py-3 text-foreground font-medium outline-none focus:ring-[3px] focus:ring-primary/10 transition-all placeholder:text-muted-foreground/40 text-[14px]"
+                    className="w-full bg-background border border-border/80 focus:border-primary/50 shadow-[0_2px_10px_rgba(0,0,0,0.02)] rounded-[22px] pl-10 pr-4 py-4 text-foreground font-black outline-none focus:ring-[3px] focus:ring-primary/10 transition-all placeholder:text-muted-foreground/40 text-[15px]"
                   />
                 </div>
               </div>

@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import { ShieldCheck, Check, ChevronRight, X, Sparkles } from 'lucide-react'
+import { ShieldCheck, Check, ChevronRight, X, Sparkles, Loader2 } from 'lucide-react'
 import PaystackPaymentButton from '../PaystackPaymentButton'
 
 interface PaymentModalProps {
@@ -126,9 +126,9 @@ export function PaymentModal({
                       <button
                         onClick={onApplyDiscount}
                         disabled={!discountCode.trim() || isApplyingDiscount}
-                        className="px-8 py-5 bg-foreground text-background font-black rounded-[22px] hover:bg-primary hover:text-white transition-all disabled:opacity-30 text-[13px] uppercase tracking-widest shadow-xl active:scale-95"
+                        className="px-10 py-6 bg-foreground text-background font-black rounded-[22px] hover:bg-primary hover:text-white transition-all disabled:opacity-30 text-[14px] uppercase tracking-widest shadow-xl active:scale-95 flex items-center justify-center min-w-[140px]"
                       >
-                        {isApplyingDiscount ? '...' : 'Apply'}
+                        {isApplyingDiscount ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Apply'}
                       </button>
                     </div>
                     {discountError && <p className="text-[11px] text-red-500 font-black mt-3 pl-2 uppercase tracking-wider animate-pulse">{discountError}</p>}
@@ -176,7 +176,7 @@ export function PaymentModal({
                     amount={finalPrice}
                     onSuccess={onPaymentSuccess}
                     onClose={onPaymentClose}
-                    className="w-full py-6 bg-foreground text-background font-black rounded-[22px] shadow-2xl hover:bg-primary hover:text-white transition-all active:scale-[0.98] text-[16px] flex items-center justify-center gap-4 uppercase tracking-[0.3em] border border-white/5 group"
+                    className="w-full h-[72px] bg-foreground text-background font-black rounded-[22px] shadow-2xl hover:bg-primary hover:text-white transition-all active:scale-[0.98] text-[17px] flex items-center justify-center gap-4 uppercase tracking-[0.3em] border border-white/5 group"
                   >
                     Confirm access <ChevronRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
                   </PaystackPaymentButton>

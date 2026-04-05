@@ -55,9 +55,9 @@ export function ProfilePage() {
   }
   const initialState = getInitial()
 
-  const [gender, setGender] = useState<'M' | 'F' | null>(initialState.gender || null)
-  const [level, setLevel] = useState<'100' | '200' | '300' | '400' | '500' | '600' | null>(initialState.level || null)
-  const [matchPref, setMatchPref] = useState<'same' | 'any' | null>(initialState.matchPref || null)
+  const [gender, setGender] = useState<'M' | 'F' | null>(null)
+  const [level, setLevel] = useState<'100' | '200' | '300' | '400' | '500' | '600' | null>(null)
+  const [matchPref, setMatchPref] = useState<'same' | 'any' | null>(null)
   const [selectedAvatar, setSelectedAvatar] = useState<string | null>(initialState.selectedAvatar || null)
   const [displayName, setDisplayName] = useState(initialState.displayName || '')
   const [course, setCourse] = useState(initialState.course || '')
@@ -65,7 +65,7 @@ export function ProfilePage() {
   const [matchingStatus, setMatchingStatus] = useState<string>(initialState.matchingStatus || 'ACTIVE')
   const [phone, setPhone] = useState(initialState.phone || '')
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false)
-  
+
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [hasQuestionnaire, setHasQuestionnaire] = useState<boolean | null>(null)
@@ -92,7 +92,7 @@ export function ProfilePage() {
         setMatchPref(profile.gender_pref === 'SAME_GENDER' ? 'same' : 'any')
       }
       if (profile.status) setMatchingStatus(profile.status)
-      
+
       // Async check for questionnaire completion
       supabase
         .from('questionnaire_responses')
@@ -125,7 +125,7 @@ export function ProfilePage() {
 
     setIsSaving(true)
     setSaveError(null)
-    
+
     try {
       const profileId = profile?.id || null
 
@@ -144,16 +144,16 @@ export function ProfilePage() {
       if (profileId) {
         const { error } = await withTimeout(
           supabase.from('users').update(profileData).eq('id', profileId),
-          6000,
-          "Update timed out after 6s. Network unstable."
+          15000,
+          "Update timed out after 15s. Network unstable."
         )
         if (error) throw error
       } else {
         const { error } = await withTimeout(
-          supabase.from('users').insert({ 
-             auth_id: user.id, 
-             email: user.email || `university_mail_${Date.now()}@stu.ucc.edu.gh`, 
-             ...profileData 
+          supabase.from('users').insert({
+            auth_id: user.id,
+            email: user.email || `university_mail_${Date.now()}@stu.ucc.edu.gh`,
+            ...profileData
           }),
           6000,
           "Insertion timed out after 6s. Network unstable."
@@ -213,20 +213,19 @@ export function ProfilePage() {
       <TopHeader title="Profile Hub" showBackButton />
 
       <div className="flex-1 overflow-y-auto w-full md:max-w-2xl lg:max-w-3xl mx-auto px-4 pt-6 pb-32">
-        
+
         {/* Identity Section */}
         <div className="flex flex-col items-center pt-2 pb-8">
           <div className="relative mb-3 group">
-            <div className={`w-20 h-20 bg-indigo-50 rounded-[24px] flex items-center justify-center border-4 border-white shadow-sm overflow-hidden relative transition-all ${
-              !gender ? 'opacity-40 grayscale animate-pulse' : 'hover:ring-4 hover:ring-indigo-100'
-            }`}>
+            <div className={`w-20 h-20 bg-indigo-50 rounded-[24px] flex items-center justify-center border-4 border-white shadow-sm overflow-hidden relative transition-all ${!gender ? 'opacity-40 grayscale animate-pulse' : 'hover:ring-4 hover:ring-indigo-100'
+              }`}>
               {selectedAvatar ? (
                 <img src={selectedAvatar} alt="Avatar" className="absolute inset-0 w-full h-full object-cover" />
               ) : (
                 <User size={32} className="text-indigo-400" />
               )}
               {gender && (
-                <button 
+                <button
                   onClick={() => setIsAvatarModalOpen(true)}
                   className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                 >
@@ -237,27 +236,26 @@ export function ProfilePage() {
             {gender && <div className="absolute bottom-1 right-0.5 w-4 h-4 bg-green-500 border-2 border-white rounded-[6px] shadow-sm" />}
           </div>
           <h2 className="text-xl font-bold text-foreground">{displayName || 'User Identity'}</h2>
-          
-          <button 
+
+          <button
             onClick={() => gender && setIsAvatarModalOpen(true)}
             disabled={!gender}
-            className={`mt-3 px-8 py-3 bg-foreground text-background rounded-xl text-sm font-bold transition-all shadow-md active:scale-95 ${
-              !gender ? 'opacity-30 cursor-not-allowed' : 'hover:opacity-80'
-            }`}
+            className={`mt-3 px-8 py-3 bg-foreground text-background rounded-xl text-sm font-bold transition-all shadow-md active:scale-95 ${!gender ? 'opacity-30 cursor-not-allowed' : 'hover:opacity-80'
+              }`}
           >
             Refresh Identity
           </button>
         </div>
 
         <div className="space-y-6">
-          
+
           {/* Institutional Creds */}
           <section>
-            <h3 className="px-4 text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Institutional Creds</h3>
-            <div className="bg-card rounded-[24px] shadow-sm border border-border p-5 space-y-5">
+            <h3 className="px-5 text-[11px] font-black text-muted-foreground uppercase tracking-widest mb-3">Institutional Creds</h3>
+            <div className="bg-card rounded-[32px] shadow-sm border border-border p-6 space-y-6">
               <div>
                 <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Academic Programme</label>
-                  <input
+                <input
                   type="text"
                   value={course}
                   onChange={(e) => setCourse(e.target.value)}
@@ -269,14 +267,13 @@ export function ProfilePage() {
                 <label className="text-xs font-semibold text-muted-foreground mb-2.5 block">Current Level</label>
                 <div className="flex flex-wrap gap-2">
                   {['100', '200', '300', '400', '500', '600'].map(lvl => (
-                    <button 
+                    <button
                       key={lvl}
                       onClick={() => setLevel(lvl as any)}
-                      className={`w-14 py-2.5 rounded-lg text-sm font-bold transition-all border ${
-                        level === lvl 
-                          ? 'bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/20' 
+                      className={`w-14 py-2.5 rounded-lg text-sm font-bold transition-all border ${level === lvl
+                          ? 'bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/20'
                           : 'bg-muted text-muted-foreground border-muted hover:bg-accent'
-                      }`}
+                        }`}
                     >
                       {lvl}
                     </button>
@@ -288,9 +285,9 @@ export function ProfilePage() {
 
           {/* Personal Details */}
           <section>
-            <h3 className="px-4 text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Personal Details</h3>
-            <div className="bg-card rounded-[24px] shadow-sm border border-border overflow-hidden">
-              
+            <h3 className="px-5 text-[11px] font-black text-muted-foreground uppercase tracking-widest mb-3">Personal Details</h3>
+            <div className="bg-card rounded-[32px] shadow-sm border border-border overflow-hidden">
+
               <div className="px-5 py-4 border-b border-border">
                 <label className="text-xs font-semibold text-muted-foreground mb-2 block">Full Name</label>
                 <input
@@ -304,7 +301,7 @@ export function ProfilePage() {
 
               <div className="px-5 py-4 border-b border-border">
                 <label className="text-xs font-semibold text-muted-foreground mb-2 block">Phone Number</label>
-                  <input
+                <input
                   type="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
@@ -332,19 +329,18 @@ export function ProfilePage() {
                   className="w-full px-5 py-3.5 bg-muted border border-border rounded-xl text-foreground font-bold text-sm focus:outline-none focus:border-primary transition-all placeholder:text-muted-foreground/50"
                 />
               </div>
-              
+
               <div className="px-5 py-4 border-b border-border flex items-center justify-between">
                 <span className="text-xs font-bold text-muted-foreground">Biological Gender</span>
                 <div className="flex bg-muted p-1.5 rounded-xl border border-border/50 shadow-inner">
                   {(['M', 'F'] as const).map((opt) => (
-                    <button 
-                      key={opt} 
-                      onClick={() => handleGenderChange(opt)} 
-                      className={`px-5 py-2 flex-1 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
-                        gender === opt 
-                          ? 'bg-card text-primary shadow-md border border-border/80' 
+                    <button
+                      key={opt}
+                      onClick={() => handleGenderChange(opt)}
+                      className={`px-5 py-2 flex-1 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 ${gender === opt
+                          ? 'bg-card text-primary shadow-md border border-border/80'
                           : 'text-muted-foreground hover:text-foreground'
-                      }`}
+                        }`}
                     >
                       {gender === opt && <Check size={13} className="stroke-[3]" />} {opt === 'M' ? 'Male' : 'Female'}
                     </button>
@@ -356,14 +352,13 @@ export function ProfilePage() {
                 <span className="text-xs font-bold text-muted-foreground">Roommate Preference</span>
                 <div className="flex bg-muted p-1.5 rounded-xl border border-border/50 shadow-inner">
                   {(['same', 'any'] as const).map((opt) => (
-                    <button 
-                      key={opt} 
-                      onClick={() => setMatchPref(opt)} 
-                      className={`px-5 py-2 flex-1 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
-                        matchPref === opt 
-                          ? 'bg-card text-primary shadow-md border border-border/80' 
+                    <button
+                      key={opt}
+                      onClick={() => setMatchPref(opt)}
+                      className={`px-5 py-2 flex-1 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 ${matchPref === opt
+                          ? 'bg-card text-primary shadow-md border border-border/80'
                           : 'text-muted-foreground hover:text-foreground'
-                      }`}
+                        }`}
                     >
                       {matchPref === opt && <Check size={13} className="stroke-[3]" />} {opt === 'same' ? 'Same Sex' : 'Any Sex'}
                     </button>
@@ -375,9 +370,9 @@ export function ProfilePage() {
 
           {/* Network Status */}
           <section>
-            <h3 className="px-4 text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Network Status</h3>
-            <div className="bg-card rounded-[24px] shadow-sm border border-border p-2 space-y-2">
-              
+            <h3 className="px-5 text-[11px] font-black text-muted-foreground uppercase tracking-widest mb-3">Network Status</h3>
+            <div className="bg-card rounded-[32px] shadow-sm border border-border p-3 space-y-3">
+
               {(['ACTIVE', 'HIDDEN', 'COMPLETED'] as const).map((status) => {
                 const isActive = matchingStatus === status
                 const colorMap = {
@@ -391,13 +386,11 @@ export function ProfilePage() {
                   <button
                     key={status}
                     onClick={() => setMatchingStatus(status)}
-                    className={`w-full flex items-center p-3 rounded-2xl transition-all border ${
-                      isActive ? `${current.bg} ${current.border}` : 'bg-transparent border-transparent hover:bg-muted/50'
-                    }`}
+                    className={`w-full flex items-center p-3 rounded-2xl transition-all border ${isActive ? `${current.bg} ${current.border}` : 'bg-transparent border-transparent hover:bg-muted/50'
+                      }`}
                   >
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center mr-3 shrink-0 ${
-                      isActive ? `${current.iconBg} text-white shadow-sm` : 'bg-muted text-muted-foreground'
-                    }`}>
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center mr-3 shrink-0 ${isActive ? `${current.iconBg} text-white shadow-sm` : 'bg-muted text-muted-foreground'
+                      }`}>
                       {status === 'ACTIVE' && <User size={20} />}
                       {status === 'HIDDEN' && <Check size={20} />}
                       {status === 'COMPLETED' && <Sparkles size={20} />}
@@ -426,11 +419,10 @@ export function ProfilePage() {
             <button
               onClick={handleSave}
               disabled={!isComplete || isSaving}
-              className={`w-full h-[64px] rounded-[22px] flex items-center justify-center gap-3 shadow-premium transition-all duration-500 active:scale-[0.96] relative overflow-hidden group ${
-                !isComplete || isSaving 
-                  ? 'bg-muted text-muted-foreground/30 cursor-not-allowed border border-border/40' 
+              className={`w-full py-6 rounded-[22px] flex items-center justify-center gap-3 shadow-premium transition-all duration-500 active:scale-[0.96] relative overflow-hidden group ${!isComplete || isSaving
+                  ? 'bg-muted text-muted-foreground/30 cursor-not-allowed border border-border/40'
                   : 'bg-foreground text-background hover:bg-primary hover:text-primary-foreground hover:shadow-elevated'
-              }`}
+                }`}
             >
               <div className="flex flex-col items-center">
                 <span className="text-[10px] font-black tracking-[0.2em] uppercase opacity-40">
@@ -471,9 +463,9 @@ export function ProfilePage() {
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-5 pb-10 pt-4">
           <button
             onClick={() => document.getElementById('avatar-upload')?.click()}
-            className="flex flex-col items-center justify-center gap-5 p-6 rounded-[1.5rem] border-2 border-dashed border-border/60 bg-muted/20 hover:border-primary/50 hover:bg-primary/5 transition-all group active:scale-95 aspect-square"
+            className="flex flex-col items-center justify-center gap-5 p-6 rounded-[22px] border-2 border-dashed border-border/60 bg-muted/20 hover:border-primary/50 hover:bg-primary/5 transition-all group active:scale-95 aspect-square"
           >
-            <div className="w-14 h-14 rounded-[1.5rem] bg-foreground text-background flex items-center justify-center group-hover:rotate-12 transition-transform">
+            <div className="w-14 h-14 rounded-[22px] bg-foreground text-background flex items-center justify-center group-hover:rotate-12 transition-transform">
               <Upload className="w-7 h-7" />
             </div>
             <span className="text-[12px] font-black uppercase tracking-widest text-center">Snapshot Hub</span>
@@ -483,13 +475,13 @@ export function ProfilePage() {
             <button
               key={avatar.id}
               onClick={() => { setSelectedAvatar(avatar.src); setIsAvatarModalOpen(false); }}
-              className={`flex flex-col items-center gap-4 p-4 rounded-[1.5rem] border-2 transition-all hover:scale-[1.03] active:scale-95 group
+              className={`flex flex-col items-center gap-4 p-4 rounded-[22px] border-2 transition-all hover:scale-[1.03] active:scale-95 group
                 ${selectedAvatar === avatar.src
                   ? 'border-primary bg-primary/5'
                   : 'border-border/40 hover:border-foreground/20 bg-card shadow-sm'
                 }`}
             >
-              <div className="w-full aspect-square rounded-[1.5rem] overflow-hidden mb-1 ring-1 ring-border/20">
+              <div className="w-full aspect-square rounded-[22px] overflow-hidden mb-1 ring-1 ring-border/20">
                 <img src={avatar.src} alt={avatar.label} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
               </div>
               <span className={`text-[11px] font-black uppercase tracking-[0.1em] text-center opacity-60 ${selectedAvatar === avatar.src ? 'text-primary opacity-100' : ''}`}>
@@ -511,13 +503,13 @@ export function ProfilePage() {
           >
             <div className="relative">
               <div className="w-16 h-16 rounded-3xl bg-indigo-600/10 flex items-center justify-center">
-                 <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
+                <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
               </div>
               <div className="absolute -inset-4 rounded-full border-2 border-indigo-600/20 animate-ping opacity-20" />
             </div>
-            
+
             <h3 className="mt-8 text-[18px] font-black text-slate-900 tracking-tight">Securing Identity</h3>
-            
+
             {!saveError ? (
               <p className="mt-2 text-[13px] font-medium text-slate-500 animate-pulse">Syncing with campus records...</p>
             ) : (

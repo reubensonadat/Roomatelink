@@ -27,11 +27,11 @@ export function MatchCard({ match, isRevealed, onSelect, index }: MatchCardProps
     >
       <button
         onClick={onSelect}
-        className="group w-full bg-card rounded-3xl p-3 sm:p-3.5 md:p-4 flex gap-3 sm:gap-3.5 md:gap-4 items-center border border-border/80 shadow-premium transition-all hover:border-primary/40 hover:shadow-elevated active:scale-[0.98] min-h-[100px] sm:min-h-[110px] md:min-h-[125px] overflow-hidden relative text-left"
+        className="group w-full bg-card rounded-[22px] p-3 sm:p-3.5 md:p-4 flex gap-4 sm:gap-4 md:gap-5 items-center border-2 border-border/60 shadow-premium transition-all hover:border-primary/40 hover:shadow-elevated active:scale-[0.98] min-h-[105px] sm:min-h-[115px] md:min-h-[130px] overflow-hidden relative text-left"
       >
         {/* Avatar Wrapper */}
         <div className="relative w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 lg:w-20 lg:h-20 shrink-0">
-          <div className={`w-full h-full rounded-3xl border-2 border-primary/20 bg-muted overflow-hidden relative shadow-inner transition-all duration-1000 ease-out ${!isRevealed ? 'blur-lg grayscale saturate-0' : 'blur-0 grayscale-0 saturate-100'}`}>
+          <div className={`w-full h-full rounded-[22px] border-2 border-primary/20 bg-muted overflow-hidden relative shadow-inner transition-all duration-1000 ease-out ${!isRevealed ? 'blur-lg grayscale saturate-0' : 'blur-0 grayscale-0 saturate-100'}`}>
             {match.avatar ? (
               <img src={match.avatar} alt={match.name} className="w-full h-full object-cover" />
             ) : (
@@ -41,7 +41,7 @@ export function MatchCard({ match, isRevealed, onSelect, index }: MatchCardProps
             )}
           </div>
           {!isRevealed && (
-            <div className="absolute inset-0 rounded-3xl bg-background/30 flex items-center justify-center backdrop-blur-[1px]">
+            <div className="absolute inset-0 rounded-[22px] bg-background/30 flex items-center justify-center backdrop-blur-[1px]">
               <Lock className="w-4 h-4 text-foreground/50" />
             </div>
           )}
@@ -60,7 +60,7 @@ export function MatchCard({ match, isRevealed, onSelect, index }: MatchCardProps
                   Level {match.level} • {match.course}
                 </p>
                 <div className="flex flex-wrap gap-1 mt-1">
-                  <span className="px-2 py-0.5 rounded-lg bg-muted text-[10px] font-bold text-muted-foreground border border-border/40">
+                   <span className="px-3 py-1 rounded-xl bg-muted/50 text-[10px] font-black uppercase tracking-wider text-muted-foreground border border-border/40">
                     {match.trait || "Potential Roommate"}
                   </span>
                 </div>
@@ -68,7 +68,7 @@ export function MatchCard({ match, isRevealed, onSelect, index }: MatchCardProps
             </AnimatePresence>
           ) : (
             <div className="flex flex-col gap-2">
-              <span className={`w-fit text-[10px] font-black px-2 py-0.5 rounded-lg uppercase tracking-wider ${tier.bgLight} ${tier.textColor}`}>
+               <span className={`w-fit text-[10px] font-black px-2.5 py-1 rounded-xl uppercase tracking-wider ${tier.bgLight} ${tier.textColor}`}>
                 {tier.label} Match
               </span>
               <div className="h-3 w-3/4 bg-muted/40 rounded-sm animate-pulse" />

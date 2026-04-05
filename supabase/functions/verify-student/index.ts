@@ -14,12 +14,28 @@ serve(async (req) => {
   }
 
   try {
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '' // Service role to bypass RLS for codes
-    )
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
 
-    const { action, email, code, userId } = await req.json()
+    // ─── BEAST MODE SECURITY: MANUAL JWT VERIFICATION ──────────────
+    // We bypass the strict NTP gateway (Kong) and verify the token manually
+    // inside the function because student device clocks are often unsynced.
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) throw new Error('Missing authentication')
+
+    const authClient = createClient(supabaseUrl, supabaseAnonKey, { 
+      global: { headers: { Authorization: authHeader } } 
+    })
+
+    // Securely pull the user identity directly from Supabase Auth engine
+    const { data: { user }, error: authError } = await authClient.auth.getUser()
+    if (authError || !user) throw new Error('Unauthorized Access')
+
+    const { action, email, code } = await req.json()
+    const userId = user.id // Now 100% cryptographically secure
+
+    const adminClient = createClient(supabaseUrl, supabaseServiceKey)
 
     // --- CASE 1: SEND CODE ---
     if (action === 'SEND_CODE') {
@@ -31,7 +47,7 @@ serve(async (req) => {
       const otp = Math.floor(100000 + Math.random() * 900000).toString()
 
       // 2. Store in vault (verification_codes)
-      const { error: dbError } = await supabase
+      const { error: dbError } = await adminClient
         .from('verification_codes')
         .insert({ 
             user_id: userId, 
@@ -51,7 +67,7 @@ serve(async (req) => {
           'Authorization': `Bearer ${RESEND_API_KEY}`,
         },
         body: JSON.stringify({
-          from: 'Roommate Link <onboarding@resend.dev>', // Replace with your domain once verified
+          from: 'Roommate Link <onboarding@resend.dev>', 
           to: [email],
           subject: `${otp} is your Roommate Link ID Token`,
           html: `
@@ -71,31 +87,28 @@ serve(async (req) => {
 
       const resData = await res.json()
       
-      // Handle Resend Limits (The 100-Limit Guard)
       if (!res.ok) {
         console.error('Resend Error:', resData)
         if (res.status === 422 || res.status === 429) {
           return new Response(JSON.stringify({ 
             error: 'SERVICE_BUSY', 
-            message: 'Our verification service is busy/down for today. Please try again tomorrow morning.' 
+            message: 'Verification service is sync-limited/busy today. Try again tomorrow morning.' 
           }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 429,
           })
         }
-        throw new Error('Failed to send verification email.')
+        throw new Error('Verification mailer failed.')
       }
 
       return new Response(JSON.stringify({ success: true }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200,
       })
     }
 
     // --- CASE 2: CONFIRM CODE ---
     if (action === 'CONFIRM_CODE') {
-      // 1. Verify against vault
-      const { data: record, error: fetchError } = await supabase
+      const { data: record, error: fetchError } = await adminClient
         .from('verification_codes')
         .select('*')
         .eq('email', email)
@@ -107,13 +120,11 @@ serve(async (req) => {
 
       if (fetchError || !record) {
         return new Response(JSON.stringify({ error: 'INVALID_CODE', message: 'Invalid or expired token.' }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401,
         })
       }
 
-      // 2. Success! Flip the student flag in the users table
-      const { error: updateError } = await supabase
+      const { error: updateError } = await adminClient
         .from('users')
         .update({ 
            is_student_verified: true,
@@ -123,12 +134,10 @@ serve(async (req) => {
 
       if (updateError) throw updateError
 
-      // 3. Cleanup: Delete used code
-      await supabase.from('verification_codes').delete().eq('id', record.id)
+      await adminClient.from('verification_codes').delete().eq('id', record.id)
 
       return new Response(JSON.stringify({ success: true }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200,
       })
     }
 
@@ -141,3 +150,4 @@ serve(async (req) => {
     })
   }
 })
+

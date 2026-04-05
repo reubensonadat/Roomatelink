@@ -89,7 +89,9 @@
   }
 
   /* Prevent iOS Auto-Zoom on Inputs */
-  input, select, textarea {
+  input,
+  select,
+  textarea {
     font-size: 16px !important;
   }
 
@@ -132,11 +134,12 @@
     font-weight: 900;
     font-size: 18px;
     border-bottom-width: 4px;
-    border-color: rgba(0,0,0,0.2) !important;
+    border-color: rgba(0, 0, 0, 0.2) !important;
     transform: translateY(0);
   }
 
-  .premium-btn:active, .premium-btn.active-press {
+  .premium-btn:active,
+  .premium-btn.active-press {
     transform: translateY(4px);
     border-bottom-width: 0px;
     margin-bottom: 4px;
@@ -145,10 +148,22 @@
 }
 
 @layer utilities {
-  .rounded-4xl { border-radius: 16px !important; }
-  .rounded-5xl { border-radius: 16px !important; }
-  .shadow-premium { box-shadow: var(--shadow-premium); }
-  .shadow-elevated { box-shadow: var(--shadow-elevated); }
+  .rounded-4xl {
+    border-radius: 16px !important;
+  }
+
+  .rounded-5xl {
+    border-radius: 16px !important;
+  }
+
+  .shadow-premium {
+    box-shadow: var(--shadow-premium);
+  }
+
+  .shadow-elevated {
+    box-shadow: var(--shadow-elevated);
+  }
+
   .glass-v2 {
     @apply bg-card/60 backdrop-blur-2xl border;
     border-color: var(--glass-border);
@@ -158,9 +173,10 @@
   .tactile-btn {
     border-radius: 12px;
     border-bottom-width: 3px;
-    border-color: rgba(0,0,0,0.1) !important;
+    border-color: rgba(0, 0, 0, 0.1) !important;
     transition: all 0.15s ease-out;
   }
+
   .tactile-btn:active {
     transform: translateY(3px);
     border-bottom-width: 0px;
@@ -168,10 +184,21 @@
   }
 
   /* Mobile Safe Area Utilities */
-  .pt-safe-top { padding-top: env(safe-area-inset-top); }
-  .pb-safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
-  .mt-safe-top { margin-top: env(safe-area-inset-top); }
-  .mb-safe-bottom { margin-bottom: env(safe-area-inset-bottom); }
+  .pt-safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .pb-safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .mt-safe-top {
+    margin-top: env(safe-area-inset-top);
+  }
+
+  .mb-safe-bottom {
+    margin-bottom: env(safe-area-inset-bottom);
+  }
 }
 
 /* Global Institutional Backdrop & Modal Overlay */
@@ -226,4 +253,20 @@
   background: hsl(var(--muted-foreground) / 0.4);
 }
 
-@keyframes ping-pong { 0% { transform: translateX(-100%); } 50% { transform: translateX(0%); } 100% { transform: translateX(100%); } } .animate-ping-pong { animation: ping-pong 2s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
+@keyframes ping-pong {
+  0% {
+    transform: translateX(-100%);
+  }
+
+  50% {
+    transform: translateX(0%);
+  }
+
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-ping-pong {
+  animation: ping-pong 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}

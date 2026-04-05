@@ -8,13 +8,17 @@ import { useAuth } from '../context/AuthContext'
 
 export function MessagesPage() {
   const { user, profile } = useAuth()
+  const isPaid = !!(profile?.has_paid || profile?.is_pioneer)
   const [profileStatus, setProfileStatus] = useState({
-    isProfileComplete: true,
-    hasQuestionnaire: true,
-    hasPaid: true
+    isProfileComplete: !!(profile?.course && profile?.level),
+    hasQuestionnaire: !!sessionStorage.getItem('hasQuestionnaireCache'),
+    hasPaid: isPaid
   })
-  const [chats, setChats] = useState<any[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [chats, setChats] = useState<any[]>(() => {
+    const cached = localStorage.getItem('roommate_chat_threads')
+    return cached ? JSON.parse(cached) : []
+  })
+  const [isLoading, setIsLoading] = useState(() => !localStorage.getItem('roommate_chat_threads'))
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -48,18 +52,24 @@ export function MessagesPage() {
         }
 
         // 3. Parallelize Questionnaire Check and Messages Fetch
+        const isPaid = !!(currentProfile.has_paid || currentProfile.is_pioneer)
         const [questionnaireRes, messagesRes] = await Promise.all([
           supabase.from('questionnaire_responses').select('id').eq('user_id', currentProfile.id).maybeSingle(),
-          currentProfile.has_paid 
+          isPaid 
             ? supabase.from('messages').select('*').or(`sender_id.eq.${currentProfile.id},receiver_id.eq.${currentProfile.id}`).order('created_at', { ascending: false })
             : Promise.resolve({ data: [] as any[], error: null })
         ])
 
         setProfileStatus({
-          isProfileComplete: !!(currentProfile.course && currentProfile.level && currentProfile.phone_number),
+          isProfileComplete: !!(currentProfile.course && currentProfile.level),
           hasQuestionnaire: !!questionnaireRes.data,
-          hasPaid: !!currentProfile.has_paid
+          hasPaid: isPaid
         })
+
+        if (!isPaid) {
+          setIsLoading(false)
+          return
+        }
 
         const msgs = messagesRes.data
 
@@ -124,16 +134,6 @@ export function MessagesPage() {
       />
 
       <div className="flex-1 overflow-y-auto w-full md:max-w-2xl lg:max-w-4xl mx-auto pb-40">
-        <div className="px-5 pt-8 mb-8">
-          <div className="relative group">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/60 transition-colors group-focus-within:text-primary" />
-            <input
-              type="text"
-              placeholder="Search conversations..."
-              className="w-full pl-12 pr-4 py-4.5 bg-card/60 backdrop-blur-xl border border-border/40 rounded-[22px] focus:outline-none focus:ring-4 focus:ring-primary/5 focus:border-primary/40 transition-all font-bold text-sm text-foreground placeholder:text-muted-foreground/30 shadow-sm"
-            />
-          </div>
-        </div>
 
         <AnimatePresence mode="wait">
           {isLoading ? (
@@ -229,6 +229,18 @@ export function MessagesPage() {
             </motion.div>
           ) : (
             <div className="px-5 space-y-4 max-w-lg mx-auto">
+              {/* Search Bar Refined: Only shows with active threads */}
+              <div className="pt-2 mb-8 animate-in fade-in slide-in-from-top-4 duration-700">
+                <div className="relative group max-w-lg mx-auto">
+                  <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-6 h-6 text-muted-foreground/60 transition-colors group-focus-within:text-primary z-10" />
+                  <input
+                    type="text"
+                    placeholder="Search conversations..."
+                    className="w-full h-[68px] pl-16 pr-8 bg-background border-2 border-border/80 rounded-[22px] focus:outline-none focus:ring-8 focus:ring-primary/5 focus:border-primary transition-all font-black text-[17px] text-foreground placeholder:text-muted-foreground/50 shadow-md relative z-0"
+                  />
+                </div>
+              </div>
+
               {chats.map((chat, i) => (
                 <motion.div 
                   key={chat.id} 
@@ -238,14 +250,14 @@ export function MessagesPage() {
                 >
                   <Link 
                     to={`/dashboard/messages/${chat.id}`} 
-                    className="flex items-start gap-4 p-5 bg-card rounded-[2rem] border border-border/80 shadow-premium hover:shadow-elevated hover:border-primary/20 transition-all active:scale-[0.98] group relative"
+                    className="flex items-start gap-5 p-6 bg-card rounded-[24px] border border-border/80 shadow-premium hover:shadow-elevated hover:border-primary/20 transition-all active:scale-[0.98] group relative"
                   >
                     <div className="relative shrink-0">
-                      <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-muted border border-border shadow-inner overflow-hidden">
+                      <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-[22px] bg-muted border border-border shadow-inner overflow-hidden">
                         <img src={chat.avatar} alt="" className="w-full h-full object-cover" />
                       </div>
                       {chat.isOnline && (
-                        <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full border-4 border-card animate-pulse" />
+                        <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-500 rounded-[22px] border-4 border-card animate-pulse" />
                       )}
                     </div>
                     <div className="flex-1 min-w-0 pt-1">
@@ -258,7 +270,7 @@ export function MessagesPage() {
                           {chat.lastMessage}
                         </p>
                         {chat.unread > 0 && (
-                          <div className="mt-1 min-w-[22px] h-[22px] bg-primary rounded-lg flex items-center justify-center text-[10px] font-black text-primary-foreground px-1.5 shadow-lg shadow-primary/20">
+                          <div className="mt-1 min-w-[22px] h-[22px] bg-primary rounded-[22px] flex items-center justify-center text-[10px] font-black text-primary-foreground px-1.5 shadow-lg shadow-primary/20">
                             {chat.unread}
                           </div>
                         )}
