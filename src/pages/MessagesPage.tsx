@@ -231,12 +231,12 @@ export function MessagesPage() {
             <div className="px-5 space-y-4 max-w-lg mx-auto">
               {/* Search Bar Refined: Only shows with active threads */}
               <div className="pt-2 mb-8 animate-in fade-in slide-in-from-top-4 duration-700">
-                <div className="relative group max-w-lg mx-auto">
-                  <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-6 h-6 text-muted-foreground/60 transition-colors group-focus-within:text-primary z-10" />
+                <div className="relative group w-full">
+                  <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-6 h-6 text-muted-foreground/60 transition-colors group-focus-within:text-primary z-10" />
                   <input
                     type="text"
                     placeholder="Search conversations..."
-                    className="w-full h-[68px] pl-16 pr-8 bg-background border-2 border-border/80 rounded-[22px] focus:outline-none focus:ring-8 focus:ring-primary/5 focus:border-primary transition-all font-black text-[17px] text-foreground placeholder:text-muted-foreground/50 shadow-md relative z-0"
+                    className="w-full h-[68px] pl-14 pr-6 sm:pl-16 sm:pr-8 bg-background border-2 border-border/80 rounded-[22px] focus:outline-none focus:ring-8 focus:ring-primary/5 focus:border-primary transition-all font-black text-[15px] sm:text-[17px] text-foreground placeholder:text-muted-foreground/50 shadow-md relative z-0"
                   />
                 </div>
               </div>

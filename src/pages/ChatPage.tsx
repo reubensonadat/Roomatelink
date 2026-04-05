@@ -386,14 +386,14 @@ export function ChatPage() {
         <div ref={bottomRef} />
       </div>
 
-      <div className="p-6 pb-10 bg-background/95 backdrop-blur-2xl border-t border-border/40 sticky bottom-0 z-50">
-        <form onSubmit={handleSend} className="flex items-center gap-4 max-w-lg mx-auto">
+      <div className="px-4 py-8 sm:px-6 bg-background/95 backdrop-blur-2xl border-t border-border/40 sticky bottom-0 z-50">
+        <form onSubmit={handleSend} className="flex items-center gap-3 md:gap-4 max-w-lg mx-auto">
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Type a message..."
-            className="flex-1 h-[68px] bg-background border-2 border-border/80 rounded-[22px] pl-10 pr-8 font-black text-[17px] text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-8 focus:ring-primary/5 focus:border-primary transition-all shadow-md"
+            className="flex-1 h-[68px] bg-background border-2 border-border/80 rounded-[22px] pl-8 sm:pl-10 pr-6 sm:pr-8 font-black text-[16px] sm:text-[17px] text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-8 focus:ring-primary/5 focus:border-primary transition-all shadow-md min-w-0"
           />
           <button 
             type="submit" 
