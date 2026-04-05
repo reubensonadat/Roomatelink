@@ -56,23 +56,32 @@ export function ChatPage() {
   }, [receiverId])
 
   useEffect(() => {
+    let isMounted = true
+    let channel: any = null
+    let syncTimeout: any = null
+
     async function setupChat() {
       if (!user || !receiverId) return
 
       try {
-        setIsSyncing(true)
+        if (isMounted) setIsSyncing(true)
+        
+        // --- 10 Second Fail-Safe Timeout ---
+        // If the database hangs or connection drops, forcefully clear the badge.
+        syncTimeout = setTimeout(() => {
+          if (isMounted) setIsSyncing(false)
+        }, 10000)
 
-        // 2. Determine "Delta" starting point
+        // 2. Determine "Delta" starting point safely
         const cachedSlice = localStorage.getItem(`roommate_chat_${receiverId}`)
         let lastTimestamp = '1970-01-01T00:00:00Z'
-        let initialMessages: any[] = []
         
         if (cachedSlice) {
           try {
             const parsed = JSON.parse(cachedSlice)
-            initialMessages = parsed.messages || []
+            const initialMessages = parsed.messages || []
             if (initialMessages.length > 0) {
-              lastTimestamp = initialMessages[initialMessages.length - 1].timestamp
+              lastTimestamp = initialMessages[initialMessages.length - 1].timestamp || '1970-01-01T00:00:00Z'
             }
           } catch (e) {
             console.error("Cache read error:", e)
@@ -89,6 +98,8 @@ export function ChatPage() {
             .gt('created_at', lastTimestamp)
             .order('created_at', { ascending: true })
         ])
+
+        if (!isMounted) return // Prevent state updates if component unmounted while fetching
 
         const me = profile
         const them = themRes.data
@@ -112,7 +123,7 @@ export function ChatPage() {
 
         setOtherUser(them)
 
-        if (deltaRes.data) {
+        if (deltaRes.data && deltaRes.data.length > 0) {
           const fetchedMessages = deltaRes.data.map((m: any) => ({
             id: m.id,
             text: m.content,
@@ -123,14 +134,10 @@ export function ChatPage() {
 
           // Merge: Cache + Delta
           setMessages(prev => {
-            // Filter out any messages that might have been optimistically added
-            // to avoid duplicates if they were successfully saved to DB
             const existingIds = new Set(fetchedMessages.map(m => m.id))
             const filteredPrev = prev.filter(m => !existingIds.has(m.id))
             const combined = [...filteredPrev, ...fetchedMessages]
-            
-            // Limit cache to 100 messages for storage health
-            const final = combined.slice(-100)
+            const final = combined.slice(-100) // Keep cache size healthy
             
             localStorage.setItem(`roommate_chat_${receiverId}`, JSON.stringify({
               messages: final,
@@ -140,10 +147,10 @@ export function ChatPage() {
           })
         }
 
-        // Mark as read in background
+        // Mark as read in background without blocking UI
         supabase.from('messages').update({ status: 'READ' }).eq('receiver_id', me.id).eq('sender_id', them.id).then(() => {})
 
-        const channel = supabase
+        channel = supabase
           .channel(`chat:${me.id}:${them.id}`)
           .on('postgres_changes', { 
             event: 'INSERT', 
@@ -161,7 +168,6 @@ export function ChatPage() {
               }
               setMessages(prev => {
                 const updated = [...prev, newMessage]
-                // Also update cache for offline persistence
                 localStorage.setItem(`roommate_chat_${receiverId}`, JSON.stringify({
                   messages: updated,
                   otherUser: them
@@ -172,16 +178,25 @@ export function ChatPage() {
           })
           .subscribe()
 
-        return () => { supabase.removeChannel(channel) }
       } catch (err) {
         console.error("Chat setup error:", err)
       } finally {
-        setLoading(false)
-        setIsSyncing(false)
+        if (isMounted) {
+          setLoading(false)
+          setIsSyncing(false)
+          if (syncTimeout) clearTimeout(syncTimeout)
+        }
       }
     }
 
     setupChat()
+
+    // Proper Synchronous Cleanup for React Strict Mode and Navigation
+    return () => {
+      isMounted = false
+      if (syncTimeout) clearTimeout(syncTimeout)
+      if (channel) supabase.removeChannel(channel)
+    }
   }, [receiverId, user, profile, navigate])
 
   useEffect(() => {
