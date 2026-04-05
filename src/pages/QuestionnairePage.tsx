@@ -195,10 +195,10 @@ export function QuestionnairePage() {
                <p className="mt-2 text-[13px] font-medium text-muted-foreground animate-pulse">Syncing with campus records...</p>
             ) : (
                <div className="mt-4 flex flex-col items-center">
-                  <p className="text-sm font-bold text-red-500 mb-6 bg-red-500/10 dark:bg-red-500/20 px-4 py-2 rounded-xl">{submitError}</p>
+                  <p className="text-sm font-bold text-red-500 mb-6 bg-red-500/10 dark:bg-red-500/20 px-4 py-2 rounded-2xl">{submitError}</p>
                   <div className="flex gap-4">
-                     <button onClick={() => performSubmission(answers)} className="px-6 py-2.5 bg-primary text-primary-foreground rounded-lg font-bold shadow-sm">Retry Sync</button>
-                     <button onClick={() => { setIsSubmitting(false); setSubmitError(null); }} className="px-6 py-2.5 bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/80 rounded-lg font-bold">Abort</button>
+                     <button onClick={() => performSubmission(answers)} className="px-6 py-2.5 bg-primary text-primary-foreground rounded-2xl font-bold shadow-sm">Retry Sync</button>
+                     <button onClick={() => { setIsSubmitting(false); setSubmitError(null); }} className="px-6 py-2.5 bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/80 rounded-2xl font-bold">Abort</button>
                   </div>
                </div>
             )}
@@ -236,11 +236,11 @@ export function QuestionnairePage() {
                       <Check className="w-3 h-3 text-primary" /> Question {idx + 1}
                     </h3>
                     <p className="text-base font-black text-foreground mb-2 leading-snug">{q.question}</p>
-                    <p className="text-primary font-bold text-sm bg-primary/10 inline-block px-3 py-1 rounded-lg">
+                    <p className="text-primary font-bold text-sm bg-primary/10 inline-block px-3 py-1 rounded-xl">
                       {selectedOpt?.text || 'Unanswered'}
                     </p>
                   </div>
-                  <button
+                   <button
                     onClick={() => {
                       if (editCount >= 2) {
                         toast.error("You can only revise a maximum of 2 answers to maintain honesty.")
@@ -254,7 +254,7 @@ export function QuestionnairePage() {
                       setCurrentIndex(idx)
                       setIsReviewing(false)
                     }}
-                    className={`flex items-center justify-center gap-2 px-6 py-4 rounded-xl font-bold group shrink-0 transition-all ${
+                    className={`flex items-center justify-center gap-2 px-6 py-4 rounded-[22px] font-bold group shrink-0 transition-all ${
                       editCount >= 2 
                         ? 'bg-muted/30 text-muted-foreground/30 cursor-not-allowed' 
                         : 'bg-muted/60 text-muted-foreground hover:bg-primary/10 hover:text-primary active:scale-95'
@@ -270,7 +270,7 @@ export function QuestionnairePage() {
           <div className="sticky bottom-6 mt-4">
             <button
                onClick={() => performSubmission(answers)}
-               className="w-full py-5 bg-foreground text-background rounded-2xl font-black uppercase tracking-widest shadow-[0_10px_40px_rgba(0,0,0,0.1)] active:scale-95 transition-all text-sm flex justify-center items-center gap-3"
+               className="w-full py-5 bg-foreground text-background rounded-[22px] font-black uppercase tracking-widest shadow-[0_10px_40px_rgba(0,0,0,0.1)] active:scale-95 transition-all text-sm flex justify-center items-center gap-3"
             >
                <Sparkles className="w-5 h-5 opacity-60" /> Submit & Calculate Matches
             </button>
@@ -372,17 +372,17 @@ export function QuestionnairePage() {
                       }}
                       whileTap={{ scale: 0.97 }}
                     >
-                      <button
-                        onClick={() => handleSelect(opt.id)}
-                        disabled={selectedAnswer !== null && selectedAnswer !== opt.id}
-                        className={`
-                          relative w-full p-6 md:p-7 rounded-[1.8rem] border-2 text-left transition-all duration-300 group flex items-center gap-5 shadow-sm
-                          ${isSelected 
-                            ? 'border-primary bg-primary/5 shadow-xl shadow-primary/5 ring-[8px] ring-primary/5 z-10' 
-                            : 'border-border/40 bg-card hover:border-primary/30 hover:bg-muted/40'}
-                          ${isDimmed ? 'opacity-20 grayscale-[80%]' : 'opacity-100'}
-                        `}
-                      >
+                        <button
+                          onClick={() => handleSelect(opt.id)}
+                          disabled={selectedAnswer !== null && selectedAnswer !== opt.id}
+                          className={`
+                            relative w-full p-6 md:p-7 rounded-[22px] border-2 text-left transition-all duration-300 group flex items-center gap-5 shadow-sm
+                            ${isSelected 
+                              ? 'border-primary bg-primary/5 shadow-xl shadow-primary/5 ring-[8px] ring-primary/5 z-10' 
+                              : 'border-border/40 bg-card hover:border-primary/30 hover:bg-muted/40'}
+                            ${isDimmed ? 'opacity-20 grayscale-[80%]' : 'opacity-100'}
+                          `}
+                        >
                         <div className={`
                           w-6 h-6 rounded-[0.7rem] border-2 flex items-center justify-center shrink-0 transition-all duration-300
                           ${isSelected ? 'border-primary bg-primary scale-110 shadow-md' : 'border-muted-foreground/30 group-hover:border-primary/40'}

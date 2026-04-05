@@ -37,12 +37,14 @@ export function DashboardLayout() {
           <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}
-              initial={{ opacity: 0, x: 15 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -15 }}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
               transition={{ 
-                duration: 0.35, 
-                ease: [0.22, 1, 0.36, 1] 
+                type: "spring",
+                stiffness: 400,
+                damping: 35,
+                mass: 0.8
               }}
               className="w-full h-full"
             >

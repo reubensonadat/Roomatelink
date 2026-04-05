@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Download, X } from 'lucide-react'
+import { Download, Sparkles } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 export function InstallPrompt() {
@@ -65,38 +65,67 @@ export function InstallPrompt() {
   return (
     <AnimatePresence>
       {showPrompt && (
-        <motion.div
-          initial={{ y: 150, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: 150, opacity: 0 }}
-          className="fixed bottom-28 left-4 right-4 md:left-auto md:right-4 md:w-96 bg-primary/95 backdrop-blur-md text-primary-foreground p-4 rounded-2xl shadow-2xl z-50 flex items-center gap-4 border border-white/10"
-        >
-          <div className="w-12 h-12 bg-card/20 backdrop-blur-md rounded-xl flex items-center justify-center shrink-0">
-            <Download className="w-6 h-6 text-white" />
-          </div>
-          
-          <div className="flex-1 min-w-0">
-            <h3 className="font-black text-sm text-white truncate">Install RoommateLink</h3>
-            <p className="text-xs font-semibold text-white/80 leading-tight">
-              {isIOS ? 'Add to your Home Screen for a native experience.' : 'Install the app for faster access and offline mode.'}
-            </p>
-          </div>
+        <>
+          {/* Subtle Backdrop Overlay */}
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={handleDismiss}
+            className="fixed inset-0 bg-background/40 backdrop-blur-[2px] z-40"
+          />
 
-          <div className="flex flex-col gap-2 shrink-0">
-            <button
-              onClick={handleInstall}
-              className="bg-card text-primary px-3 py-1.5 rounded-lg text-xs font-black shadow-sm"
-            >
-              Get App
-            </button>
-            <button
-              onClick={handleDismiss}
-              className="flex items-center justify-center p-1 hover:bg-white/10 rounded-lg transition-colors absolute top-2 right-2 md:relative md:top-auto md:right-auto"
-            >
-              <X className="w-4 h-4 text-white/60 hover:text-white" />
-            </button>
-          </div>
-        </motion.div>
+          <motion.div
+            initial={{ y: "100%" }}
+            animate={{ y: 0 }}
+            exit={{ y: "100%" }}
+            transition={{ type: "spring", damping: 30, stiffness: 300 }}
+            className="fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-2xl border-t border-border/60 rounded-t-[2.5rem] shadow-[0_-10px_40px_rgba(0,0,0,0.1)] px-6 pt-8 pb-10 flex flex-col items-center text-center gap-6"
+          >
+            {/* Grab Handle */}
+            <div className="absolute top-3 left-1/2 -translate-x-1/2 w-12 h-1 bg-muted rounded-full" />
+
+            <div className="w-20 h-20 bg-primary/10 rounded-[2rem] flex items-center justify-center relative shadow-inner">
+              <div className="absolute inset-0 bg-primary/20 animate-pulse rounded-[2rem]" />
+              <Download className="w-10 h-10 text-primary z-10" />
+            </div>
+            
+            <div className="space-y-2">
+              <h3 className="font-black text-2xl text-foreground tracking-tight">Experience RoommateLink</h3>
+              <p className="text-sm font-semibold text-muted-foreground leading-relaxed max-w-[280px]">
+                {isIOS 
+                  ? "Install the app on your Home Screen for the full flagship experience and native matching notifications." 
+                  : "Install our boutique app for faster access, offline stability, and an immersive matching experience."}
+              </p>
+            </div>
+
+            <div className="w-full flex flex-col gap-3">
+              <button
+                onClick={handleInstall}
+                className="w-full py-4.5 h-[64px] bg-primary text-primary-foreground rounded-2xl font-black text-[15px] shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 uppercase tracking-widest"
+              >
+                Get The App <Sparkles className="w-4 h-4 ml-1" />
+              </button>
+              <button
+                onClick={handleDismiss}
+                className="w-full py-4 bg-muted/50 text-muted-foreground hover:text-foreground rounded-2xl text-xs font-black transition-all uppercase tracking-widest"
+              >
+                No thanks, stay on web
+              </button>
+            </div>
+            
+            {isIOS && (
+              <div className="bg-blue-500/5 dark:bg-blue-500/10 border border-blue-500/20 rounded-2xl p-4 flex items-start gap-3">
+                 <div className="w-6 h-6 bg-blue-500 rounded-lg flex items-center justify-center shrink-0">
+                    <span className="text-white text-[10px] font-black">TIP</span>
+                 </div>
+                 <p className="text-[11px] text-blue-600 dark:text-blue-400 font-bold text-left leading-snug">
+                   Tap the <span className="bg-white/50 px-1 rounded mx-0.5">Share Icon</span> at the base of Safari, scroll down, and tap <span className="bg-white/50 px-1 rounded mx-0.5">'Add to Home Screen'</span>.
+                 </p>
+              </div>
+            )}
+          </motion.div>
+        </>
       )}
     </AnimatePresence>
   )

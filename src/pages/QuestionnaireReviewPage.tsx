@@ -49,8 +49,8 @@ export function QuestionnaireReviewPage() {
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center">
         <h2 className="text-2xl font-black mb-2">No DNA Found</h2>
         <p className="text-muted-foreground mb-8">You haven't completed the matching questionnaire yet.</p>
-        <button onClick={() => navigate('/questionnaire')} className="px-6 py-3 bg-primary text-primary-foreground font-bold rounded-xl active:scale-95 transition-all">
-          Start Questionnaire
+        <button onClick={() => navigate('/questionnaire')} className="px-6 py-3 bg-primary text-primary-foreground font-black rounded-[22px] active:scale-95 transition-all uppercase tracking-widest shadow-lg shadow-primary/20">
+          Start DNA Test
         </button>
       </div>
     )
@@ -107,9 +107,9 @@ export function QuestionnaireReviewPage() {
                   <Check className="w-3 h-3 text-primary" /> Question {idx + 1}
                 </h3>
                 <p className="text-[16px] font-black text-foreground leading-snug">{q.question}</p>
-                <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 flex">
-                  <span className="text-[14px] font-bold text-primary">
-                    {selectedOpt?.text || <span className="text-muted-foreground">Unanswered</span>}
+                <div className="bg-primary/5 border border-primary/20 rounded-[20px] p-4 flex">
+                  <span className="text-[14px] font-black text-primary">
+                    {selectedOpt?.text || <span className="text-muted-foreground opacity-40 uppercase tracking-widest">Unmapped</span>}
                   </span>
                 </div>
               </motion.div>

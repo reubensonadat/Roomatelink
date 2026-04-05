@@ -130,7 +130,7 @@ export function MessagesPage() {
             <input 
               type="text" 
               placeholder="Search conversations..." 
-              className="w-full bg-card/50 backdrop-blur-md border border-border/40 rounded-2xl pl-12 pr-5 py-4 font-bold text-sm shadow-sm outline-none focus:ring-4 focus:ring-primary/5 focus:border-primary/20 transition-all placeholder:text-muted-foreground/30 text-foreground"
+              className="w-full bg-card/50 backdrop-blur-md border border-border/40 rounded-[22px] pl-12 pr-5 py-4 font-bold text-sm shadow-sm outline-none focus:ring-4 focus:ring-primary/5 focus:border-primary/20 transition-all placeholder:text-muted-foreground/30 text-foreground"
             />
           </div>
         </div>
@@ -217,14 +217,15 @@ export function MessagesPage() {
               animate={{ opacity: 1, scale: 1 }} 
               className="flex flex-col items-center py-20 px-6 text-center gap-6"
             >
-              <div className="w-24 h-24 bg-primary/10 rounded-[2.5rem] flex items-center justify-center">
+              <div className="w-24 h-24 bg-primary/10 rounded-[2.5rem] flex items-center justify-center relative">
+                <div className="absolute inset-0 bg-primary/20 animate-pulse rounded-[2.5rem]" />
                 <MessageCircle className="w-10 h-10 text-primary" />
               </div>
               <div className="max-w-xs">
                 <h2 className="text-2xl font-black text-foreground tracking-tight mb-2">Quiet in Here</h2>
                 <p className="text-muted-foreground font-bold leading-relaxed">You haven't messaged anyone yet. Go check out your top matches!</p>
               </div>
-              <Link to="/dashboard" className="px-8 py-4 bg-primary text-primary-foreground font-black rounded-2xl shadow-xl">Browse Matches</Link>
+              <Link to="/dashboard" className="px-8 py-4 bg-primary text-primary-foreground font-black rounded-2xl shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all">Browse Matches</Link>
             </motion.div>
           ) : (
             <div className="px-5 space-y-4 max-w-lg mx-auto">

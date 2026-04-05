@@ -16,7 +16,7 @@ export function SettingsPage() {
   // Modals state
   const [isLogoutOpen, setIsLogoutOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  
+
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [deleteInput, setDeleteInput] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
@@ -61,12 +61,12 @@ export function SettingsPage() {
     try {
       // 1. Call Secure Edge Function with a strict 15s timeout
       const invokePromise = supabase.functions.invoke('delete-account', { body: {} });
-      const timeoutPromise = new Promise<{ error: any }>((_, reject) => 
+      const timeoutPromise = new Promise<{ error: any }>((_, reject) =>
         setTimeout(() => reject(new Error("TimeoutError")), 15000)
       );
 
       const { error } = await Promise.race([invokePromise, timeoutPromise]);
-      
+
       if (error) {
         console.error('Edge Function Deletion error:', error);
         toast.error('Could not wipe all data. Contact support.');
@@ -77,7 +77,7 @@ export function SettingsPage() {
             localStorage.removeItem(key);
           }
         }
-        
+
         // 3. Final Sign Out
         await signOut();
         navigate('/auth');
@@ -103,7 +103,7 @@ export function SettingsPage() {
       const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
         redirectTo: `${window.location.origin}/auth/callback?next=/dashboard/profile`,
       });
-      
+
       if (error) {
         toast.error(error.message);
       } else {
@@ -172,9 +172,9 @@ export function SettingsPage() {
       setManualEmail('');
       setVerificationCode('');
       setVerificationStep('email');
-      
+
       // Refresh to show the badge
-      window.location.reload(); 
+      window.location.reload();
     } catch (err: any) {
       toast.error('Verification failed: ' + err.message);
     } finally {
@@ -188,344 +188,344 @@ export function SettingsPage() {
 
       <div className="flex-1 overflow-y-auto w-full md:max-w-2xl lg:max-w-3xl mx-auto px-4 pt-8 pb-32">
 
-      <div className="flex flex-col gap-10">
+        <div className="flex flex-col gap-10">
 
-        {/* Account Settings */}
-        <section>
-          <h2 className="text-[12px] font-bold text-muted-foreground uppercase tracking-widest pl-1 mb-3">Account</h2>
-          <div className="bg-card rounded-4xl shadow-premium border border-border flex flex-col p-2 gap-1 overflow-hidden">
+          {/* Account Settings */}
+          <section>
+            <h2 className="text-[12px] font-bold text-muted-foreground uppercase tracking-widest pl-1 mb-3">Account</h2>
+            <div className="bg-card rounded-4xl shadow-premium border border-border flex flex-col p-2 gap-1 overflow-hidden">
 
-            <button
-              onClick={toggleTheme}
-              className="flex items-center justify-between p-3 rounded-3xl hover:bg-muted/50 transition-colors text-left group"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-2xl bg-muted flex items-center justify-center group-hover:bg-muted/80 transition-colors">
-                  {theme === 'dark' ? <Sun className="w-5 h-5 text-foreground" /> : <Moon className="w-5 h-5 text-foreground" />}
-                </div>
-                <div className="flex flex-col">
-                  <span className="font-bold text-[15px] text-foreground">Theme</span>
-                  <span className="text-[13px] font-medium text-muted-foreground">{theme === 'dark' ? 'Dark Mode' : 'Light Mode'}</span>
-                </div>
-              </div>
-              <ChevronRight className="w-4 h-4 text-muted-foreground/50 mr-2" />
-            </button>
-
-            <button 
-              onClick={() => setIsVerifyModalOpen(true)}
-              className="flex items-center justify-between p-3 rounded-3xl hover:bg-muted/50 transition-colors text-left group"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-2xl bg-muted flex items-center justify-center group-hover:bg-muted/80 transition-colors">
-                  {isVerifying ? <Loader2 className="w-5 h-5 animate-spin" /> : <GraduationCap className="w-5 h-5 text-foreground" />}
-                </div>
-                <div className="flex flex-col">
-                  <span className="font-bold text-[15px] text-foreground">Student Email</span>
-                  <span className="text-[13px] font-medium text-primary">Verify & whitebox identity</span>
-                </div>
-              </div>
-              <ChevronRight className="w-4 h-4 text-muted-foreground/50 mr-2" />
-            </button>
-
-            <button 
-              onClick={() => toast.success('Push notifications enabled for new matches.')}
-              className="flex items-center justify-between p-3 rounded-3xl hover:bg-muted/50 transition-colors text-left group"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-2xl bg-muted flex items-center justify-center group-hover:bg-muted/80 transition-colors">
-                  <Bell className="w-5 h-5 text-foreground" />
-                </div>
-                <div className="flex flex-col">
-                  <span className="font-bold text-[15px] text-foreground">Notifications</span>
-                  <span className="text-[13px] font-medium text-muted-foreground">Manage alerts</span>
-                </div>
-              </div>
-              <ChevronRight className="w-4 h-4 text-muted-foreground/50 mr-2" />
-            </button>
-
-            <button 
-              onClick={handlePasswordReset}
-              disabled={isResetting}
-              className="flex items-center justify-between p-3 rounded-3xl hover:bg-muted/50 transition-colors text-left group disabled:opacity-50"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-2xl bg-muted flex items-center justify-center group-hover:bg-muted/80 transition-colors">
-                  {isResetting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Lock className="w-5 h-5 text-foreground" />}
-                </div>
-                <div className="flex flex-col">
-                  <span className="font-bold text-[15px] text-foreground">Security</span>
-                  <span className="text-[13px] font-medium text-muted-foreground">Change Password</span>
-                </div>
-              </div>
-              <ChevronRight className="w-4 h-4 text-muted-foreground/50 mr-2" />
-            </button>
-
-          </div>
-        </section>
-
-
-        {/* Support & Legal */}
-        <section>
-          <h2 className="text-[12px] font-bold text-muted-foreground uppercase tracking-widest pl-1 mb-3">Support & Legal</h2>
-          <div className="bg-card rounded-4xl shadow-premium border border-border flex flex-col p-2 gap-1 overflow-hidden">
-            <Link to="/support" className="flex items-center justify-between p-3 rounded-3xl hover:bg-muted/50 transition-colors text-left group border-b border-border/40 pb-4 mb-1">
-              <div className="flex flex-col gap-1 w-full relative">
+              <button
+                onClick={toggleTheme}
+                className="flex items-center justify-between p-3 rounded-3xl hover:bg-muted/50 transition-colors text-left group"
+              >
                 <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-                    <FileText className="w-5 h-5 text-primary" />
+                  <div className="w-10 h-10 rounded-2xl bg-muted flex items-center justify-center group-hover:bg-muted/80 transition-colors">
+                    {theme === 'dark' ? <Sun className="w-5 h-5 text-foreground" /> : <Moon className="w-5 h-5 text-foreground" />}
                   </div>
                   <div className="flex flex-col">
-                    <span className="font-bold text-[15px] text-foreground">How to Use Roommate Link</span>
-                    <span className="text-[12px] font-medium text-muted-foreground">App guide & documentation</span>
+                    <span className="font-bold text-[15px] text-foreground">Theme</span>
+                    <span className="text-[13px] font-medium text-muted-foreground">{theme === 'dark' ? 'Dark Mode' : 'Light Mode'}</span>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-muted-foreground/50 ml-auto mr-2" />
                 </div>
-              </div>
-            </Link>
+                <ChevronRight className="w-4 h-4 text-muted-foreground/50 mr-2" />
+              </button>
 
-            <Link to="/privacy" className="flex items-center justify-between p-3 rounded-3xl hover:bg-muted/50 transition-colors text-left group">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-2xl bg-muted flex items-center justify-center group-hover:bg-muted/80 transition-colors">
-                  <Shield className="w-5 h-5 text-foreground" />
+              <button
+                onClick={() => setIsVerifyModalOpen(true)}
+                className="flex items-center justify-between p-3 rounded-3xl hover:bg-muted/50 transition-colors text-left group"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-2xl bg-muted flex items-center justify-center group-hover:bg-muted/80 transition-colors">
+                    {isVerifying ? <Loader2 className="w-5 h-5 animate-spin" /> : <GraduationCap className="w-5 h-5 text-foreground" />}
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="font-bold text-[15px] text-foreground">Student Email</span>
+                    <span className="text-[13px] font-medium text-primary">Verify & whitebox identity</span>
+                  </div>
                 </div>
-                <div className="flex flex-col">
-                  <span className="font-bold text-[15px] text-foreground">Privacy Policy</span>
-                </div>
-              </div>
-              <ChevronRight className="w-4 h-4 text-muted-foreground/50 mr-2" />
-            </Link>
+                <ChevronRight className="w-4 h-4 text-muted-foreground/50 mr-2" />
+              </button>
 
-            <Link to="/terms" className="flex items-center justify-between p-3 rounded-3xl hover:bg-muted/50 transition-colors text-left group">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-2xl bg-muted flex items-center justify-center group-hover:bg-muted/80 transition-colors">
-                  <FileText className="w-5 h-5 text-foreground" />
+              <button
+                onClick={() => toast.success('Push notifications enabled for new matches.')}
+                className="flex items-center justify-between p-3 rounded-3xl hover:bg-muted/50 transition-colors text-left group"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-2xl bg-muted flex items-center justify-center group-hover:bg-muted/80 transition-colors">
+                    <Bell className="w-5 h-5 text-foreground" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="font-bold text-[15px] text-foreground">Notifications</span>
+                    <span className="text-[13px] font-medium text-muted-foreground">Manage alerts</span>
+                  </div>
                 </div>
-                <div className="flex flex-col">
-                  <span className="font-bold text-[15px] text-foreground">Terms of Service</span>
-                </div>
-              </div>
-              <ChevronRight className="w-4 h-4 text-muted-foreground/50 mr-2" />
-            </Link>
-          </div>
-        </section>
+                <ChevronRight className="w-4 h-4 text-muted-foreground/50 mr-2" />
+              </button>
 
-        {/* Danger Zone */}
-        <section>
-          <h2 className="text-[12px] font-bold text-red-500/70 uppercase tracking-widest pl-1 mb-3">Danger Zone</h2>
-          <div className="bg-red-500/5 rounded-4xl border border-red-500/10 flex flex-col p-2 gap-1 overflow-hidden">
-            <button 
-              onClick={() => setIsDeleteOpen(true)}
-              className="flex items-center justify-between p-3 rounded-3xl hover:bg-red-500/10 transition-colors text-left group"
+              <button
+                onClick={handlePasswordReset}
+                disabled={isResetting}
+                className="flex items-center justify-between p-3 rounded-3xl hover:bg-muted/50 transition-colors text-left group disabled:opacity-50"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-2xl bg-muted flex items-center justify-center group-hover:bg-muted/80 transition-colors">
+                    {isResetting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Lock className="w-5 h-5 text-foreground" />}
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="font-bold text-[15px] text-foreground">Security</span>
+                    <span className="text-[13px] font-medium text-muted-foreground">Change Password</span>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-muted-foreground/50 mr-2" />
+              </button>
+
+            </div>
+          </section>
+
+
+          {/* Support & Legal */}
+          <section>
+            <h2 className="text-[12px] font-bold text-muted-foreground uppercase tracking-widest pl-1 mb-3">Support & Legal</h2>
+            <div className="bg-card rounded-4xl shadow-premium border border-border flex flex-col p-2 gap-1 overflow-hidden">
+              <Link to="/support" className="flex items-center justify-between p-3 rounded-3xl hover:bg-muted/50 transition-colors text-left group border-b border-border/40 pb-4 mb-1">
+                <div className="flex flex-col gap-1 w-full relative">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                      <FileText className="w-5 h-5 text-primary" />
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="font-bold text-[15px] text-foreground">How to Use Roommate Link</span>
+                      <span className="text-[12px] font-medium text-muted-foreground">App guide & documentation</span>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground/50 ml-auto mr-2" />
+                  </div>
+                </div>
+              </Link>
+
+              <Link to="/privacy" className="flex items-center justify-between p-3 rounded-3xl hover:bg-muted/50 transition-colors text-left group">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-2xl bg-muted flex items-center justify-center group-hover:bg-muted/80 transition-colors">
+                    <Shield className="w-5 h-5 text-foreground" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="font-bold text-[15px] text-foreground">Privacy Policy</span>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-muted-foreground/50 mr-2" />
+              </Link>
+
+              <Link to="/terms" className="flex items-center justify-between p-3 rounded-3xl hover:bg-muted/50 transition-colors text-left group">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-2xl bg-muted flex items-center justify-center group-hover:bg-muted/80 transition-colors">
+                    <FileText className="w-5 h-5 text-foreground" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="font-bold text-[15px] text-foreground">Terms of Service</span>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-muted-foreground/50 mr-2" />
+              </Link>
+            </div>
+          </section>
+
+          {/* Danger Zone */}
+          <section>
+            <h2 className="text-[12px] font-bold text-red-500/70 uppercase tracking-widest pl-1 mb-3">Danger Zone</h2>
+            <div className="bg-red-500/5 rounded-4xl border border-red-500/10 flex flex-col p-2 gap-1 overflow-hidden">
+              <button
+                onClick={() => setIsDeleteOpen(true)}
+                className="flex items-center justify-between p-3 rounded-3xl hover:bg-red-500/10 transition-colors text-left group"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-2xl bg-red-500/10 flex items-center justify-center transition-colors">
+                    <UserX className="w-5 h-5 text-red-500" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="font-bold text-[15px] text-red-500">Delete Account</span>
+                    <span className="text-[13px] font-medium text-red-500/70">Wipe all data and vectors</span>
+                  </div>
+                </div>
+              </button>
+            </div>
+          </section>
+
+          {/* Log Out */}
+          <div className="mt-4 mb-8 text-center w-full">
+            <button
+              onClick={() => setIsLogoutOpen(true)}
+              className="w-full py-4 rounded-full bg-muted text-foreground hover:bg-foreground hover:text-background transition-colors font-bold text-[15px] active:scale-95 shadow-sm"
             >
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-2xl bg-red-500/10 flex items-center justify-center transition-colors">
-                  <UserX className="w-5 h-5 text-red-500" />
-                </div>
-                <div className="flex flex-col">
-                  <span className="font-bold text-[15px] text-red-500">Delete Account</span>
-                  <span className="text-[13px] font-medium text-red-500/70">Wipe all data and vectors</span>
-                </div>
-              </div>
+              Log Out
             </button>
           </div>
-        </section>
 
-        {/* Log Out */}
-        <div className="mt-4 mb-8 text-center w-full">
-          <button 
-            onClick={() => setIsLogoutOpen(true)}
-            className="w-full py-4 rounded-full bg-muted text-foreground hover:bg-foreground hover:text-background transition-colors font-bold text-[15px] active:scale-95 shadow-sm"
-          >
-            Log Out
-          </button>
         </div>
 
-      </div>
+        {/* --- MODALS --- */}
+        <AnimatePresence>
+          {isVerifyModalOpen && (
+            <div className="fixed inset-0 z-100 flex items-center justify-center px-4">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+                onClick={() => !isVerifying && setIsVerifyModalOpen(false)}
+              />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                className="relative w-full max-w-sm bg-card border border-border p-6 rounded-[2.5rem] shadow-2xl"
+              >
+                <div className="flex flex-col items-center text-center">
+                  <div className="w-16 h-16 rounded-3xl bg-primary/10 flex items-center justify-center mb-4">
+                    <GraduationCap className="w-8 h-8 text-primary" />
+                  </div>
+                  <h3 className="text-xl font-black text-foreground mb-2">Student Verification</h3>
+                  <p className="text-[14px] font-medium text-muted-foreground mb-6">
+                    Type your official university email below to verify your student status.
+                  </p>
 
-      {/* --- MODALS --- */}
-      <AnimatePresence>
-        {isVerifyModalOpen && (
-          <div className="fixed inset-0 z-100 flex items-center justify-center px-4">
-            <motion.div 
-              initial={{ opacity: 0 }} 
-              animate={{ opacity: 1 }} 
-              exit={{ opacity: 0 }} 
-              className="absolute inset-0 bg-background/80 backdrop-blur-sm"
-              onClick={() => !isVerifying && setIsVerifyModalOpen(false)}
-            />
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="relative w-full max-w-sm bg-card border border-border p-6 rounded-[2.5rem] shadow-2xl"
-            >
-              <div className="flex flex-col items-center text-center">
-                <div className="w-16 h-16 rounded-3xl bg-primary/10 flex items-center justify-center mb-4">
-                  <GraduationCap className="w-8 h-8 text-primary" />
-                </div>
-                <h3 className="text-xl font-black text-foreground mb-2">Student Verification</h3>
-                <p className="text-[14px] font-medium text-muted-foreground mb-6">
-                  Type your official university email below to verify your student status.
-                </p>
+                  <div className="w-full space-y-4">
+                    <AnimatePresence mode="wait">
+                      {verificationStep === 'email' ? (
+                        <motion.div
+                          key="email"
+                          initial={{ opacity: 0, x: 10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0, x: -10 }}
+                        >
+                          <input
+                            type="email"
+                            value={manualEmail}
+                            onChange={(e) => setManualEmail(e.target.value)}
+                            placeholder="e.g. name@stu.ucc.edu.gh"
+                            className="w-full px-5 py-4 rounded-2xl bg-muted/50 border border-border focus:border-primary/50 focus:ring-4 focus:ring-primary/10 outline-none transition-all font-medium text-[15px]"
+                          />
+                        </motion.div>
+                      ) : (
+                        <motion.div
+                          key="code"
+                          initial={{ opacity: 0, x: 10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0, x: -10 }}
+                        >
+                          <input
+                            type="text"
+                            maxLength={6}
+                            value={verificationCode}
+                            onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, ''))}
+                            placeholder="0 0 0 0 0 0"
+                            className="w-full px-5 py-4 rounded-2xl bg-muted/50 border border-border focus:border-primary/50 focus:ring-4 focus:ring-primary/10 outline-none transition-all font-black text-center text-xl tracking-[0.4em]"
+                          />
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
 
-                <div className="w-full space-y-4">
-                  <AnimatePresence mode="wait">
-                    {verificationStep === 'email' ? (
-                      <motion.div 
-                        key="email"
-                        initial={{ opacity: 0, x: 10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -10 }}
+                    <div className="flex flex-col gap-2 pt-2">
+                      <button
+                        onClick={handleVerifyEmail}
+                        disabled={isVerifying || (verificationStep === 'email' ? !manualEmail : verificationCode.length < 6)}
+                        className="w-full py-4 rounded-full bg-primary text-primary-foreground font-black text-[15px] shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                       >
-                        <input
-                          type="email"
-                          value={manualEmail}
-                          onChange={(e) => setManualEmail(e.target.value)}
-                          placeholder="e.g. name@stu.ucc.edu.gh"
-                          className="w-full px-5 py-4 rounded-2xl bg-muted/50 border border-border focus:border-primary/50 focus:ring-4 focus:ring-primary/10 outline-none transition-all font-medium text-[15px]"
-                        />
-                      </motion.div>
-                    ) : (
-                      <motion.div 
-                        key="code"
-                        initial={{ opacity: 0, x: 10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -10 }}
+                        {isVerifying ? <Loader2 className="w-5 h-5 animate-spin" /> : verificationStep === 'email' ? 'Send Link' : 'Confirm Identity'}
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (verificationStep === 'code') setVerificationStep('email');
+                          else setIsVerifyModalOpen(false);
+                        }}
+                        disabled={isVerifying}
+                        className="w-full py-4 rounded-full bg-muted text-muted-foreground font-bold text-[14px] hover:bg-muted/80 transition-all active:scale-[0.98]"
                       >
-                        <input
-                          type="text"
-                          maxLength={6}
-                          value={verificationCode}
-                          onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, ''))}
-                          placeholder="0 0 0 0 0 0"
-                          className="w-full px-5 py-4 rounded-2xl bg-muted/50 border border-border focus:border-primary/50 focus:ring-4 focus:ring-primary/10 outline-none transition-all font-black text-center text-xl tracking-[0.4em]"
-                        />
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-
-                  <div className="flex flex-col gap-2 pt-2">
-                    <button
-                      onClick={handleVerifyEmail}
-                      disabled={isVerifying || (verificationStep === 'email' ? !manualEmail : verificationCode.length < 6)}
-                      className="w-full py-4 rounded-full bg-primary text-primary-foreground font-black text-[15px] shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-                    >
-                      {isVerifying ? <Loader2 className="w-5 h-5 animate-spin" /> : verificationStep === 'email' ? 'Send Link' : 'Confirm Identity'}
-                    </button>
-                    <button
-                      onClick={() => {
-                        if (verificationStep === 'code') setVerificationStep('email');
-                        else setIsVerifyModalOpen(false);
-                      }}
-                      disabled={isVerifying}
-                      className="w-full py-4 rounded-full bg-muted text-muted-foreground font-bold text-[14px] hover:bg-muted/80 transition-all active:scale-[0.98]"
-                    >
-                      {verificationStep === 'code' ? 'Go Back' : 'Cancel'}
-                    </button>
+                        {verificationStep === 'code' ? 'Go Back' : 'Cancel'}
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
+              </motion.div>
+            </div>
+          )}
 
-        {isLogoutOpen && (
-          <div className="fixed inset-0 z-100 flex items-center justify-center px-4">
-            <motion.div 
-              initial={{ opacity: 0 }} 
-              animate={{ opacity: 1 }} 
-              exit={{ opacity: 0 }} 
-              className="absolute inset-0 bg-background/80 backdrop-blur-sm"
-              onClick={() => !isLoggingOut && setIsLogoutOpen(false)}
-            />
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="w-full max-w-sm bg-card border border-border/60 shadow-2xl rounded-3xl p-6 relative z-10 flex flex-col items-center text-center"
-            >
-              <div className="w-14 h-14 bg-muted rounded-2xl flex items-center justify-center mb-4">
-                <LogOut className="w-6 h-6 text-foreground" />
-              </div>
-              <h2 className="text-xl font-black text-foreground mb-2">Log out of account?</h2>
-              <p className="text-sm text-muted-foreground font-medium mb-8">
-                You will need to use your email to log back in next time.
-              </p>
-              
-              <div className="w-full flex flex-col gap-2">
-                <button 
-                  onClick={handleLogout}
-                  disabled={isLoggingOut}
-                  className="w-full py-3.5 bg-foreground text-background font-bold rounded-2xl hover:opacity-90 transition-all flex items-center justify-center disabled:opacity-50"
-                >
-                  {isLoggingOut ? <Loader2 className="w-5 h-5 animate-spin" /> : "Yes, log out"}
-                </button>
-                <button 
-                  onClick={() => !isLoggingOut && setIsLogoutOpen(false)}
-                  disabled={isLoggingOut}
-                  className="w-full py-3.5 bg-muted text-foreground font-bold rounded-2xl hover:bg-muted/80 transition-all"
-                >
-                  Cancel
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
+          {isLogoutOpen && (
+            <div className="fixed inset-0 z-100 flex items-center justify-center px-4">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+                onClick={() => !isLoggingOut && setIsLogoutOpen(false)}
+              />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                className="w-full max-w-sm bg-card border border-border/60 shadow-2xl rounded-3xl p-6 relative z-10 flex flex-col items-center text-center"
+              >
+                <div className="w-14 h-14 bg-muted rounded-2xl flex items-center justify-center mb-4">
+                  <LogOut className="w-6 h-6 text-foreground" />
+                </div>
+                <h2 className="text-xl font-black text-foreground mb-2">Log out of account?</h2>
+                <p className="text-sm text-muted-foreground font-medium mb-8">
+                  You will need to use your email to log back in next time.
+                </p>
 
-        {isDeleteOpen && (
-          <div className="fixed inset-0 z-100 flex items-center justify-center px-4">
-            <motion.div 
-              initial={{ opacity: 0 }} 
-              animate={{ opacity: 1 }} 
-              exit={{ opacity: 0 }} 
-              className="absolute inset-0 bg-background/80 backdrop-blur-sm"
-              onClick={() => !isDeleting && setIsDeleteOpen(false)}
-            />
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="w-full max-w-sm bg-card border border-border/60 shadow-2xl rounded-3xl p-6 relative z-10 flex flex-col items-center text-center"
-            >
-              <div className="w-14 h-14 bg-red-500/10 rounded-2xl flex items-center justify-center mb-4">
-                <AlertTriangle className="w-6 h-6 text-red-500" />
-              </div>
-              <h2 className="text-xl font-black text-foreground mb-2">Delete Account?</h2>
-              <p className="text-sm text-muted-foreground font-medium mb-6 leading-relaxed">
-                This action is <span className="text-red-500 font-bold">permanent</span>. All your matches, messages, and algorithm vectors will be wiped from our database.
-              </p>
-              
-              <div className="w-full text-left mb-6">
-                <label className="text-[12px] font-bold text-muted-foreground uppercase tracking-wider pl-1 mb-2 block">Type "DELETE" to confirm</label>
-                <input 
-                  type="text"
-                  value={deleteInput}
-                  onChange={(e) => setDeleteInput(e.target.value)}
-                  placeholder="DELETE"
-                  className="w-full bg-muted/50 border border-border rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:border-red-500 transition-colors"
-                />
-              </div>
+                <div className="w-full flex flex-col gap-2">
+                  <button
+                    onClick={handleLogout}
+                    disabled={isLoggingOut}
+                    className="w-full py-3.5 bg-foreground text-background font-bold rounded-2xl hover:opacity-90 transition-all flex items-center justify-center disabled:opacity-50"
+                  >
+                    {isLoggingOut ? <Loader2 className="w-5 h-5 animate-spin" /> : "Yes, log out"}
+                  </button>
+                  <button
+                    onClick={() => !isLoggingOut && setIsLogoutOpen(false)}
+                    disabled={isLoggingOut}
+                    className="w-full py-3.5 bg-muted text-foreground font-bold rounded-2xl hover:bg-muted/80 transition-all"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
 
-              <div className="w-full flex flex-col gap-2">
-                <button 
-                  onClick={handleDeleteAccount}
-                  disabled={isDeleting || deleteInput !== 'DELETE'}
-                  className="w-full py-3.5 bg-red-500 text-white font-bold rounded-2xl hover:bg-red-600 transition-all flex items-center justify-center disabled:opacity-40"
-                >
-                  {isDeleting ? <Loader2 className="w-5 h-5 animate-spin" /> : "Permanently Delete"}
-                </button>
-                <button 
-                  onClick={() => !isDeleting && setIsDeleteOpen(false)}
-                  disabled={isDeleting}
-                  className="w-full py-3.5 bg-muted text-foreground font-bold rounded-2xl hover:bg-muted/80 transition-all"
-                >
-                  Cancel
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+          {isDeleteOpen && (
+            <div className="fixed inset-0 z-100 flex items-center justify-center px-4">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+                onClick={() => !isDeleting && setIsDeleteOpen(false)}
+              />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                className="w-full max-w-sm bg-card border border-border/60 shadow-2xl rounded-3xl p-6 relative z-10 flex flex-col items-center text-center"
+              >
+                <div className="w-14 h-14 bg-red-500/10 rounded-2xl flex items-center justify-center mb-4">
+                  <AlertTriangle className="w-6 h-6 text-red-500" />
+                </div>
+                <h2 className="text-xl font-black text-foreground mb-2">Delete Account?</h2>
+                <p className="text-sm text-muted-foreground font-medium mb-6 leading-relaxed">
+                  This action is <span className="text-red-500 font-bold">permanent</span>. All your matches, messages, and algorithm vectors will be wiped from our database.
+                </p>
+
+                <div className="w-full text-left mb-6">
+                  <label className="text-[12px] font-bold text-muted-foreground uppercase tracking-wider pl-1 mb-2 block">Type "DELETE" to confirm</label>
+                  <input
+                    type="text"
+                    value={deleteInput}
+                    onChange={(e) => setDeleteInput(e.target.value)}
+                    placeholder="DELETE"
+                    className="w-full bg-muted/50 border border-border rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:border-red-500 transition-colors"
+                  />
+                </div>
+
+                <div className="w-full flex flex-col gap-2">
+                  <button
+                    onClick={handleDeleteAccount}
+                    disabled={isDeleting || deleteInput !== 'DELETE'}
+                    className="w-full py-3.5 bg-red-500 text-white font-bold rounded-2xl hover:bg-red-600 transition-all flex items-center justify-center disabled:opacity-40"
+                  >
+                    {isDeleting ? <Loader2 className="w-5 h-5 animate-spin" /> : "Permanently Delete"}
+                  </button>
+                  <button
+                    onClick={() => !isDeleting && setIsDeleteOpen(false)}
+                    disabled={isDeleting}
+                    className="w-full py-3.5 bg-muted text-foreground font-bold rounded-2xl hover:bg-muted/80 transition-all"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

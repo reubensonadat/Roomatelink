@@ -106,7 +106,7 @@ export function VerificationPage() {
               className="space-y-8 relative z-10"
             >
               <header className="space-y-3">
-                <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-full text-[11px] font-black uppercase tracking-widest border border-amber-500/20">
+                <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-lg text-[11px] font-black uppercase tracking-widest border border-amber-500/20">
                   <Sparkles className="w-3 h-3" /> Identity Hub
                 </div>
                 <h1 className="text-4xl font-black tracking-tight leading-tight text-foreground">Student <br /> Verification</h1>
@@ -124,7 +124,7 @@ export function VerificationPage() {
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="name@stu.ucc.edu.gh"
                       required
-                      className="w-full pl-12 pr-4 py-4.5 bg-muted/20 border-2 border-border/40 rounded-2xl focus:border-primary focus:ring-4 focus:ring-primary/5 outline-none transition-all font-bold text-lg placeholder:text-muted-foreground/30"
+                      className="w-full pl-12 pr-4 py-4.5 bg-muted/20 border-2 border-border/40 rounded-[22px] focus:border-primary focus:ring-4 focus:ring-primary/5 outline-none transition-all font-bold text-lg placeholder:text-muted-foreground/30"
                     />
                   </div>
                   <div className="flex items-center gap-2 px-2 py-1 text-[11px] font-bold text-muted-foreground/60">
@@ -136,7 +136,7 @@ export function VerificationPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full flex items-center justify-center gap-3 p-5 bg-foreground text-background rounded-2xl font-black text-lg hover:translate-y-[-2px] active:translate-y-[0px] transition-all shadow-xl shadow-foreground/5 disabled:opacity-50"
+                  className="w-full flex items-center justify-center gap-3 p-5 bg-foreground text-background rounded-[22px] font-black text-lg hover:translate-y-[-2px] active:translate-y-[0px] transition-all shadow-xl shadow-foreground/5 disabled:opacity-50"
                 >
                   {loading ? (
                     <Loader2 className="w-6 h-6 animate-spin" />
@@ -165,7 +165,7 @@ export function VerificationPage() {
               </button>
 
               <header className="space-y-3">
-                <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full text-[11px] font-black uppercase tracking-widest border border-emerald-500/20">
+                <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-lg text-[11px] font-black uppercase tracking-widest border border-emerald-500/20">
                   <ShieldCheck className="w-3 h-3" /> {universityName || 'Security Code'}
                 </div>
                 <h1 className="text-4xl font-black tracking-tight leading-tight text-foreground">Checkpoint</h1>
@@ -183,14 +183,14 @@ export function VerificationPage() {
                     placeholder="0 0 0 0 0 0"
                     required
                     autoFocus
-                    className="w-full text-center py-5 bg-muted/20 border-2 border-border/40 rounded-2xl focus:border-primary focus:ring-4 focus:ring-primary/5 outline-none transition-all font-black text-[32px] tracking-[0.5em] placeholder:text-muted-foreground/10"
+                    className="w-full text-center py-5 bg-muted/20 border-2 border-border/40 rounded-[22px] focus:border-primary focus:ring-4 focus:ring-primary/5 outline-none transition-all font-black text-[32px] tracking-[0.5em] placeholder:text-muted-foreground/10"
                   />
                 </div>
 
                 <button
                   type="submit"
                   disabled={loading || code.length < 6}
-                  className="w-full flex items-center justify-center gap-3 p-5 bg-primary text-white rounded-2xl font-black text-lg hover:translate-y-[-2px] active:translate-y-[0px] transition-all shadow-xl shadow-primary/10 disabled:opacity-50"
+                  className="w-full flex items-center justify-center gap-3 p-5 bg-primary text-white rounded-[22px] font-black text-lg hover:translate-y-[-2px] active:translate-y-[0px] transition-all shadow-xl shadow-primary/10 disabled:opacity-50"
                 >
                   {loading ? (
                     <Loader2 className="w-6 h-6 animate-spin" />

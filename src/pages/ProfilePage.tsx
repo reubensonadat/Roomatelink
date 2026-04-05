@@ -104,7 +104,6 @@ export function ProfilePage() {
   }, [profile])
 
   useEffect(() => {
-    if (!mounted) return
     const data = { displayName, phone, course, bio, matchingStatus, gender, level, matchPref, selectedAvatar }
     // Only save to localStorage if there's actually data to prevent wiping it randomly
     if (displayName || gender || phone || course) {
@@ -207,7 +206,7 @@ export function ProfilePage() {
     }
   }
 
-  if (!mounted) return null
+  // Zero-Flash Mounting: Removed the !mounted return to prevent layout shift during transit
 
   return (
     <div className="flex flex-col w-full min-h-screen bg-background relative selection:bg-indigo-100 dark:selection:bg-indigo-500/30">
@@ -312,10 +311,10 @@ export function ProfilePage() {
                   placeholder="e.g. 054 165 1298"
                   className="w-full px-5 py-3.5 bg-muted border border-border rounded-xl text-foreground font-bold text-sm focus:outline-none focus:border-primary transition-all placeholder:text-muted-foreground/50"
                 />
-                <div className="mt-3 bg-blue-50/50 border border-blue-100 rounded-xl p-4 flex items-start">
-                  <Check size={16} className="text-blue-500 mt-0.5 mr-3 shrink-0" />
-                  <p className="text-[11.5px] text-blue-700 leading-relaxed font-semibold">
-                    <span className="text-blue-500 font-black">POLICY NOTE:</span> YOUR NUMBER IS ENCRYPTED AND USED ONLY FOR CRITICAL ROOMMATE MATCHES.
+                <div className="mt-3 bg-muted/30 border border-border/40 rounded-xl p-4 flex items-start">
+                  <Check size={16} className="text-primary mt-0.5 mr-3 shrink-0" />
+                  <p className="text-[11.5px] text-muted-foreground leading-relaxed font-bold">
+                    <span className="text-foreground font-black">POLICY NOTE:</span> YOUR NUMBER IS ENCRYPTED AND USED ONLY FOR CRITICAL ROOMMATE MATCHES.
                   </p>
                 </div>
               </div>
@@ -427,24 +426,21 @@ export function ProfilePage() {
             <button
               onClick={handleSave}
               disabled={!isComplete || isSaving}
-              className={`w-full h-[72px] rounded-[24px] flex items-center justify-center gap-3 shadow-[0_10px_40px_rgba(0,0,0,0.1)] transition-all duration-500 active:scale-[0.96] relative overflow-hidden group ${
+              className={`w-full h-[64px] rounded-[22px] flex items-center justify-center gap-3 shadow-premium transition-all duration-500 active:scale-[0.96] relative overflow-hidden group ${
                 !isComplete || isSaving 
-                  ? 'bg-slate-200 text-slate-400 cursor-not-allowed' 
-                  : 'bg-black hover:bg-gradient-to-r hover:from-indigo-600 hover:to-violet-600 hover:shadow-[0_20px_50px_rgba(79,70,229,0.4)]'
+                  ? 'bg-muted text-muted-foreground/30 cursor-not-allowed border border-border/40' 
+                  : 'bg-foreground text-background hover:bg-primary hover:text-primary-foreground hover:shadow-elevated'
               }`}
             >
-              {/* Premium sheen sweep */}
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-[150%] skew-x-[-20deg] group-hover:translate-x-[150%] transition-transform duration-1000 ease-out" />
-              
               <div className="flex flex-col items-center">
-                <span className="text-[10px] font-bold tracking-widest uppercase text-indigo-200 transition-colors group-hover:text-indigo-100">
-                  {isSaving ? 'Synchronizing...' : 'Secure Profile'}
+                <span className="text-[10px] font-black tracking-[0.2em] uppercase opacity-40">
+                  {isSaving ? 'Syncing...' : 'Secure Node'}
                 </span>
-                <span className="text-[17px] font-black text-white leading-tight">
+                <span className="text-[16px] font-black leading-tight">
                   Synchronize Identity
                 </span>
               </div>
-              {!isSaving && <ChevronRight size={22} className="text-indigo-200/80 group-hover:translate-x-1 transition-transform" />}
+              {!isSaving && <Sparkles size={18} className="opacity-40 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />}
             </button>
 
             {/* Questionnaire Action Button */}

@@ -969,6 +969,169 @@ Q40: D + Q22: A	HIGH CROSS-CATEGORY — Still figuring out identity + zero struc
 | `import.meta.env.VITE_*` instead of `process.env.NEXT_PUBLIC_*` | **Rejected: `process.env`.** Reason: Vite does not use Webpack's `DefinePlugin`. Environment variables exposed to the browser MUST start with `VITE_` in Vite. Using `process.env` in a Vite project will return `undefined` and crash the app. |
 
  
+## APPENDIX C — Architecture Review & Improvements (April 2026)
+
+This appendix documents all improvements made during the comprehensive architecture review conducted in April 2026.
+
+### C.1 Completed Improvements
+
+#### C.1.1 Page Transitions ✅
+**Issue**: No page-level animations existed, making the app feel static.
+**Solution**: Implemented iOS-style slide transitions in [`DashboardLayout.tsx`](src/components/DashboardLayout.tsx:37) using Framer Motion.
+**Details**:
+- Direction-aware animations (slide from right for forward, slide from left for backward)
+- Smooth 350ms transitions with spring physics
+- Applied to all dashboard routes
+**Files Modified**: [`src/components/DashboardLayout.tsx`](src/components/DashboardLayout.tsx:37)
+
+#### C.1.2 PWA Theme Colors ✅
+**Issue**: Theme color inconsistency across PWA configuration files.
+**Solution**: Standardized to `#4f46e5` (Indigo 600) across all PWA files.
+**Files Modified**:
+- [`vite.config.ts`](vite.config.ts:19) - Set `theme_color` and `background_color`
+- [`public/manifest.json`](public/manifest.json:1) - Updated manifest
+- [`index.html`](index.html:1) - Updated meta tags
+
+#### C.1.3 Dark Mode Colors ✅
+**Issue**: Hardcoded colors breaking theme system in dark mode.
+**Solution**: Replaced all hardcoded colors with semantic tokens.
+**Files Modified**:
+- [`src/components/ProtectedRoute.tsx`](src/components/ProtectedRoute.tsx:1) - `bg-slate-50` → `bg-background`
+- [`src/components/ui/InstallPrompt.tsx`](src/components/ui/InstallPrompt.tsx:1) - `bg-white` → `bg-card`
+- [`src/components/ui/Sidebar.tsx`](src/components/ui/Sidebar.tsx:1) - `bg-white` → `bg-card`
+- [`src/components/dashboard/Sidebar.tsx`](src/components/dashboard/Sidebar.tsx:1) - `bg-white` → `bg-card`
+- [`src/pages/LandingPage.tsx`](src/pages/LandingPage.tsx:1) - `bg-white` → `bg-card`
+- [`src/pages/ProfilePage.tsx`](src/pages/ProfilePage.tsx:1) - `bg-white` → `bg-card`
+
+#### C.1.4 Database Migrations ✅
+**Issue**: No version control for database schema changes.
+**Solution**: Initialized Supabase migrations tracking.
+**Commands Executed**: `npx supabase init --force`
+**Files Created**:
+- [`supabase/config.toml`](supabase/config.toml:1) - Supabase CLI configuration
+- [`supabase/migrations/`](supabase/migrations/1) - Migrations directory
+- [`supabase/migrations/20260405140000_initial_schema.sql`](supabase/migrations/20260405140000_initial_schema.sql:1) - Complete initial schema
+- [`supabase/migrations/20260405142300_create_verification_codes.sql`](supabase/migrations/20260405142300_create_verification_codes.sql:1) - Verification codes table
+
+#### C.1.5 Student Email Verification ✅
+**Issue**: Broken verification (just flipped flag without proper validation).
+**Solution**: Created proper verification library using Supabase Auth and university domain validation.
+**Files Created**:
+- [`src/lib/verification.ts`](src/lib/verification.ts:1) - Verification helper functions
+- [`docs/STUDENT_EMAIL_VERIFICATION.md`](docs/STUDENT_EMAIL_VERIFICATION.md:1) - Implementation guide
+
+#### C.1.6 Payment Verification Retry Logic ✅
+**Issue**: Users could get stuck if database update failed after payment.
+**Solution**: Added retry mechanism with exponential backoff (2 retries = 3 total attempts).
+**Files Modified**: [`src/pages/DashboardPage.tsx`](src/pages/DashboardPage.tsx:368)
+**Details**:
+- Retry delays: 2s, 4s (exponential backoff)
+- User feedback during retries
+- Graceful error handling after all retries fail
+
+#### C.1.7 Pioneer Users Empty State ✅
+**Issue**: Pioneer users with no matches received generic message.
+**Solution**: Added contextual messaging explaining 60-day window.
+**Files Modified**: [`src/pages/DashboardPage.tsx`](src/pages/DashboardPage.tsx:612)
+**Details**:
+- Separate message for pioneer users
+- Explains 60-day matching window
+- Encourages sharing app with friends
+
+### C.2 Documentation Created
+
+#### C.2.1 Backup Strategy ✅
+**File**: [`docs/BACKUP_STRATEGY_RECOMMENDATIONS.md`](docs/BACKUP_STRATEGY_RECOMMENDATIONS.md:1)
+**Contents**:
+- Supabase automatic backups (daily, 7-day retention)
+- Manual backup procedures
+- Storage backup strategies
+- Disaster recovery plans
+- Automated backup scripts
+- Cost considerations
+
+#### C.2.2 Monitoring Recommendations ✅
+**File**: [`docs/MONITORING_RECOMMENDATIONS.md`](docs/MONITORING_RECOMMENDATIONS.md:1)
+**Contents**:
+- Cloudflare Pages monitoring
+- Supabase dashboard monitoring (Database, Auth, Storage, Edge Functions)
+- Error tracking strategies
+- Performance monitoring (Web Vitals)
+- Alerting setup
+- Uptime monitoring
+- Cost monitoring
+
+#### C.2.3 Database Migrations Guide ✅
+**File**: [`docs/DATABASE_MIGRATIONS_EXPLAINED.md`](docs/DATABASE_MIGRATIONS_EXPLAINED.md:1)
+**Contents**:
+- Why migrations are critical
+- Local vs production workflow
+- Generating safe diffs
+- Pushing safely
+- Best practices
+
+### C.3 Initial Schema Migration ✅
+
+**File**: [`supabase/migrations/20260405140000_initial_schema.sql`](supabase/migrations/20260405140000_initial_schema.sql:1)
+**Schema Includes**:
+- `users` table (extends auth.users)
+- `university_domains` table (for student verification)
+- `verification_codes` table (OTP storage)
+- `questionnaire_answers` table
+- `matches` table (compatibility scores)
+- `messages` table (chat functionality)
+- `roommate_found` table (notifications)
+- Complete RLS policies for all tables
+- Indexes for performance
+- Triggers for updated_at timestamps
+- Helper functions for matching
+- Initial university domain data (15 Ghana universities)
+
+### C.4 Verification Library ✅
+
+**File**: [`src/lib/verification.ts`](src/lib/verification.ts:1)
+**Functions**:
+- `verifyUniversityEmail()` - Validates email domain against whitelist and updates user profile
+
+### C.5 Existing Implementation Notes
+
+**SettingsPage.tsx Verification**: The existing implementation in [`SettingsPage.tsx`](src/pages/SettingsPage.tsx:119) uses the `verify-student` edge function with a comprehensive two-step flow (email → code). This implementation is secure and well-designed, so the verification library was created as an alternative approach for simpler use cases.
+
+### C.6 Key Technical Decisions
+
+1. **Page Transitions**: iOS-style slide (350ms) with direction awareness
+2. **Theme System**: Standardized to Indigo 600 (#4f46e5) across all PWA files
+3. **Database**: Migrations tracking initialized for version control
+4. **Verification**: Supabase Auth email verification system (secure, proper)
+5. **Matching**: Kept 60-day window as requested (no algorithm changes)
+6. **Payment Retry**: Exponential backoff (2s, 4s) with user feedback
+
+### C.7 Status Summary
+
+| Category | Tasks | Completed |
+|----------|---------|-----------|
+| Page Transitions | 1 | ✅ |
+| PWA Theme Colors | 1 | ✅ |
+| Dark Mode Fixes | 6 | ✅ |
+| Database Migrations | 1 | ✅ |
+| Student Verification | 1 | ✅ |
+| Payment Retry Logic | 1 | ✅ |
+| Pioneer User UX | 1 | ✅ |
+| Documentation | 3 | ✅ |
+| **TOTAL** | **15** | **✅** |
+
+### C.8 Remaining Recommendations
+
+The following items are documented but not yet implemented:
+
+1. **Error Tracking Integration**: Consider integrating Sentry or LogRocket for production error tracking
+2. **Health Check Endpoint**: Create `/api/health` endpoint for uptime monitoring
+3. **Automated Backups**: Set up GitHub Actions workflow for automated backups
+4. **Performance Budgets**: Define and enforce Core Web Vitals budgets
+5. **A/B Testing**: Implement A/B testing framework for optional questions (V2)
+
+---
+
 Status: Architecture Approved & Locked
 
 

@@ -361,7 +361,7 @@ export function ChatPage() {
                 transition={{ duration: 0.15 }}
                 className={`flex flex-col max-w-[85%] ${isMe ? 'self-end items-end' : 'self-start items-start'}`}
               >
-                <div className={`px-4 py-2.5 rounded-2xl text-[14.5px] font-medium leading-relaxed break-all overflow-hidden ${isMe ? 'bg-primary text-primary-foreground rounded-tr-sm' : 'bg-muted/50 text-foreground rounded-tl-sm'}`}>
+                <div className={`px-4 py-2.5 rounded-[20px] text-[14.5px] font-medium leading-relaxed break-all overflow-hidden border ${isMe ? 'bg-primary text-primary-foreground border-primary/20 rounded-tr-sm' : 'bg-card/50 backdrop-blur-md text-foreground border-border/40 rounded-tl-sm shadow-sm'}`}>
                   {msg.text}
                 </div>
                 <div className="flex items-center gap-1 mt-1 px-1">
@@ -381,18 +381,18 @@ export function ChatPage() {
         <div ref={bottomRef} />
       </div>
 
-      <div className="p-4 bg-background border-t border-border/40">
+      <div className="p-4 bg-background/80 backdrop-blur-xl border-t border-border/40">
         <form onSubmit={handleSend} className="flex items-center gap-2">
-          <div className="flex-1 bg-muted/30 border border-border/20 rounded-full px-5 py-1.5 focus-within:ring-2 focus-within:ring-primary/10 transition-all">
+          <div className="flex-1 bg-muted/30 border border-border/20 rounded-[22px] px-5 py-1.5 focus-within:ring-4 focus-within:ring-primary/5 focus-within:border-primary/20 transition-all">
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Type a message..."
-              className="w-full bg-transparent border-none outline-none py-2 font-medium text-sm text-foreground placeholder:text-muted-foreground/30"
+              className="w-full bg-transparent border-none outline-none py-2 font-bold text-sm text-foreground placeholder:text-muted-foreground/30"
             />
           </div>
-          <button type="submit" disabled={!input.trim()} className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${input.trim() ? 'bg-primary text-primary-foreground shadow-lg active:scale-90' : 'bg-muted text-muted-foreground/20'}`}>
+          <button type="submit" disabled={!input.trim()} className={`w-12 h-12 rounded-[22px] flex items-center justify-center transition-all ${input.trim() ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20 active:scale-90 hover:scale-[1.05]' : 'bg-muted text-muted-foreground/10'}`}>
             <Send className="w-4 h-4 ml-0.5" />
           </button>
         </form>

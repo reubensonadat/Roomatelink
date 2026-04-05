@@ -231,7 +231,11 @@ export function DashboardPage() {
   }
 
   useEffect(() => {
-    if (mounted) initializeDashboard()
+    // Zero-Jitter Handshake: Skip re-init if matches already present
+    if (mounted && (matches.length === 0 || sessionStorage.getItem('forceRefresh'))) {
+      initializeDashboard()
+      sessionStorage.removeItem('forceRefresh')
+    }
   }, [user, profile, authLoading, mounted, isDevMode])
 
   useEffect(() => {
@@ -365,16 +369,46 @@ export function DashboardPage() {
     }, 800)
   }
 
-  const handlePaymentSuccess = (reference: any) => {
+  const handlePaymentSuccess = async (reference: any) => {
     setIsPaymentModalOpen(false)
     setIsVerifyingPayment(true)
-    supabase.from('users').update({ has_paid: true, payment_reference: reference.reference }).eq('id', profile?.id)
-      .then(() => {
+    
+    // Retry logic with exponential backoff (max 2 retries = 3 total attempts)
+    const maxRetries = 2
+    let retryCount = 0
+    let success = false
+    
+    while (retryCount <= maxRetries && !success) {
+      try {
+        const { error } = await supabase
+          .from('users')
+          .update({ has_paid: true, payment_reference: reference.reference })
+          .eq('id', profile?.id)
+        
+        if (error) throw error
+        
+        success = true
         setIsVerifyingPayment(false)
         setHasPaid(true)
         setIsUnlocking(true)
         setUnlockedCount(0)
-      })
+        toast.success('Payment verified successfully!')
+      } catch (error) {
+        retryCount++
+        
+        if (retryCount <= maxRetries) {
+          // Exponential backoff: 2s, 4s
+          const delay = Math.pow(2, retryCount) * 1000
+          toast.loading(`Verifying payment... (Attempt ${retryCount + 1}/${maxRetries + 1})`)
+          await new Promise(resolve => setTimeout(resolve, delay))
+        } else {
+          // All retries failed
+          setIsVerifyingPayment(false)
+          toast.error('Payment verification failed. Please try again or contact support.')
+          console.error('Payment verification failed after retries:', error)
+        }
+      }
+    }
   }
 
   const handlePioneerClaim = async () => {
@@ -408,25 +442,29 @@ export function DashboardPage() {
 
   // Refined Hydration Defense
   const isHydrating = authLoading || (user && !profile && isLoading)
+  
+  // Handover Logic: Only show the "Starting" screen on fresh cold boot
+  // If we have matches already or it's a sub-page switch, stay silent.
+  const showSplash = isHydrating && matches.length === 0
 
-  if (!mounted || isHydrating) {
+  if (!mounted || showSplash) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-background p-6 selection:bg-indigo-100 dark:selection:bg-indigo-500/30 uppercase tracking-tight">
         <div className="relative w-28 h-28 mb-12">
           {/* Outer Ring Glow */}
-          <div className="absolute inset-[-8px] rounded-[2.5rem] bg-indigo-500/10 blur-xl animate-pulse" />
+          <div className="absolute inset-[-8px] rounded-full bg-indigo-500/5 blur-2xl animate-pulse" />
 
-          {/* Main Spinner */}
-          <div className="absolute inset-0 rounded-[2.5rem] border-[3px] border-border/50" />
+          {/* Main Spinner (Silky Glass Sphere) */}
+          <div className="absolute inset-0 rounded-full border-[3px] border-border/40" />
           <motion.div
             animate={{ rotate: 360 }}
-            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-            className="absolute inset-0 rounded-[2.5rem] border-[3px] border-transparent border-t-indigo-600 shadow-[0_0_20px_rgba(79,70,229,0.2)]"
+            transition={{ duration: 1.5, repeat: Infinity, ease: [0.4, 0, 0.2, 1] }}
+            className="absolute inset-0 rounded-full border-[3px] border-transparent border-t-indigo-600 shadow-[0_0_20px_rgba(79,70,229,0.2)]"
           />
 
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-14 h-14 bg-card rounded-2xl flex items-center justify-center shadow-sm border border-border">
-              <Sparkles className="w-7 h-7 text-indigo-600 animate-pulse" />
+            <div className="w-16 h-16 bg-card rounded-full flex items-center justify-center shadow-lg border border-border/80 backdrop-blur-xl">
+              <Sparkles className="w-8 h-8 text-indigo-600 animate-pulse" />
             </div>
           </div>
         </div>
@@ -493,7 +531,7 @@ export function DashboardPage() {
               </div>
               <button
                 onClick={handlePioneerClaim}
-                className="px-6 py-3 bg-indigo-500 text-white rounded-2xl font-black text-[13px] shadow-lg shadow-indigo-500/20 hover:scale-105 active:scale-95 transition-all uppercase tracking-widest"
+                className="px-6 py-3 bg-indigo-500 text-white rounded-[22px] font-black text-[13px] shadow-lg shadow-indigo-500/20 hover:scale-105 active:scale-95 transition-all uppercase tracking-widest"
               >
                 Claim
               </button>
@@ -533,7 +571,7 @@ export function DashboardPage() {
                   </div>
                   <Link 
                     to="/dashboard/profile" 
-                    className="w-full py-5 bg-amber-500 text-white font-black text-[15px] rounded-2xl shadow-xl shadow-amber-500/20 hover:bg-amber-600 hover:shadow-amber-500/40 active:scale-95 transition-all flex items-center justify-center gap-2 uppercase tracking-widest"
+                    className="w-full py-5 bg-amber-500 text-white font-black text-[15px] rounded-[22px] shadow-xl shadow-amber-500/20 hover:bg-amber-600 hover:shadow-amber-500/40 active:scale-95 transition-all flex items-center justify-center gap-2 uppercase tracking-widest"
                   >
                     Setup Identity <Sparkles className="w-4 h-4 ml-1" />
                   </Link>
@@ -561,7 +599,7 @@ export function DashboardPage() {
                   </div>
                   <Link 
                     to="/questionnaire" 
-                    className="w-full py-5 bg-foreground text-background font-black text-[15px] rounded-2xl shadow-xl hover:opacity-90 active:scale-95 transition-all flex items-center justify-center gap-2 uppercase tracking-widest"
+                    className="w-full py-5 bg-foreground text-background font-black text-[15px] rounded-[22px] shadow-xl hover:opacity-90 active:scale-95 transition-all flex items-center justify-center gap-2 uppercase tracking-widest"
                   >
                     Start DNA Test <Sparkles className="w-4 h-4 ml-1" />
                   </Link>
@@ -579,10 +617,24 @@ export function DashboardPage() {
                   <div className="absolute inset-0 bg-primary/20 animate-ping opacity-25 rounded-full" />
                   <LockIcon className="w-10 h-10 text-primary animate-pulse" />
                 </div>
-                <h3 className="text-[20px] font-black text-foreground mb-2">You're Early!</h3>
-                <p className="text-muted-foreground text-[14px] font-medium leading-relaxed max-w-[280px] mb-6">
-                  We're still mapping the campus DNA. Check back soon for your perfect roommate matches!
-                </p>
+                {isPioneerUser ? (
+                  <>
+                    <h3 className="text-[20px] font-black text-foreground mb-2">Pioneer Window Active</h3>
+                    <p className="text-muted-foreground text-[14px] font-medium leading-relaxed max-w-[280px] mb-3">
+                      As a pioneer user, you can only match with other users who joined within the last 60 days. This ensures everyone starts fresh!
+                    </p>
+                    <p className="text-muted-foreground text-[13px] font-semibold leading-relaxed max-w-[280px] mb-6">
+                      No matches yet? New students are joining daily. Check back soon or share Roommate Link with friends!
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <h3 className="text-[20px] font-black text-foreground mb-2">You're Early!</h3>
+                    <p className="text-muted-foreground text-[14px] font-medium leading-relaxed max-w-[280px] mb-6">
+                      We're still mapping the campus DNA. Check back soon for your perfect roommate matches!
+                    </p>
+                  </>
+                )}
                 <button
                   onClick={forceRecalculate}
                   disabled={isRecalculating}
@@ -663,3 +715,4 @@ export function DashboardPage() {
     </div>
   )
 }
+
