@@ -58,7 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(initialSession ? false : true)
   const [lastActivity, setLastActivity] = useState(Date.now())
 
-  const updateActivity = () => setLastActivity(Date.now())
+  const handleUpdateActivity = () => setLastActivity(Date.now())
 
   const fetchProfile = async (userId: string, retries = 1): Promise<any> => {
     try {
@@ -214,7 +214,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const INACTIVITY_LIMIT = 15 * 60 * 1000 // 15 Minutes
     
     const activityEvents = ['mousedown', 'keydown', 'touchstart', 'scroll', 'click']
-    activityEvents.forEach(event => window.addEventListener(event, updateActivity))
+    activityEvents.forEach(event => window.addEventListener(event, handleUpdateActivity))
 
     const inactivityInterval = setInterval(() => {
       const idleTime = Date.now() - lastActivity
@@ -241,7 +241,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearInterval(heartbeatInterval)
       document.removeEventListener('visibilitychange', handleVisibility)
       window.removeEventListener('focus', handleFocus)
-      activityEvents.forEach(event => window.removeEventListener(event, updateActivity))
+      activityEvents.forEach(event => window.removeEventListener(event, handleUpdateActivity))
     }
   }, [user, profile, lastActivity])
 
