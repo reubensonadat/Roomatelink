@@ -145,11 +145,19 @@ serve(async (req: Request) => {
       throw new Error(`Failed to fetch candidate responses: ${responsesError.message}`);
     }
 
-    // Merge candidate data
-    const candidates = candidateResponses?.map((resp: { user_id: string; answers: Record<string, string> }) => ({
-      userId: resp.user_id,
-      answers: encodeAnswers(resp.answers)
-    })) || [];
+    // Merge candidate data — skip any with incomplete questionnaires
+    const candidates: { userId: string; answers: any }[] = [];
+    for (const resp of (candidateResponses || [])) {
+      try {
+        candidates.push({
+          userId: (resp as any).user_id,
+          answers: encodeAnswers((resp as any).answers)
+        });
+      } catch (encodeErr) {
+        // Skip this candidate — their questionnaire is incomplete/corrupted
+        console.warn(`Skipping candidate ${(resp as any).user_id}: ${(encodeErr as Error).message}`);
+      }
+    }
 
     // ── STEP 3: THE JUDGE — Run the matching algorithm ─────────────
     // Now we have a small, highly qualified list of candidates.

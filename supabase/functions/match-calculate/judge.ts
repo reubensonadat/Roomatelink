@@ -420,6 +420,16 @@ export function encodeAnswers(letterAnswers: Record<string, string>): AnswerVect
     }
   }
 
+  // Validate all 40 questions are present — reject partial questionnaires
+  const ALL_QUESTION_IDS: QuestionId[] = [];
+  for (let i = 1; i <= 40; i++) {
+    ALL_QUESTION_IDS.push(`q${i}` as QuestionId);
+  }
+  const missing = ALL_QUESTION_IDS.filter(qId => !(qId in encoded));
+  if (missing.length > 0) {
+    throw new Error(`Incomplete questionnaire: missing ${missing.join(', ')} (${missing.length}/40)`);
+  }
+
   return encoded as AnswerVector;
 }
 

@@ -9,9 +9,11 @@ import { useAuth } from '../context/AuthContext'
 export function MessagesPage() {
   const { user, profile } = useAuth()
   const isPaid = !!(profile?.has_paid || profile?.is_pioneer)
+  // Robust initial derivation: if user has cached chats AND is paid, they've completed the full flow
+  const hasCachedChats = (() => { try { const c = localStorage.getItem('roommate_chat_threads'); return c ? JSON.parse(c).length > 0 : false } catch { return false } })()
   const [profileStatus, setProfileStatus] = useState({
     isProfileComplete: !!(profile?.course && profile?.level),
-    hasQuestionnaire: !!sessionStorage.getItem('hasQuestionnaireCache'),
+    hasQuestionnaire: sessionStorage.getItem('hasQuestionnaireCache') === 'true' || (isPaid && hasCachedChats),
     hasPaid: isPaid
   })
   const [chats, setChats] = useState<any[]>(() => {
@@ -20,6 +22,18 @@ export function MessagesPage() {
   })
   const [isLoading, setIsLoading] = useState(() => !localStorage.getItem('roommate_chat_threads'))
   const navigate = useNavigate()
+
+  // Re-sync profile status when AuthContext profile updates (e.g., on tab resume)
+  useEffect(() => {
+    if (profile) {
+      const paid = !!(profile.has_paid || profile.is_pioneer)
+      setProfileStatus(prev => ({
+        ...prev,
+        isProfileComplete: !!(profile.course && profile.level),
+        hasPaid: paid
+      }))
+    }
+  }, [profile])
 
   useEffect(() => {
     // 1. Instant Cache Load (Boutique performance)
@@ -60,11 +74,12 @@ export function MessagesPage() {
             : Promise.resolve({ data: [] as any[], error: null })
         ])
 
-        setProfileStatus({
+        setProfileStatus(prev => ({
           isProfileComplete: !!(currentProfile.course && currentProfile.level),
-          hasQuestionnaire: !!questionnaireRes.data,
+          // If questionnaire query errored, preserve previous state instead of reverting to false
+          hasQuestionnaire: questionnaireRes.error ? prev.hasQuestionnaire : !!questionnaireRes.data,
           hasPaid: isPaid
-        })
+        }))
 
         if (!isPaid) {
           setIsLoading(false)

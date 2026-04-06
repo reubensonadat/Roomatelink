@@ -228,7 +228,7 @@ export function SettingsPage() {
               </button>
 
               <button
-                onClick={() => toast.success('Push notifications enabled for new matches.')}
+                onClick={() => toast.info('Push notifications are coming soon!')}
                 className="flex items-center justify-between p-3 rounded-[18px] hover:bg-muted/50 transition-colors text-left group"
               >
                 <div className="flex items-center gap-4">

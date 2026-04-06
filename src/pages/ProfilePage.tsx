@@ -141,6 +141,13 @@ export function ProfilePage() {
         status: matchingStatus
       }
 
+      // Track if matching-relevant fields changed (for existing profiles)
+      const matchFieldsChanged = profileId && profile && (
+        profileData.gender !== profile.gender ||
+        profileData.gender_pref !== profile.gender_pref ||
+        profileData.status !== profile.status
+      )
+
       if (profileId) {
         const { error } = await withTimeout(
           supabase.from('users').update(profileData).eq('id', profileId),
@@ -164,6 +171,27 @@ export function ProfilePage() {
       toast.success('Identity Synced!')
       localStorage.removeItem(STORAGE_KEY)
       await refreshProfile()
+
+      // If matching-relevant fields changed, trigger match recalculation in background
+      if (matchFieldsChanged && profileId) {
+        try {
+          const { data: { session } } = await supabase.auth.getSession()
+          if (session) {
+            fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/match-calculate`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`
+              },
+              body: JSON.stringify({ userId: profileId })
+            }).catch(() => {}) // Fire-and-forget, don't block navigation
+            toast.info('Recalculating your matches with updated preferences...')
+          }
+        } catch {
+          // Silent fail — matches will update on next manual recalc
+        }
+      }
+
       navigate('/dashboard')
     } catch (error: any) {
       console.error("RAW SYNCHRONIZATION ERROR:", error);

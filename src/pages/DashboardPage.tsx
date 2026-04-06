@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Sparkles, Lock as LockIcon, Flame, UserCheck, Loader2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -67,6 +67,7 @@ export function DashboardPage() {
   const [devClickCount, setDevClickCount] = useState(0)
   const [isRecalculating, setIsRecalculating] = useState(false)
   const [displayLimit, setDisplayLimit] = useState(10)
+  const lastFetchRef = useRef<number>(0)
 
   // ─── Modal States ────────────────────────────────────────────────────
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false)
@@ -104,7 +105,10 @@ export function DashboardPage() {
       return
     }
 
-    if (!profile && authLoading) return
+    if (!profile && authLoading) {
+      // Don't hang isLoading — the useEffect will re-trigger when authLoading changes
+      return
+    }
 
     try {
       // Step 1: Dev Mode Override
@@ -143,8 +147,12 @@ export function DashboardPage() {
         setHasQuestionnaire(!!qResp)
         sessionStorage.setItem('hasQuestionnaireCache', String(!!qResp))
 
-        // Step 3: Fetch Matches
-        const { data: dbMatches, error: matchesError } = await supabase
+        // Step 3: Fetch Matches — query BOTH sides for bulletproof loading
+        // A user can be user_a_id OR user_b_id depending on insertion order
+        const myId = activeProfile.id
+
+        // Query A-side: where I am user_a_id, roommate is user_b_id
+        const matchesAPromise = supabase
           .from('matches')
           .select(`
             *,
@@ -152,14 +160,41 @@ export function DashboardPage() {
               id, full_name, avatar_url, bio, course, level, gender, is_student_verified
             )
           `)
-          .eq('user_a_id', activeProfile.id)
+          .eq('user_a_id', myId)
           .order('match_percentage', { ascending: false })
 
-        if (matchesError) throw matchesError
+        // Query B-side: where I am user_b_id, roommate is user_a_id
+        const matchesBPromise = supabase
+          .from('matches')
+          .select(`
+            *,
+            roommate:users!user_a_id (
+              id, full_name, avatar_url, bio, course, level, gender, is_student_verified
+            )
+          `)
+          .eq('user_b_id', myId)
+          .order('match_percentage', { ascending: false })
 
-        if (dbMatches && dbMatches.length > 0) {
-          const mappedMatches: MatchProfile[] = dbMatches
-            .filter((m: any) => m.roommate)
+        const [matchesARes, matchesBRes] = await Promise.all([matchesAPromise, matchesBPromise])
+
+        if (matchesARes.error) throw matchesARes.error
+        if (matchesBRes.error) throw matchesBRes.error
+
+        // Merge both sides, deduplicate by roommate ID (prefer higher percentage)
+        const allRaw = [...(matchesARes.data || []), ...(matchesBRes.data || [])]
+        const seenRoommates = new Map<string, any>()
+        for (const m of allRaw) {
+          if (!m.roommate) continue
+          const rid = (m.roommate as any).id
+          if (!seenRoommates.has(rid) || m.match_percentage > seenRoommates.get(rid).match_percentage) {
+            seenRoommates.set(rid, m)
+          }
+        }
+        const dedupedMatches = Array.from(seenRoommates.values())
+          .sort((a: any, b: any) => b.match_percentage - a.match_percentage)
+
+        if (dedupedMatches.length > 0) {
+          const mappedMatches: MatchProfile[] = dedupedMatches
             .map((m: any) => ({
               id: m.roommate.id,
               name: m.roommate.full_name || 'Anonymous Student',
@@ -185,14 +220,18 @@ export function DashboardPage() {
         }
 
         // Step 4: Verify Pioneer Status if not already marked
-        if (!pioneerStatus && !paidStatus) {
+        // Only check once per session to avoid wasting Edge Function calls
+        if (!pioneerStatus && !paidStatus && !sessionStorage.getItem('pioneerChecked')) {
           try {
             const { data: pcData, error: pcError } = await supabase.functions.invoke('pioneer-check')
+            sessionStorage.setItem('pioneerChecked', 'true')
             if (!pcError && pcData) {
               const isPioneer = (pcData as any).isPioneer || false
               setIsPioneerUser(isPioneer)
-              // If the function successfully found them as a pioneer, it updated the DB in background.
-              // But we can trigger a profile refresh if we want a hard sync.
+              if (isPioneer) {
+                setHasPaid(true) // Pioneer = free access
+                await refreshProfile() // Sync the DB update to AuthContext
+              }
             }
           } catch (pcErr) {
             console.warn('Pioneer Engine sync deferred.')
@@ -239,11 +278,12 @@ export function DashboardPage() {
   }
 
   useEffect(() => {
-    // Zero-Jitter Handshake: Skip re-init if matches already present
-    if (mounted && (matches.length === 0 || sessionStorage.getItem('forceRefresh'))) {
-      initializeDashboard()
-      sessionStorage.removeItem('forceRefresh')
-    }
+    if (!mounted || !user || authLoading) return
+    // Throttle: skip background re-fetch if we fetched within 30s AND have data
+    const now = Date.now()
+    if (matches.length > 0 && now - lastFetchRef.current < 30000) return
+    lastFetchRef.current = now
+    initializeDashboard()
   }, [user, profile, authLoading, mounted, isDevMode])
 
   useEffect(() => {
@@ -553,7 +593,12 @@ export function DashboardPage() {
         onCancel={() => setIsVerifyingPayment(false)}
       />
 
-      <PullToRefresh onRefresh={async () => { await new Promise(r => setTimeout(r, 1200)); toast.success('Matches refreshed!'); }}>
+      <PullToRefresh onRefresh={async () => {
+        await refreshProfile()
+        lastFetchRef.current = 0
+        await initializeDashboard()
+        toast.success('Matches refreshed!')
+      }}>
         <TopHeader
           title="Top Matches"
           subtitle={`${matches.length} highly compatible roommates found.`}
