@@ -9,7 +9,7 @@ const corsHeaders = {
 // @ts-ignore
 declare const Deno: any;
 
-serve(async (req: Request) => {
+Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }

@@ -40,7 +40,7 @@ interface PaystackWebhookEvent {
   }
 }
 
-serve(async (req: Request) => {
+Deno.serve(async (req: Request) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -144,6 +144,14 @@ serve(async (req: Request) => {
       // 5. Handle successful payment
       if (event.event === 'charge.success') {
         const { customer, reference, amount, paid_at } = event.data
+
+        // CRITICAL FIX: Verify the payload amount meets the minimum 15 GHS threshold (in pesewas)
+        if (amount < 2500) { // Assuming 25 GHS is the price, wait, verify GET says '1500 // Min fee is 15 GHS'. Let's use 1500 to match the GET logic exactly.
+          if (amount < 1500) {
+            console.error(`Invalid Payment Amount: ${amount} is less than the required 1500 limit.`)
+            return new Response('Invalid amount', { status: 400 })
+          }
+        }
 
         const { data: user } = await supabase
           .from('users')

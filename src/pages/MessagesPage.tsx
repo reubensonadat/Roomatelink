@@ -138,6 +138,54 @@ export function MessagesPage() {
     }
 
     fetchChats()
+
+    // 4. Realtime "Auto-Sync" for the Messages List
+    // This allows the "Last Message" snippet and "Unread" badge to update instantly
+    // while the user is parked on the Messages tab.
+    const channel = supabase
+      .channel('messages-list-sync')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'messages',
+        filter: `receiver_id=eq.${user?.id}`
+      }, async (payload: any) => {
+        // When a new message arrives, we recalculate the specific thread
+        const newMsg = payload.new
+        const senderId = newMsg.sender_id
+
+        setChats(prev => {
+          const existingIndex = prev.findIndex(c => c.id === senderId)
+          let updatedChats = [...prev]
+
+          if (existingIndex !== -1) {
+            // Update existing thread
+            const thread = { ...updatedChats[existingIndex] }
+            thread.lastMessage = newMsg.content
+            thread.time = new Date(newMsg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            thread.unread = (thread.unread || 0) + 1
+            
+            // Move to top
+            updatedChats.splice(existingIndex, 1)
+            updatedChats.unshift(thread)
+          } else {
+             // It's a new conversation from someone not in our current thread list
+             // We'll let the next manual/auto-refresh handle fetching their profile info
+             // OR we can trigger a full sync if we want to be high-fidelity.
+             // For now, let's just trigger fetchChats() to grab the new user's profile and avatar.
+             fetchChats()
+             return prev
+          }
+          
+          localStorage.setItem('roommate_chat_threads', JSON.stringify(updatedChats))
+          return updatedChats
+        })
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
   }, [user, profile, navigate])
 
 

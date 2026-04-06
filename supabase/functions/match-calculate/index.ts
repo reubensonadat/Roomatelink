@@ -38,7 +38,7 @@ export const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-serve(async (req: Request) => {
+Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
@@ -92,13 +92,13 @@ serve(async (req: Request) => {
     // We only fetch "Fresh" users (created in the last 60 days) to keep the pool relevant.
     const sixtyDaysAgo = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString();
 
-    // 1. Fetch only ACTIVE, PAID, FRESH users
+    // 1. Fetch only ACTIVE, (PAID OR PIONEER), FRESH users
     // This is the primary scalability filter.
     let query = supabase
       .from('users')
-      .select('id, gender, gender_pref, has_paid')
+      .select('id, gender, gender_pref, has_paid, is_pioneer')
       .eq('status', 'ACTIVE')
-      .eq('has_paid', true)
+      .or('has_paid.eq.true,is_pioneer.eq.true')
       .gt('created_at', sixtyDaysAgo)
       .neq('id', userId);
 

@@ -255,13 +255,15 @@ export function ChatPage() {
       return
     }
 
-    // 3. Update status to SENT and replace tempId with real ID
+    // 3. Update status to SENT and replace tempId with real ID + SERVER TIMESTAMP
+    // This is critical: if client clock is wrong, we must sync the timestamp to the server's truth!
     if (data) {
       setMessages(prev => {
         const updated = prev.map(m => m.id === tempId ? {
           ...m,
           id: data.id,
-          status: 'SENT'
+          status: 'SENT',
+          timestamp: data.created_at // Enforce server timeline!
         } : m)
         localStorage.setItem(`roommate_chat_${receiverId}`, JSON.stringify({
           messages: updated,
