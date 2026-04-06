@@ -96,9 +96,9 @@ Deno.serve(async (req: Request) => {
     // This is the primary scalability filter.
     let query = supabase
       .from('users')
-      .select('id, gender, gender_pref, has_paid, is_pioneer')
+      .select('id, gender, gender_pref, has_paid')
       .eq('status', 'ACTIVE')
-      .or('has_paid.eq.true,is_pioneer.eq.true')
+      .eq('has_paid', true)
       .gt('created_at', sixtyDaysAgo)
       .neq('id', userId);
 

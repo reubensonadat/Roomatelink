@@ -12,6 +12,7 @@ interface AuthContextType {
   signOut: () => Promise<void>
   signInWithGoogle: () => Promise<void>
   refreshProfile: () => Promise<void>
+  lastActivity: number
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -55,6 +56,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   
   // If we already have a session, we are NOT loading. Instant rendering!
   const [loading, setLoading] = useState(initialSession ? false : true)
+  const [lastActivity, setLastActivity] = useState(Date.now())
+
+  const updateActivity = () => setLastActivity(Date.now())
 
   const fetchProfile = async (userId: string, retries = 1): Promise<any> => {
     try {
@@ -206,12 +210,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     document.addEventListener('visibilitychange', handleVisibility)
     window.addEventListener('focus', handleFocus)
 
+    // --- PROACTIVE INACTIVITY WATCHDOG (15 MINUTES) ---
+    const INACTIVITY_LIMIT = 15 * 60 * 1000 // 15 Minutes
+    
+    const activityEvents = ['mousedown', 'keydown', 'touchstart', 'scroll', 'click']
+    activityEvents.forEach(event => window.addEventListener(event, updateActivity))
+
+    const inactivityInterval = setInterval(() => {
+      const idleTime = Date.now() - lastActivity
+      if (user && idleTime > INACTIVITY_LIMIT) {
+        console.warn('Session Watchdog: Inactivity limit reached. Force Logout.')
+        signOut()
+      }
+    }, 60000) // Check every minute
+
+    // --- SESSION HEARTBEAT (5 MINUTES) ---
+    // Forcefully re-verify the token with Supabase even if the app is active
+    const heartbeatInterval = setInterval(async () => {
+      if (!user) return
+      const { data: { session: currentSession }, error } = await supabase.auth.getSession()
+      if (error || !currentSession) {
+        console.error('Session Watchdog: Heartbeat failed or session lost.')
+        signOut()
+      }
+    }, 5 * 60 * 1000)
+
     return () => {
       clearInterval(interval)
+      clearInterval(inactivityInterval)
+      clearInterval(heartbeatInterval)
       document.removeEventListener('visibilitychange', handleVisibility)
       window.removeEventListener('focus', handleFocus)
+      activityEvents.forEach(event => window.removeEventListener(event, updateActivity))
     }
-  }, [user, profile])
+  }, [user, profile, lastActivity])
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({
@@ -280,7 +312,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, session, profile, loading, signIn, signUp, signOut, signInWithGoogle, refreshProfile }}>
+    <AuthContext.Provider value={{ user, session, profile, loading, signIn, signUp, signOut, signInWithGoogle, refreshProfile, lastActivity }}>
       {children}
     </AuthContext.Provider>
   )
