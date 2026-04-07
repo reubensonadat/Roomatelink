@@ -20,7 +20,6 @@ export default function CalculationPage() {
   const [complete, setComplete] = useState(false)
   const [scanY, setScanY] = useState(0)
   const { profile } = useAuth()
-  const [dataArrived, setDataArrived] = useState(false)
   const navigate = useNavigate()
 
   // Scanning counter animation
@@ -56,7 +55,6 @@ export default function CalculationPage() {
             .eq('user_a_id', profile.id)
           
           if (!error && count && count > 0) {
-            setDataArrived(true)
             setComplete(true)
             clearInterval(checkInterval)
             clearTimeout(failSafeTimeout)
