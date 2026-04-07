@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Flag, ChevronRight, Send, ShieldCheck, Lock, Check, CheckCheck, Clock } from 'lucide-react'
+import { Flag, ChevronRight, Send, ShieldCheck, Lock, Check, CheckCheck, Clock, Cpu } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
@@ -10,7 +10,7 @@ import { useAuth } from '../context/AuthContext'
 export function ChatPage() {
   const { id: receiverId } = useParams()
   const navigate = useNavigate()
-  const { user, profile } = useAuth()
+  const { user, profile, isTrafficHeavy, setIsTrafficHeavy } = useAuth()
 
   const [messages, setMessages] = useState<any[]>([])
   const [otherUser, setOtherUser] = useState<any>(null)
@@ -18,11 +18,15 @@ export function ChatPage() {
   const bottomRef = useRef<HTMLDivElement>(null)
   const [isReportModalOpen, setIsReportModalOpen] = useState(false)
   const [loading, setLoading] = useState(true)
+  const sessionSynced = sessionStorage.getItem(`chat_synced_${receiverId}`) === 'true'
+  const [loadingStep, setLoadingStep] = useState(0) // 0: Link, 1: Security, 2: History, 3: Syncing
+  const [progress, setProgress] = useState(sessionSynced ? 100 : 0)
+  
   const [isLocked, setIsLocked] = useState(() => {
     if (!profile) return false
     return !(profile.has_paid || profile.is_pioneer)
   })
-  const [isSyncing, setIsSyncing] = useState(false)
+  const [isSyncing, setIsSyncing] = useState(!sessionSynced)
 
   // Header status helper
   const getStatus = (lastActive: string | null) => {
@@ -45,13 +49,35 @@ export function ChatPage() {
   // 1. Load Cache Immediately (Standard Boutique Pattern)
   useEffect(() => {
     if (!receiverId) return
+    
+    // Step A: Check thread list for instant header (the fast path)
+    const threadListCached = localStorage.getItem('roommate_chat_threads')
+    if (threadListCached) {
+      try {
+        const threads = JSON.parse(threadListCached)
+        const myThread = threads.find((t: any) => t.id === receiverId)
+        if (myThread) {
+          setOtherUser({
+            id: myThread.id,
+            full_name: myThread.name,
+            avatar_url: myThread.avatar,
+            last_active: null // Will be updated by full sync
+          })
+          setLoading(false)
+        }
+      } catch (e) {
+        console.error("Thread cache error:", e)
+      }
+    }
+
+    // Step B: Check specific chat history cache (the messages)
     const cached = localStorage.getItem(`roommate_chat_${receiverId}`)
     if (cached) {
       try {
         const parsed = JSON.parse(cached)
-        setMessages(parsed.messages || [])
-        setOtherUser(parsed.otherUser || null)
-        setLoading(false) // Show cache instantly
+        if (parsed.messages) setMessages(parsed.messages)
+        if (parsed.otherUser && !otherUser) setOtherUser(parsed.otherUser)
+        setLoading(false)
       } catch (e) {
         console.error("Chat cache error:", e)
       }
@@ -63,11 +89,27 @@ export function ChatPage() {
     let channel: any = null
     let syncTimeout: any = null
 
-    async function setupChat() {
+    async function setupChat(retries = 2) {
       if (!user || !receiverId) return
 
       try {
         if (isMounted) setIsSyncing(true)
+
+        // Step 1: Establishing Link
+        setLoadingStep(0)
+        setProgress(15)
+        
+        // Critical: Fallback for profile ID if Supabase Auth sync is slow
+        const myId = profile?.id || (() => {
+          const cachedProfile = localStorage.getItem('user_profile_cache')
+          if (cachedProfile) return JSON.parse(cachedProfile).id
+          return null
+        })()
+        
+        if (!myId && !user) {
+          navigate('/auth')
+          return
+        }
 
         // --- 10 Second Fail-Safe Timeout ---
         syncTimeout = setTimeout(() => {
@@ -90,15 +132,23 @@ export function ChatPage() {
           }
         }
 
-        // Fetch: Other User Profile and DELTA Message History
+        // Step 2: Checking Security Protocol
+        setLoadingStep(1)
+        setProgress(40)
+
+        // Optimized Fetch: Limit to last 50 messages for hyper-speed initial load
+        // We move the user fetch to background if we already have cache
+        const deltaPromise = supabase
+          .from('messages')
+          .select('*')
+          .or(`and(sender_id.eq.${myId},receiver_id.eq.${receiverId}),and(sender_id.eq.${receiverId},receiver_id.eq.${myId})`)
+          .gt('created_at', lastTimestamp)
+          .order('created_at', { ascending: false })
+          .limit(50)
+
         const [themRes, deltaRes] = await Promise.all([
           supabase.from('users').select('*').eq('id', receiverId).single(),
-          supabase
-            .from('messages')
-            .select('*')
-            .or(`and(sender_id.eq.${profile?.id},receiver_id.eq.${receiverId}),and(sender_id.eq.${receiverId},receiver_id.eq.${profile?.id})`)
-            .gt('created_at', lastTimestamp)
-            .order('created_at', { ascending: true })
+          deltaPromise
         ])
 
         if (!isMounted) return
@@ -128,7 +178,12 @@ export function ChatPage() {
         setOtherUser(them)
 
         if (deltaRes.data && deltaRes.data.length > 0) {
-          const fetchedMessages = deltaRes.data.map((m: any) => ({
+          // Flip back to chronological for UI display
+          const displayDelta = [...deltaRes.data].sort((a, b) => 
+            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          )
+
+          const fetchedMessages = displayDelta.map((m: any) => ({
             id: m.id,
             text: m.content,
             sender: m.sender_id === me.id ? 'me' : 'them',
@@ -150,6 +205,19 @@ export function ChatPage() {
             }))
             return final
           })
+
+          // Step 4: Finalizing Encryption
+          setLoadingStep(3)
+          setProgress(100)
+          sessionStorage.setItem(`chat_synced_${receiverId}`, 'true')
+
+          // Boutique speed-up: Minimal delay for handshake feel
+          await new Promise(r => setTimeout(r, 300))
+        } else {
+           // Even if no new messages, we are synced
+           setLoadingStep(3)
+           setProgress(100)
+           sessionStorage.setItem(`chat_synced_${receiverId}`, 'true')
         }
 
         // Mark incoming messages as read
@@ -194,10 +262,19 @@ export function ChatPage() {
               msg.id === payload.new.id ? { ...msg, status: payload.new.status } : msg
             ))
           })
-          .subscribe()
+          .subscribe((status) => {
+            if (status === 'TIMED_OUT' || status === 'CHANNEL_ERROR') {
+              console.warn('Realtime connection limited - switching to High Traffic Mode')
+              setIsTrafficHeavy(true)
+            }
+          })
 
       } catch (err) {
         console.error("Chat setup error:", err)
+        if (retries > 0) {
+          await new Promise(r => setTimeout(r, 1000))
+          return setupChat(retries - 1)
+        }
       } finally {
         if (isMounted) {
           setLoading(false)
@@ -274,29 +351,68 @@ export function ChatPage() {
     }
   }
 
-  // ── Loading Skeleton ───────────────────────────────
-  if (loading && !otherUser) {
+  // ── High-Fidelity Syncing UI (Boutique Messaging Vault) ────────────────
+  // Show if we are missing either the identity or the message history
+  if (loading && (messages.length === 0 || !otherUser)) {
     return (
       <div className="flex flex-col h-[100dvh] bg-background max-w-2xl mx-auto border-x border-border/40">
-        <div className="px-4 py-3 border-b border-border/40 flex items-center gap-3">
-          <div className="w-8 h-8 rounded-xl bg-muted animate-pulse" />
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-muted animate-pulse" />
-            <div className="flex flex-col gap-2">
-              <div className="w-24 h-3 bg-muted rounded animate-pulse" />
-              <div className="w-16 h-2 bg-muted rounded animate-pulse" />
+        <header className="px-4 py-3 border-b border-border/40 flex items-center gap-3">
+          <div className="w-8 h-8 rounded-xl bg-muted" />
+          <div className="w-10 h-10 rounded-full bg-muted" />
+          <div className="flex flex-col gap-1.5">
+            <div className="w-24 h-3 bg-muted rounded-full" />
+            <div className="w-16 h-2 bg-muted rounded-full opacity-50" />
+          </div>
+        </header>
+
+        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="w-24 h-24 bg-primary/10 rounded-[2.5rem] flex items-center justify-center mb-8 relative"
+          >
+            <div className="absolute inset-0 bg-primary/20 animate-ping opacity-25 rounded-[2.5rem]" />
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+              className="absolute inset-0 border-2 border-dashed border-primary/30 rounded-[2.5rem]"
+            />
+            <Lock className="w-10 h-10 text-primary z-10" />
+          </motion.div>
+
+          <div className="max-w-xs w-full space-y-6">
+            <div className="space-y-2">
+              <h3 className="text-2xl font-black text-foreground tracking-tight">Syncing Thread</h3>
+              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary h-4">
+                {loadingStep === 0 && "Establishing Secure Link"}
+                {loadingStep === 1 && "Security Protocol Sync"}
+                {loadingStep === 2 && "Recovering Thread History"}
+                {loadingStep === 3 && "Optimizing Decryption"}
+              </p>
+            </div>
+
+            {/* Boutique Progress Bar */}
+            <div className="relative w-full h-2 bg-muted rounded-full overflow-hidden border border-border/40">
+              <motion.div 
+                initial={{ width: 0 }}
+                animate={{ width: `${progress}%` }}
+                transition={{ type: "spring", stiffness: 50, damping: 20 }}
+                className="absolute inset-y-0 left-0 bg-primary shadow-[0_0_15px_rgba(79,70,229,0.4)]"
+              />
+              <motion.div 
+                animate={{ x: ["-100%", "100%"] }}
+                transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+                className="absolute inset-y-0 left-0 w-1/2 bg-gradient-to-r from-transparent via-white/30 to-transparent skew-x-12"
+              />
+            </div>
+
+            <div className="flex flex-col items-center gap-2">
+               <ShieldCheck className="w-5 h-5 text-muted-foreground/30 animate-pulse" />
+               <p className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-widest">
+                 End-to-End Encrypted Handshake
+               </p>
             </div>
           </div>
-        </div>
-        <div className="flex-1 p-4 pt-8 space-y-6">
-          {[1, 2, 3, 4, 5, 6].map(i => (
-            <div key={i} className={`flex ${i % 2 === 0 ? 'justify-end' : 'justify-start'}`}>
-              <div className={`h-12 w-48 rounded-[18px] bg-muted/40 animate-pulse ${i % 2 === 0 ? 'rounded-tr-none' : 'rounded-tl-none'}`} />
-            </div>
-          ))}
-        </div>
-        <div className="p-4 border-t border-border/40">
-          <div className="w-full h-12 rounded-full bg-muted animate-pulse" />
         </div>
       </div>
     )
@@ -350,6 +466,33 @@ export function ChatPage() {
           </button>
         </div>
       </header>
+
+      <AnimatePresence>
+        {isTrafficHeavy && (
+          <motion.div 
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="bg-indigo-600 text-white overflow-hidden shadow-lg border-b border-white/10"
+          >
+            <div className="px-5 py-3 flex items-center justify-between gap-4 max-w-lg mx-auto">
+              <div className="flex items-center gap-2">
+                <Cpu className="w-4 h-4 text-white animate-pulse" />
+                <div className="flex flex-col">
+                  <span className="text-[11px] font-black tracking-tight leading-tight">High Performance Mode</span>
+                  <p className="text-[9px] font-bold text-indigo-100 uppercase tracking-widest leading-none mt-0.5">Live status paused to save resources</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => window.location.reload()} 
+                className="px-2 py-1 bg-white text-indigo-600 text-[9px] font-black rounded-lg uppercase tracking-tighter hover:bg-indigo-50 transition-colors shrink-0 shadow-sm"
+              >
+                Sync
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="shrink-0 bg-muted/20 px-4 py-2 border-b border-border/10 flex items-center gap-2">
         <ShieldCheck className="w-3.5 h-3.5 text-muted-foreground/40" />

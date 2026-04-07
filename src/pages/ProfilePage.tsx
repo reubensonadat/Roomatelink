@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { User, Upload, Check, ChevronRight, Sparkles, Loader2 } from 'lucide-react'
+import { User, Upload, Check, ChevronRight, Sparkles, Loader2, ShieldCheck } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
@@ -38,6 +38,22 @@ function withTimeout<T>(promise: PromiseLike<T>, ms: number, message: string): P
   ])
 }
 
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  retries = 3,
+  delay = 2000,
+  onRetry?: (attempt: number) => void
+): Promise<T> {
+  try {
+    return await fn();
+  } catch (error) {
+    if (retries <= 0) throw error;
+    onRetry?.(retries);
+    await new Promise(r => setTimeout(r, delay));
+    return withRetry(fn, retries - 1, delay * 2, onRetry); // Exponential backoff
+  }
+}
+
 export function ProfilePage() {
   const { user, profile, refreshProfile } = useAuth()
   const navigate = useNavigate()
@@ -68,7 +84,10 @@ export function ProfilePage() {
 
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [syncStep, setSyncStep] = useState(0) // 0: Handshake, 1: Verification, 2: Finalizing
+  const [syncProgress, setSyncProgress] = useState(0)
   const [hasQuestionnaire, setHasQuestionnaire] = useState<boolean | null>(null)
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
 
 
@@ -119,9 +138,19 @@ export function ProfilePage() {
   }
 
   const isComplete = gender && level && matchPref && displayName.trim().length > 0 && phone.trim().length >= 10
+  const isGenderLocked = !!profile?.gender
+  const isPrefLocked = !!profile?.gender_pref
 
-  const handleSave = async () => {
+  const handleSave = async (isConfirmed = false) => {
     if (!isComplete || isSaving || !user) return
+
+    // Show confirmation modal for the FIRST sync of critical identity data
+    if (!isGenderLocked && !isConfirmed) {
+      setIsConfirmModalOpen(true)
+      return
+    }
+
+    setIsConfirmModalOpen(false)
 
     setIsSaving(true)
     setSaveError(null)
@@ -148,29 +177,50 @@ export function ProfilePage() {
         profileData.status !== profile.status
       )
 
-      if (profileId) {
-        const { error } = await withTimeout(
-          supabase.from('users').update(profileData).eq('id', profileId),
-          15000,
-          "Update timed out after 15s. Network unstable."
-        )
-        if (error) throw error
-      } else {
-        const { error } = await withTimeout(
-          supabase.from('users').insert({
-            auth_id: user.id,
-            email: user.email || `university_mail_${Date.now()}@stu.ucc.edu.gh`,
-            ...profileData
-          }),
-          6000,
-          "Insertion timed out after 6s. Network unstable."
-        )
-        if (error) throw error
+      const performSync = async () => {
+        // Step 1: Handshake
+        setSyncStep(0)
+        setSyncProgress(25)
+        
+        if (profileId) {
+          const { error } = await withTimeout(
+            supabase.from('users').update(profileData).eq('id', profileId),
+            15000,
+            "Update timed out. Reconnecting..."
+          )
+          if (error) throw error
+        } else {
+          const { error } = await withTimeout(
+            supabase.from('users').insert({
+              auth_id: user.id,
+              email: user.email || `university_mail_${Date.now()}@stu.ucc.edu.gh`,
+              ...profileData
+            }),
+            10000,
+            "Insertion timed out. Reconnecting..."
+          )
+          if (error) throw error
+        }
+        
+        // Step 2: Verification
+        setSyncStep(1)
+        setSyncProgress(60)
+        await refreshProfile()
+        
+        // Step 3: Finalizing
+        setSyncStep(2)
+        setSyncProgress(100)
+        
+        // Boutique delay for visual confirmation
+        await new Promise(r => setTimeout(r, 800))
       }
 
-      toast.success('Identity Synced!')
-      localStorage.removeItem(STORAGE_KEY)
-      await refreshProfile()
+      await withRetry(
+        performSync,
+        3,
+        2000,
+        (attempt) => toast.info(`Sync Interrupted. Reconnecting... (Attempt ${4-attempt}/3)`)
+      )
 
       // If matching-relevant fields changed, trigger match recalculation in background
       if (matchFieldsChanged && profileId) {
@@ -238,6 +288,51 @@ export function ProfilePage() {
 
   return (
     <div className="flex flex-col w-full min-h-screen bg-background relative selection:bg-indigo-100 dark:selection:bg-indigo-500/30">
+      <AnimatePresence>
+        {isSaving && (
+          <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-background/80 backdrop-blur-xl flex flex-col items-center justify-center p-6 text-center"
+          >
+            <div className="w-24 h-24 bg-primary/10 rounded-[2.5rem] flex items-center justify-center mb-8 relative">
+              <div className="absolute inset-0 bg-primary/20 animate-ping opacity-25 rounded-[2.5rem]" />
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+                className="absolute inset-0 border-2 border-dashed border-primary/30 rounded-[2.5rem]"
+              />
+              <ShieldCheck className="w-10 h-10 text-primary z-10" />
+            </div>
+
+            <div className="max-w-xs w-full space-y-6">
+              <div className="space-y-2">
+                <h3 className="text-2xl font-black text-foreground tracking-tight">Identity Vault Sync</h3>
+                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary h-4">
+                  {syncStep === 0 && "Handshaking with Records"}
+                  {syncStep === 1 && "Verifying Security Sync"}
+                  {syncStep === 2 && "Finalizing Identity Lock"}
+                </p>
+              </div>
+
+              {/* Progress Bar */}
+              <div className="relative w-full h-2 bg-muted rounded-full overflow-hidden border border-border/40">
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: `${syncProgress}%` }}
+                  transition={{ type: "spring", stiffness: 50, damping: 20 }}
+                  className="absolute inset-y-0 left-0 bg-primary shadow-[0_0_15px_rgba(79,70,229,0.4)]"
+                />
+              </div>
+
+              <p className="text-[13px] font-bold text-muted-foreground animate-pulse">
+                Please stay on this page while we secure your data...
+              </p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <TopHeader title="Profile Hub" showBackButton />
 
       <div className="flex-1 overflow-y-auto w-full md:max-w-2xl lg:max-w-3xl mx-auto px-4 pt-6 pb-32">
@@ -359,12 +454,20 @@ export function ProfilePage() {
               </div>
 
               <div className="px-5 py-4 border-b border-border flex items-center justify-between">
-                <span className="text-xs font-bold text-muted-foreground">Biological Gender</span>
-                <div className="flex bg-muted p-1.5 rounded-xl border border-border/50 shadow-inner">
+                <div className="flex flex-col">
+                  <span className="text-xs font-bold text-muted-foreground">Biological Gender</span>
+                  {isGenderLocked && (
+                    <span className="text-[10px] text-amber-600 font-black uppercase tracking-widest flex items-center gap-1 mt-1 transition-all">
+                      <ShieldCheck size={10} strokeWidth={3} /> Identity Permanent
+                    </span>
+                  )}
+                </div>
+                <div className={`flex bg-muted p-1.5 rounded-xl border border-border/50 shadow-inner ${isGenderLocked ? 'opacity-60 grayscale' : ''}`}>
                   {(['M', 'F'] as const).map((opt) => (
                     <button
                       key={opt}
-                      onClick={() => handleGenderChange(opt)}
+                      onClick={() => !isGenderLocked && handleGenderChange(opt)}
+                      disabled={isGenderLocked}
                       className={`px-5 py-2 flex-1 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${gender === opt
                         ? 'bg-card text-primary shadow-md border border-border/80'
                         : 'text-muted-foreground hover:text-foreground'
@@ -377,12 +480,20 @@ export function ProfilePage() {
               </div>
 
               <div className="px-5 py-4 flex items-center justify-between">
-                <span className="text-xs font-bold text-muted-foreground">Roommate Preference</span>
-                <div className="flex bg-muted p-1.5 rounded-xl border border-border/50 shadow-inner">
+                <div className="flex flex-col">
+                  <span className="text-xs font-bold text-muted-foreground">Roommate Preference</span>
+                  {isPrefLocked && (
+                    <span className="text-[10px] text-amber-600 font-black uppercase tracking-widest flex items-center gap-1 mt-1 transition-all">
+                      <ShieldCheck size={10} strokeWidth={3} /> Priority Locked
+                    </span>
+                  )}
+                </div>
+                <div className={`flex bg-muted p-1.5 rounded-xl border border-border/50 shadow-inner ${isPrefLocked ? 'opacity-60 grayscale' : ''}`}>
                   {(['same', 'any'] as const).map((opt) => (
                     <button
                       key={opt}
-                      onClick={() => setMatchPref(opt)}
+                      onClick={() => !isPrefLocked && setMatchPref(opt)}
+                      disabled={isPrefLocked}
                       className={`px-5 py-2 flex-1 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${matchPref === opt
                         ? 'bg-card text-primary shadow-md border border-border/80'
                         : 'text-muted-foreground hover:text-foreground'
@@ -445,7 +556,7 @@ export function ProfilePage() {
           {/* Big Action Button */}
           <div className="mt-8 mb-24">
             <button
-              onClick={handleSave}
+              onClick={() => handleSave()}
               disabled={!isComplete || isSaving}
               className={`w-full py-6 rounded-boutique flex items-center justify-center gap-3 shadow-md transition-all duration-500 active:scale-[0.96] relative overflow-hidden group ${!isComplete || isSaving
                 ? 'bg-muted text-muted-foreground/30 cursor-not-allowed border border-border/40'
@@ -521,6 +632,47 @@ export function ProfilePage() {
         <input type="file" accept="image/*" className="hidden" id="avatar-upload" onChange={handleAvatarUpload} />
       </ModalShell>
 
+      <ModalShell
+        isOpen={isConfirmModalOpen}
+        onClose={() => setIsConfirmModalOpen(false)}
+        title="Permanent Identity Locked"
+        subtitle="Verification required before synchronization"
+        maxWidth="md:w-[480px]"
+      >
+        <div className="flex flex-col items-center p-6 text-center gap-6">
+          <div className="w-20 h-20 bg-amber-500/10 rounded-full flex items-center justify-center ring-2 ring-amber-500/20">
+            <ShieldCheck className="w-10 h-10 text-amber-600" />
+          </div>
+          
+          <div className="space-y-4">
+            <h4 className="text-xl font-black text-foreground tracking-tight">Final Confirmation Required</h4>
+            <p className="text-sm font-semibold text-muted-foreground leading-relaxed">
+              Once you synchronize, your <span className="text-foreground font-black">Biological Gender</span> and <span className="text-foreground font-black">Roommate Preference</span> will be locked to your profile permanently.
+            </p>
+            <div className="bg-amber-50 rounded-2xl p-4 border border-amber-100/50">
+              <p className="text-[11px] font-black uppercase tracking-widest text-amber-700">
+                You will not be able to change these values later to game the matching algorithm.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-col w-full gap-3 pt-4">
+            <button
+              onClick={() => handleSave(true)}
+              className="w-full py-4 bg-foreground text-background font-black text-sm rounded-[22px] shadow-xl hover:opacity-90 active:scale-95 transition-all uppercase tracking-widest"
+            >
+              I Understand, Continue Sync
+            </button>
+            <button
+              onClick={() => setIsConfirmModalOpen(false)}
+              className="w-full py-4 bg-muted text-foreground font-bold text-sm rounded-[22px] hover:bg-muted/80 active:scale-95 transition-all"
+            >
+                Wait, let me review
+            </button>
+          </div>
+        </div>
+      </ModalShell>
+
       <AnimatePresence>
         {isSaving && (
           <motion.div
@@ -547,7 +699,7 @@ export function ProfilePage() {
                 </p>
                 <div className="flex gap-4">
                   <button
-                    onClick={handleSave}
+                    onClick={() => handleSave()}
                     className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-bold shadow-sm hover:bg-indigo-500 active:scale-95 transition-all"
                   >
                     Retry Sync

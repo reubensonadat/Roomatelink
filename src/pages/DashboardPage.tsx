@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef } from 'react'
-import { Sparkles, Lock as LockIcon, Flame, UserCheck, Loader2 } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Sparkles, UserCheck } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
+import { supabase } from '../lib/supabase'
 import { PullToRefresh } from '../components/PullToRefresh'
 import { useAuth } from '../context/AuthContext'
 import { MatchFeed } from '../components/dashboard/MatchFeed'
@@ -14,9 +14,14 @@ import { PaymentVerificationOverlay } from '../components/dashboard/PaymentVerif
 import { ReportModal } from '../components/ui/ReportModal'
 import { FoundRoommateModal } from '../components/ui/FoundRoommateModal'
 import { TopHeader } from '../components/layout/TopHeader'
-import { MOCK_MATCHES } from '../lib/mockData'
+import { PioneerBanner } from '../components/dashboard/PioneerBanner'
+import { EmptyState } from '../components/dashboard/EmptyState'
+import { UserFlowGate } from '../components/dashboard/UserFlowGate'
+import { useDashboardData } from '../hooks/useDashboardData'
+import { usePaymentFlow } from '../hooks/usePaymentFlow'
+import { useUserFlowStatus } from '../hooks/useUserFlowStatus'
 
-// ─── Types ────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────
 
 type CategoryScore = { name: string; score: number; insight: string }
 
@@ -38,263 +43,80 @@ interface MatchProfile {
   categoryScores: CategoryScore[]
 }
 
-// ─── Helpers ───────────────────────────────────────────────────────────
+// ─── Helpers ────────────────────────────────────────────────────
 
 function getTierInfo(pct: number) {
   if (pct >= 90) return { label: 'Exceptional', color: 'text-emerald-500', stroke: '#10b981', textColor: 'text-emerald-600 dark:text-emerald-400', bgLight: 'bg-emerald-500/10', icon: '🔥' }
   if (pct >= 80) return { label: 'Strong', color: 'text-green-500', stroke: '#22c55e', textColor: 'text-green-600 dark:text-green-400', bgLight: 'bg-green-500/10', icon: '💚' }
   if (pct >= 70) return { label: 'Good', color: 'text-amber-500', stroke: '#f59e0b', textColor: 'text-amber-600 dark:text-amber-400', bgLight: 'bg-amber-500/10', icon: '💛' }
-  return { label: 'Potential', color: 'text-slate-400', stroke: '#94a3b8', textColor: 'text-slate-500', bgLight: 'bg-slate-400/10', icon: '⚪' }
+  return { label: 'Potential', color: 'text-slate-400', stroke: '#94a3b8', textColor: 'text-slate-500 dark:text-slate-400', bgLight: 'bg-slate-400/10', icon: '⚪' }
 }
 
 
 export function DashboardPage() {
-  const { user, profile, loading: authLoading, refreshProfile } = useAuth()
+  const { user, profile, refreshProfile } = useAuth()
 
-  // ─── Core State ──────────────────────────────────────────────────────
-  const [matches, setMatches] = useState<MatchProfile[]>(() => {
-    const cached = sessionStorage.getItem('matchesCache')
-    return cached ? JSON.parse(cached) : []
-  })
-  const [isLoading, setIsLoading] = useState(() => !sessionStorage.getItem('matchesCache'))
-  const [hasPaid, setHasPaid] = useState(() => !!profile?.has_paid)
-  const [selectedMatch, setSelectedMatch] = useState<MatchProfile | null>(null)
-  const [isPioneerUser, setIsPioneerUser] = useState(() => !!profile?.is_pioneer)
-  const [hasQuestionnaire, setHasQuestionnaire] = useState(() => sessionStorage.getItem('hasQuestionnaireCache') === 'true')
-  const [mounted, setMounted] = useState(false)
-  const [isCheckingPayment, setIsCheckingPayment] = useState(false)
-  const [isDevMode, setIsDevMode] = useState(false)
-  const [devClickCount, setDevClickCount] = useState(0)
-  const [isRecalculating, setIsRecalculating] = useState(false)
-  const [displayLimit, setDisplayLimit] = useState(10)
-  const lastFetchRef = useRef<number>(0)
+  // Use custom hooks for extracted logic
+  const {
+    matches,
+    isLoading,
+    hasQuestionnaire,
+    isPioneerUser,
+    initializeDashboard,
+    forceRecalculate,
+    incrementDevClickCount,
+    isDevMode,
+    isRecalculating,
+    setMatches,
+    setIsLoading,
+  } = useDashboardData()
 
-  // ─── Modal States ────────────────────────────────────────────────────
-  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false)
-  const [isPioneerModalOpen, setIsPioneerModalOpen] = useState(false)
+  const {
+    hasPaid,
+    isProfileComplete,
+  } = useUserFlowStatus()
+
+  const {
+    discountCode,
+    setDiscountCode,
+    isApplyingDiscount,
+    discountApplied,
+    setDiscountApplied,
+    discountError,
+    finalPrice,
+    isVerifyingPayment,
+    verifyCountdown,
+    showPaymentFallback,
+    isUnlocking,
+    unlockedCount,
+    isPaymentModalOpen,
+    setIsPaymentModalOpen,
+    isPioneerModalOpen,
+    setIsPioneerModalOpen,
+    handleApplyDiscount,
+    handlePaymentSuccess,
+    handlePaymentFallbackCheck,
+    handlePioneerClaim,
+    handleStartPayment,
+    handleStartUnlock,
+    handleCancelVerification,
+  } = usePaymentFlow()
+
+  // Modal states (kept in DashboardPage for now)
   const [isReportModalOpen, setIsReportModalOpen] = useState(false)
   const [isFoundRoommateModalOpen, setIsFoundRoommateModalOpen] = useState(false)
-
-  // ─── Payment & Discount States ───────────────────────────────────────
-  const [discountCode, setDiscountCode] = useState('')
-  const [isApplyingDiscount, setIsApplyingDiscount] = useState(false)
-  const [discountApplied, setDiscountApplied] = useState(false)
-  const [discountError, setDiscountError] = useState('')
-  const [finalPrice, setFinalPrice] = useState(25)
-
-  // ─── Payment Verification States ─────────────────────────────────────
-  const [isVerifyingPayment, setIsVerifyingPayment] = useState(false)
-  const [verifyCountdown, setVerifyCountdown] = useState(8)
-  const [showPaymentFallback, setShowPaymentFallback] = useState(false)
-
-  // ─── Unlock Animation States ─────────────────────────────────────────
-  const [isUnlocking, setIsUnlocking] = useState(false)
-  const [unlockedCount, setUnlockedCount] = useState(0)
-
-  // ─── Found Roommate Logic States ─────────────────────────────────────
+  const [selectedMatch, setSelectedMatch] = useState<MatchProfile | null>(null)
+  const [displayLimit, setDisplayLimit] = useState(10)
   const [currentDayNumber, setCurrentDayNumber] = useState<number | null>(null)
   const [profileFoundRoommate, setProfileFoundRoommate] = useState(false)
+  const [mounted, setMounted] = useState(false)
 
+  // Mounted effect
   useEffect(() => {
     setMounted(true)
   }, [])
 
-  const initializeDashboard = async () => {
-    if (!user) {
-      setIsLoading(false)
-      return
-    }
-
-    if (!profile && authLoading) {
-      // Don't hang isLoading — the useEffect will re-trigger when authLoading changes
-      return
-    }
-
-    try {
-      // Step 1: Dev Mode Override
-      if (isDevMode) {
-        setMatches(MOCK_MATCHES as any[])
-        setIsLoading(false)
-        return
-      }
-
-      // Step 2: Handle Profile Initial Sync
-      let activeProfile = profile
-      if (!activeProfile) {
-        const { data: retryProfile } = await supabase
-          .from('users')
-          .select('*')
-          .eq('auth_id', user.id)
-          .maybeSingle()
-        activeProfile = retryProfile
-      }
-
-      if (activeProfile) {
-        const paidStatus = !!activeProfile.has_paid
-        const pioneerStatus = !!activeProfile.is_pioneer
-        const isPaid = paidStatus || pioneerStatus
-        
-        setHasPaid(isPaid) // This matches the user's request: treat both the same way
-        setIsPioneerUser(pioneerStatus)
-
-        // Check if user has completed questionnaire
-        const { data: qResp } = await supabase
-          .from('questionnaire_responses')
-          .select('id')
-          .eq('user_id', activeProfile.id)
-          .maybeSingle()
-
-        setHasQuestionnaire(!!qResp)
-        sessionStorage.setItem('hasQuestionnaireCache', String(!!qResp))
-
-        // Step 3: Fetch Matches — query BOTH sides for bulletproof loading
-        // A user can be user_a_id OR user_b_id depending on insertion order
-        const myId = activeProfile.id
-
-        // Query A-side: where I am user_a_id, roommate is user_b_id
-        const matchesAPromise = supabase
-          .from('matches')
-          .select(`
-            *,
-            roommate:users!user_b_id (
-              id, full_name, avatar_url, bio, course, level, gender, is_student_verified
-            )
-          `)
-          .eq('user_a_id', myId)
-          .order('match_percentage', { ascending: false })
-
-        // Query B-side: where I am user_b_id, roommate is user_a_id
-        const matchesBPromise = supabase
-          .from('matches')
-          .select(`
-            *,
-            roommate:users!user_a_id (
-              id, full_name, avatar_url, bio, course, level, gender, is_student_verified
-            )
-          `)
-          .eq('user_b_id', myId)
-          .order('match_percentage', { ascending: false })
-
-        const [matchesARes, matchesBRes] = await Promise.all([matchesAPromise, matchesBPromise])
-
-        if (matchesARes.error) throw matchesARes.error
-        if (matchesBRes.error) throw matchesBRes.error
-
-        // Merge both sides, deduplicate by roommate ID (prefer higher percentage)
-        const allRaw = [...(matchesARes.data || []), ...(matchesBRes.data || [])]
-        const seenRoommates = new Map<string, any>()
-        for (const m of allRaw) {
-          if (!m.roommate) continue
-          const rid = (m.roommate as any).id
-          if (!seenRoommates.has(rid) || m.match_percentage > seenRoommates.get(rid).match_percentage) {
-            seenRoommates.set(rid, m)
-          }
-        }
-        const dedupedMatches = Array.from(seenRoommates.values())
-          .sort((a: any, b: any) => b.match_percentage - a.match_percentage)
-
-        if (dedupedMatches.length > 0) {
-          const mappedMatches: MatchProfile[] = dedupedMatches
-            .map((m: any) => ({
-              id: m.roommate.id,
-              name: m.roommate.full_name || 'Anonymous Student',
-              verified: m.roommate.is_student_verified,
-              matchPercent: m.match_percentage,
-              gender: m.roommate.gender,
-              course: m.roommate.course || 'Unspecified Course',
-              level: String(m.roommate.level || 'Unknown').replace(/level/i, '').trim(),
-              avatar: m.roommate.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.roommate.full_name || 'S')}&background=random`,
-              bio: m.roommate.bio || 'No bio provided yet.',
-              trait: (m as any).top_shared_trait || 'Highly Compatible',
-              lifestyle: [{ icon: Sparkles, text: 'Cleanliness: 90%' }],
-              tags: [m.roommate.course, 'Verified'].filter(Boolean),
-              sharedTraits: (m as any).common_traits || [],
-              tensions: (m as any).tensions || ['None Detected'],
-              categoryScores: m.category_scores || []
-            }))
-          setMatches(mappedMatches)
-          sessionStorage.setItem('matchesCache', JSON.stringify(mappedMatches))
-        } else {
-          setMatches([])
-          sessionStorage.setItem('matchesCache', '[]')
-        }
-
-        // Step 4: Verify Pioneer Status if not already marked
-        // Only check once per session to avoid wasting Edge Function calls
-        if (!pioneerStatus && !paidStatus && !sessionStorage.getItem('pioneerChecked')) {
-          try {
-            const { data: pcData, error: pcError } = await supabase.functions.invoke('pioneer-check')
-            sessionStorage.setItem('pioneerChecked', 'true')
-            if (!pcError && pcData) {
-              const isPioneer = (pcData as any).isPioneer || false
-              setIsPioneerUser(isPioneer)
-              if (isPioneer) {
-                setHasPaid(true) // Pioneer = free access
-                await refreshProfile() // Sync the DB update to AuthContext
-              }
-            }
-          } catch (pcErr) {
-            console.warn('Pioneer Engine sync deferred.')
-          }
-        }
-      } else {
-        setMatches([])
-      }
-    } catch (err) {
-      console.error('Error initializing dashboard:', err)
-      setMatches([])
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const forceRecalculate = async () => {
-    if (!profile) return
-    setIsRecalculating(true)
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) throw new Error("No active session")
-
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/match-calculate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({ userId: profile.id })
-      })
-
-      if (!res.ok) throw new Error("Edge function failed")
-
-      toast.success("Algorithm triggered!")
-      // Reload dashboard
-      setIsLoading(true)
-      await initializeDashboard()
-    } catch (err: any) {
-      toast.error(`Refresh failed: ${err.message}`)
-    } finally {
-      setIsRecalculating(false)
-    }
-  }
-
-  useEffect(() => {
-    if (!mounted || !user || authLoading) return
-    // Throttle: skip background re-fetch if we fetched within 30s AND have data
-    const now = Date.now()
-    if (matches.length > 0 && now - lastFetchRef.current < 30000) return
-    lastFetchRef.current = now
-    initializeDashboard()
-  }, [user, profile, authLoading, mounted, isDevMode])
-
-  useEffect(() => {
-    if (devClickCount >= 3) {
-      const nextMode = !isDevMode
-      setIsDevMode(nextMode)
-      setDevClickCount(0)
-      toast.info(`Dev Mode ${nextMode ? 'Enabled' : 'Disabled'}`)
-    }
-  }, [devClickCount])
-
+  // ─── Found Roommate Logic Effects ─────────────────────────────
   useEffect(() => {
     if (profileFoundRoommate) return
 
@@ -330,77 +152,18 @@ export function DashboardPage() {
     }
   }, [profileFoundRoommate])
 
+  // ─── Unlock Animation Effect ───────────────────────────────────
   useEffect(() => {
-    if (isUnlocking && unlockedCount < matches.length) {
-      const timer = setTimeout(() => {
-        setUnlockedCount(prev => prev + 1)
-      }, 500)
-      return () => clearTimeout(timer)
-    } else if (isUnlocking && unlockedCount === matches.length && matches.length > 0) {
-      setIsUnlocking(false)
-      setHasPaid(true)
+    if (isUnlocking && unlockedCount === matches.length && matches.length > 0) {
       toast.success('All profiles unlocked!')
     }
   }, [isUnlocking, unlockedCount, matches.length])
 
-  useEffect(() => {
-    if (!isVerifyingPayment) {
-      setVerifyCountdown(8)
-      setShowPaymentFallback(false)
-      return
-    }
-    if (verifyCountdown <= 0) {
-      setShowPaymentFallback(true)
-      return
-    }
-    const t = setTimeout(() => setVerifyCountdown(prev => prev - 1), 1000)
-    return () => clearTimeout(t)
-  }, [isVerifyingPayment, verifyCountdown])
+  // ─── Handlers ────────────────────────────────────────────────────
 
-  const handlePaymentFallbackCheck = async () => {
-    if (!user || !profile) return
-    setIsCheckingPayment(true)
-    try {
-      // 1. Trigger the upgraded paystack-webhook GET sync
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) throw new Error("No active session")
-
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/paystack-webhook?email=${encodeURIComponent(user.email || '')}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY || ''
-        }
-      })
-
-      const result = await res.json()
-
-      if (result.success) {
-        // Zero-Fliker Sync: Refresh Auth Context
-        await refreshProfile()
-        
-        setHasPaid(true)
-        setIsVerifyingPayment(false)
-        setIsUnlocking(true)
-        setUnlockedCount(0)
-        toast.success(result.message || 'Payment Verified! Access Restored.')
-      } else {
-        toast.info(result.message || 'No payment found yet. Please wait a moment.')
-      }
-    } catch (err: any) {
-      console.error('Handshake failed:', err)
-      toast.error('Could not reach verification server.')
-    } finally {
-      setIsCheckingPayment(false)
-    }
-  }
-
-  const handleStartPayment = () => {
-    if (isPioneerUser && !hasPaid) {
-      setIsPioneerModalOpen(true)
-    } else {
-      setIsPaymentModalOpen(true)
-    }
+  const handleSelectMatch = (match: MatchProfile) => {
+    if (hasPaid || isPioneerUser) setSelectedMatch(match)
+    else handleStartPayment()
   }
 
   const handleFoundRoommateConfirm = async () => {
@@ -413,124 +176,22 @@ export function DashboardPage() {
     }
   }
 
-  const handleApplyDiscount = async () => {
-    if (!discountCode.trim()) return
-    setIsApplyingDiscount(true)
-    setDiscountError('')
-    
-    try {
-      // Real-Time Database Validation (Beast Mode)
-      const { data, error } = await supabase
-        .from('promo_codes')
-        .select('*')
-        .eq('code', discountCode.toUpperCase())
-        .maybeSingle()
+  const handleReportModalOpen = () => setIsReportModalOpen(true)
 
-      if (error) throw error
-
-      if (data) {
-        // Apply the requested 10 GHS discount
-        const discountAmount = data.discount_amount || 10
-        setFinalPrice(25 - discountAmount)
-        setDiscountApplied(true)
-        toast.success(`Success! ₵${discountAmount} Privilege Discount Applied.`, {
-          icon: <Sparkles className="w-4 h-4 text-primary" />
-        })
-      } else {
-        setDiscountError('Invalid or expired privilege code.')
-      }
-    } catch (err: any) {
-      console.error('Promo sync failed:', err)
-      setDiscountError('Handshake error. Check connection.')
-    } finally {
-      setIsApplyingDiscount(false)
-    }
+  // ─── Pull-to-Refresh Handler ───────────────────────────────
+  const handleRefresh = async () => {
+    await refreshProfile()
+    await initializeDashboard()
+    toast.success('Matches refreshed!')
   }
 
-  const handlePaymentSuccess = async (reference: any) => {
-    setIsPaymentModalOpen(false)
-    setIsVerifyingPayment(true)
-    
-    // Retry logic with exponential backoff (max 2 retries = 3 total attempts)
-    const maxRetries = 2
-    let retryCount = 0
-    let success = false
-    
-    while (retryCount <= maxRetries && !success) {
-      try {
-        const { error } = await supabase
-          .from('users')
-          .update({ has_paid: true, payment_reference: reference.reference })
-          .eq('id', profile?.id)
-        
-        if (error) throw error
-        
-        // Zero-Fliker Sync: Refresh Auth Context
-        await refreshProfile()
-        
-        success = true
-        setIsVerifyingPayment(false)
-        setHasPaid(true)
-        setIsUnlocking(true)
-        setUnlockedCount(0)
-        toast.success('Payment verified successfully!')
-      } catch (error) {
-        retryCount++
-        
-        if (retryCount <= maxRetries) {
-          // Exponential backoff: 2s, 4s
-          const delay = Math.pow(2, retryCount) * 1000
-          toast.loading(`Verifying payment... (Attempt ${retryCount + 1}/${maxRetries + 1})`)
-          await new Promise(resolve => setTimeout(resolve, delay))
-        } else {
-          // All retries failed
-          setIsVerifyingPayment(false)
-          toast.error('Payment verification failed. Please try again or contact support.')
-          console.error('Payment verification failed after retries:', error)
-        }
-      }
-    }
-  }
-
-  const handlePioneerClaim = async () => {
-    if (!profile) return
-
-    setIsLoading(true)
-    try {
-      const { error } = await supabase
-        .from('users')
-        .update({ has_paid: true, is_pioneer: true })
-        .eq('id', profile.id)
-
-      if (error) throw error
-
-      setIsPioneerModalOpen(false)
-      setHasPaid(true)
-      setIsPioneerUser(true)
-      setUnlockedCount(matches.length)
-      
-      // Zero-Fliker Sync: Refresh Auth Context Profile
-      await refreshProfile()
-      
-      toast.success('Pioneer Access Granted!')
-    } catch (err) {
-      console.error('Pioneer claim failed:', err)
-      toast.error('Failed to claim access. Try again.')
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handleSelectMatch = (match: MatchProfile) => {
-    if (hasPaid || isPioneerUser) setSelectedMatch(match)
-    else handleStartPayment()
-  }
-
-  // Refined Hydration Defense: Prevent 'Identity Synchronization' flicker
-  // We only show the splash on cold boot (matches empty AND loading)
-  // Once matches is populated (even if empty after fetch), we stop showing it.
-  const isHydrating = authLoading || (user && !profile && isLoading)
-  const showSplash = isHydrating && matches.length === 0 && !sessionStorage.getItem('matchesCache')
+  // Splash guard: Show loading screen only during initial cold-boot fetch.
+  // Since isLoading always starts true, we show the splash when:
+  //   - We are actively loading (isLoading=true)
+  //   - AND there are no pre-cached matches to render behind the scenes
+  // The moment isLoading becomes false (fetch done), the splash goes away
+  // and the correct state (matches, empty state, or gate) is shown.
+  const showSplash = isLoading && matches.length === 0
 
   if (!mounted || showSplash) {
     return (
@@ -581,8 +242,6 @@ export function DashboardPage() {
     )
   }
 
-  const isProfileComplete = profile && profile.course && profile.level
-
   return (
     <div className="flex flex-col w-full min-h-screen bg-background relative overflow-x-hidden">
       <PaymentVerificationOverlay
@@ -590,15 +249,10 @@ export function DashboardPage() {
         verifyCountdown={verifyCountdown}
         showPaymentFallback={showPaymentFallback}
         onFallback={handlePaymentFallbackCheck}
-        onCancel={() => setIsVerifyingPayment(false)}
+        onCancel={handleCancelVerification}
       />
 
-      <PullToRefresh onRefresh={async () => {
-        await refreshProfile()
-        lastFetchRef.current = 0
-        await initializeDashboard()
-        toast.success('Matches refreshed!')
-      }}>
+      <PullToRefresh onRefresh={handleRefresh}>
         <TopHeader
           title="Top Matches"
           subtitle={`${matches.length} highly compatible roommates found.`}
@@ -606,26 +260,7 @@ export function DashboardPage() {
 
         <div className="flex flex-col px-4 sm:px-5 pt-6 pb-40 w-full max-w-2xl lg:max-w-4xl mx-auto">
           {isPioneerUser && !hasPaid && (
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mx-2 mb-8 p-6 rounded-[2.5rem] bg-indigo-500/5 border border-indigo-500/10 flex items-center gap-5 relative overflow-hidden group hover:border-indigo-500/30 transition-all shadow-sm"
-            >
-              <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 blur-3xl -translate-y-1/2 translate-x-1/2" />
-              <div className="w-14 h-14 rounded-3xl bg-indigo-500/10 flex items-center justify-center shrink-0 border border-indigo-500/20 shadow-inner">
-                <Flame className="w-7 h-7 text-indigo-500 animate-pulse" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-[15px] font-black uppercase tracking-widest text-indigo-500 mb-1">Pioneer Status</h3>
-                <p className="text-[13px] font-bold text-muted-foreground leading-tight">You're one of our first 100 students. Claim your free permanent access.</p>
-              </div>
-              <button
-                onClick={handlePioneerClaim}
-                className="px-6 py-4 bg-indigo-500 text-white rounded-[22px] font-black text-[13px] shadow-lg shadow-indigo-500/20 hover:scale-105 active:scale-95 transition-all uppercase tracking-widest"
-              >
-                Claim
-              </button>
-            </motion.div>
+            <PioneerBanner isPioneerUser={isPioneerUser} handlePioneerClaim={handlePioneerClaim} />
           )}
 
           <AnimatePresence mode="wait">
@@ -638,6 +273,47 @@ export function DashboardPage() {
                 className="flex flex-col gap-4 w-full"
               >
                 <MatchFeed matches={[]} hasPaid={false} onSelectMatch={() => { }} isLoading={true} />
+              </motion.div>
+            ) : matches.length > 0 ? (
+              <motion.div key="feed" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                {!hasPaid && (
+                  <div className="flex justify-center mb-8">
+                    <button
+                      onClick={handlePaymentFallbackCheck}
+                      disabled={isVerifyingPayment}
+                      className="group px-8 py-4 bg-card border border-border/40 rounded-[22px] text-[11px] font-black uppercase tracking-widest text-muted-foreground transition-all flex items-center gap-2.5 active:scale-[0.98] disabled:opacity-50 hover:text-foreground hover:bg-muted/50 shadow-sm"
+                    >
+                      {isVerifyingPayment ? <span className="animate-spin">⟳</span> : <UserCheck className="w-4 h-4" />}
+                      {isVerifyingPayment ? "Checking Vault..." : "Already Paid? Verify Status"}
+                    </button>
+                  </div>
+                )}
+                <UserFlowGate 
+                  isProfileComplete={isProfileComplete}
+                  hasQuestionnaire={hasQuestionnaire}
+                  hasPaid={hasPaid}
+                  isVerifyingPayment={isVerifyingPayment}
+                  handlePaymentFallbackCheck={handlePaymentFallbackCheck}
+                  matchesCount={matches.length}
+                >
+                  <MatchFeed matches={matches.slice(0, Math.min(displayLimit, 20))} hasPaid={hasPaid} onSelectMatch={handleSelectMatch} isLoading={isLoading} />
+                </UserFlowGate>
+
+                {matches.length > displayLimit && displayLimit < 20 && (
+                  <div className="flex justify-center mt-10 mb-20 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                    <button
+                      onClick={() => setDisplayLimit(prev => Math.min(prev + 10, 20))}
+                      className="group px-8 py-5 bg-muted/40 hover:bg-muted border border-border/40 rounded-[22px] flex items-center gap-4 transition-all active:scale-95 shadow-sm"
+                    >
+                      <div className="w-10 h-10 rounded-[18px] bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform shadow-inner">
+                        <Sparkles className="w-5 h-5 text-primary" />
+                      </div>
+                      <div className="text-left">
+                        <span className="block text-[10px] font-bold text-muted-foreground">Revealing top 20 potential roommates</span>
+                      </div>
+                    </button>
+                  </div>
+                )}
               </motion.div>
             ) : !isProfileComplete ? (
               <motion.div
@@ -659,8 +335,8 @@ export function DashboardPage() {
                       Welcome, student! Secure your institutional credentials to enter the matching pool.
                     </p>
                   </div>
-                  <Link 
-                    to="/dashboard/profile" 
+                  <Link
+                    to="/dashboard/profile"
                     className="w-full py-6 bg-amber-500 text-white font-black text-[15px] rounded-[22px] shadow-xl shadow-amber-500/20 hover:bg-amber-600 hover:shadow-amber-500/40 active:scale-95 transition-all flex items-center justify-center gap-2 uppercase tracking-widest"
                   >
                     Setup Identity <Sparkles className="w-4 h-4 ml-1" />
@@ -676,8 +352,8 @@ export function DashboardPage() {
                 className="w-full max-w-lg mx-auto"
               >
                 <div className="bg-card/50 backdrop-blur-xl rounded-[3xl] border border-border/80 p-8 shadow-premium flex flex-col items-center text-center gap-6 relative overflow-hidden group">
-                   <div className="absolute top-0 right-0 w-40 h-40 bg-primary/5 blur-[80px] -translate-y-1/2 translate-x-1/2" />
-                   <div className="w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center relative group-hover:scale-110 transition-transform duration-500">
+                  <div className="absolute top-0 right-0 w-40 h-40 bg-primary/5 blur-[80px] -translate-y-1/2 translate-x-1/2" />
+                  <div className="w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center relative group-hover:scale-110 transition-transform duration-500">
                     <div className="absolute inset-0 bg-primary/20 animate-pulse rounded-3xl" />
                     <Sparkles className="w-9 h-9 text-primary z-10" />
                   </div>
@@ -687,85 +363,20 @@ export function DashboardPage() {
                       Your identity is secure. Now, map your lifestyle DNA to find your perfect roommates.
                     </p>
                   </div>
-                  <Link 
-                    to="/questionnaire" 
+                  <Link
+                    to="/questionnaire"
                     className="w-full py-6 bg-foreground text-background font-black text-[15px] rounded-[22px] shadow-xl hover:opacity-90 active:scale-95 transition-all flex items-center justify-center gap-2 uppercase tracking-widest"
                   >
                     Start DNA Test <Sparkles className="w-4 h-4 ml-1" />
                   </Link>
                 </div>
               </motion.div>
-            ) : matches.length === 0 ? (
-              <motion.div
-                key="empty-state"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="flex flex-col items-center justify-center pt-12 pb-20 px-6 text-center"
-              >
-                <div className="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center mb-6 relative">
-                  <div className="absolute inset-0 bg-primary/20 animate-ping opacity-25 rounded-full" />
-                  <LockIcon className="w-10 h-10 text-primary animate-pulse" />
-                </div>
-                {isPioneerUser ? (
-                  <>
-                    <h3 className="text-[20px] font-black text-foreground mb-2">Pioneer Hub</h3>
-                    <p className="text-muted-foreground text-[14px] font-medium leading-relaxed max-w-[280px] mb-3">
-                      We're currently matching you with the initial wave of students. New compatible roommates appear as they join!
-                    </p>
-                    <p className="text-muted-foreground text-[13px] font-semibold leading-relaxed max-w-[280px] mb-6">
-                      Check back daily or invite friends to speed up the process.
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <h3 className="text-[20px] font-black text-foreground mb-2">You're Early!</h3>
-                    <p className="text-muted-foreground text-[14px] font-medium leading-relaxed max-w-[280px] mb-6">
-                      We're still mapping the campus DNA. Check back soon for your perfect roommate matches!
-                    </p>
-                  </>
-                )}
-                <button
-                  onClick={forceRecalculate}
-                  disabled={isRecalculating}
-                  className="mt-2 px-8 py-4 bg-muted text-foreground border border-border/50 rounded-[22px] font-bold flex items-center gap-2 hover:bg-muted/80 transition-all active:scale-95 disabled:opacity-50 tracking-tight"
-                >
-                  {isRecalculating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                  {isRecalculating ? "Running Algorithm..." : "Force Run Algorithm"}
-                </button>
-              </motion.div>
             ) : (
-              <motion.div key="feed" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                {!hasPaid && matches.length > 0 && (
-                  <div className="flex justify-center mb-8">
-                    <button 
-                      onClick={handlePaymentFallbackCheck}
-                      disabled={isCheckingPayment}
-                      className="group px-8 py-4 bg-card border border-border/40 rounded-[22px] text-[11px] font-black uppercase tracking-widest text-muted-foreground transition-all flex items-center gap-2.5 active:scale-[0.98] disabled:opacity-50 hover:text-foreground hover:bg-muted/50 shadow-sm"
-                    >
-                      {isCheckingPayment ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserCheck className="w-4 h-4" />}
-                      {isCheckingPayment ? "Checking Vault..." : "Already Paid? Verify Status"}
-                    </button>
-                  </div>
-                )}
-                <MatchFeed matches={matches.slice(0, Math.min(displayLimit, 20))} hasPaid={hasPaid} onSelectMatch={handleSelectMatch} isLoading={isLoading} />
-                
-                {matches.length > displayLimit && displayLimit < 20 && (
-                  <div className="flex justify-center mt-10 mb-20 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                    <button
-                      onClick={() => setDisplayLimit(prev => Math.min(prev + 10, 20))}
-                      className="group px-8 py-5 bg-muted/40 hover:bg-muted border border-border/40 rounded-[22px] flex items-center gap-4 transition-all active:scale-95 shadow-sm"
-                    >
-                      <div className="w-10 h-10 rounded-[18px] bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform shadow-inner">
-                        <Sparkles className="w-5 h-5 text-primary" />
-                      </div>
-                      <div className="text-left">
-                        <span className="block text-[10px] font-bold text-muted-foreground">Revealing top 20 potential roommates</span>
-                      </div>
-                    </button>
-                  </div>
-                )}
-              </motion.div>
+              <EmptyState
+                isPioneerUser={isPioneerUser}
+                isRecalculating={isRecalculating}
+                forceRecalculate={forceRecalculate}
+              />
             )}
           </AnimatePresence>
         </div>
@@ -778,7 +389,7 @@ export function DashboardPage() {
         hasPaid={hasPaid}
         onUnlock={handleStartPayment}
         getTierInfo={getTierInfo}
-        onReport={() => setIsReportModalOpen(true)}
+        onReport={handleReportModalOpen}
       />
 
       <PaymentModal
@@ -804,4 +415,3 @@ export function DashboardPage() {
     </div>
   )
 }
-

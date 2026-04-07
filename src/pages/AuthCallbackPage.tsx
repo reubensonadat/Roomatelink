@@ -3,126 +3,64 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { AlertCircle, Fingerprint } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { useAuth } from '../context/AuthContext'
+import { useUserFlowStatus } from '../hooks/useUserFlowStatus'
 
-export function AuthCallbackPage() {
+export default function AuthCallbackPage() {
   const navigate = useNavigate()
+  const { isProfileLoading, isHydrated, user } = useAuth()
+  const { getLandingRoute } = useUserFlowStatus()
   const [searchParams] = useSearchParams()
   const [status, setStatus] = useState<'loading' | 'error'>('loading')
   const [errorDetails, setErrorDetails] = useState<string>('')
   const hasHandled = useRef(false)
 
+  // 1. Initial Handshake (Exchange PKCE code if present)
   useEffect(() => {
     if (hasHandled.current) return
     
-    // SAFETY WATCHDOG: If we're still loading after 10 seconds, force move to dashboard.
-    // This prevents the user from being "stuck forever" on a blank screen.
-    const watchdog = setTimeout(() => {
-      if (status === 'loading') {
-        console.warn('--- AuthCallback: Watchdog Triggered (10s timeout) ---')
-        navigate('/dashboard')
-      }
-    }, 10000)
-
-    const handleCallback = async () => {
-      console.log('--- AuthCallback: Initializing Secure Auth Flow ---')
+    const handleAuthExchange = async () => {
       hasHandled.current = true
-
-      // 1. Check for explicit error from Supabase
+      const code = searchParams.get('code')
       const error = searchParams.get('error')
       const errorDescription = searchParams.get('error_description')
+
       if (error) {
-        console.error('--- AuthCallback: Provider Error ---', error, errorDescription)
         setErrorDetails(errorDescription || error)
         setStatus('error')
-        setTimeout(() => navigate('/auth'), 3000)
         return
       }
 
-      // 2. Resolve Session (handles both ?code and hash redirects automatically)
-      try {
-        const code = searchParams.get('code')
-        if (code) {
-          console.log('--- AuthCallback: Exchanging PKCE code ---')
+      if (code) {
+        try {
           await supabase.auth.exchangeCodeForSession(code)
+        } catch (err: any) {
+          console.error('Code exchange failed:', err)
+          setErrorDetails('Authentication sync failed.')
+          setStatus('error')
         }
-
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-        
-        if (sessionError || !session) {
-          console.error('--- AuthCallback: No session detected ---', sessionError)
-          // Rare: maybe the session is still initializing in AuthContext
-          // Re-try once after a short delay
-          await new Promise(r => setTimeout(r, 800))
-          const { data: { session: retrySession } } = await supabase.auth.getSession()
-          
-          if (!retrySession) {
-            setErrorDetails('Verify session failed. Please sign in again.')
-            setStatus('error')
-            setTimeout(() => navigate('/auth'), 3000)
-            return
-          }
-          await proceedWithRedirection(retrySession.user)
-        } else {
-          await proceedWithRedirection(session.user)
-        }
-      } catch (err: any) {
-        console.error('--- AuthCallback: Fatal Exception ---', err)
-        setErrorDetails(err.message || 'Synchronization failure.')
-        setStatus('error')
-        setTimeout(() => navigate('/auth'), 3000)
-      } finally {
-        clearTimeout(watchdog)
       }
     }
 
-    const proceedWithRedirection = async (user: any) => {
-      console.log('--- AuthCallback: Proceeding with Redirection Logic ---')
-      
-      try {
-        // Sequentially check user status following the original "Perfect" archive-v1 flow
-        // Step 1: Check Profile
-        const { data: profile, error: profileError } = await supabase
-          .from('users')
-          .select('id, course, level')
-          .eq('auth_id', user.id)
-          .maybeSingle()
+    handleAuthExchange()
+  }, [searchParams])
 
-        if (profileError) console.error('Profile fetch error:', profileError)
-
-        if (!profile || !profile.course || !profile.level) {
-          console.log('--- AuthCallback: Profile incomplete -> Onboarding ---')
-          navigate('/onboarding')
-          return
+  // 2. Navigation Handshake (Wait for Profile + Hydration)
+  useEffect(() => {
+    // Only move if we are hydrated, session is determined, and profile is loaded
+    if (isHydrated && !isProfileLoading) {
+      if (user) {
+        const target = getLandingRoute()
+        console.log('--- Auth Handshake Complete. Navigating to:', target)
+        navigate(target, { replace: true })
+      } else {
+        // If profile finished loading but there is no user, login failed
+        if (hasHandled.current) {
+          navigate('/auth', { replace: true })
         }
-
-        // Step 2: Check Questionnaire
-        const { data: questionnaire, error: qError } = await supabase
-          .from('questionnaire_responses')
-          .select('id')
-          .eq('user_id', profile.id)
-          .maybeSingle()
-
-        if (qError) console.error('Questionnaire fetch error:', qError)
-
-        if (!questionnaire) {
-          console.log('--- AuthCallback: Missing Questionnaire -> Questionnaire ---')
-          navigate('/questionnaire')
-          return
-        }
-
-        // Step 3: Success -> Final Destination
-        const next = searchParams.get('next') || '/dashboard'
-        console.log('--- AuthCallback: All clear! Navigating to ---', next)
-        navigate(next)
-      } catch (e) {
-        console.error('--- AuthCallback: Redirection error, falling back to Dashboard ---', e)
-        navigate('/dashboard')
       }
     }
-
-    handleCallback()
-    return () => clearTimeout(watchdog)
-  }, [searchParams, navigate, status])
+  }, [isHydrated, isProfileLoading, user, navigate, getLandingRoute])
 
   if (status === 'error') {
     return (

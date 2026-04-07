@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Search, MessageCircle, UserCheck, ChevronRight, Sparkles, Lock } from 'lucide-react'
+import { Search, MessageCircle, UserCheck, ChevronRight, Sparkles, Lock, Cpu } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../lib/supabase'
@@ -7,7 +7,7 @@ import { TopHeader } from '../components/layout/TopHeader'
 import { useAuth } from '../context/AuthContext'
 
 export function MessagesPage() {
-  const { user, profile } = useAuth()
+  const { user, profile, isTrafficHeavy, setIsTrafficHeavy } = useAuth()
   const isPaid = !!(profile?.has_paid || profile?.is_pioneer)
   // Robust initial derivation: if user has cached chats AND is paid, they've completed the full flow
   const hasCachedChats = (() => { try { const c = localStorage.getItem('roommate_chat_threads'); return c ? JSON.parse(c).length > 0 : false } catch { return false } })()
@@ -16,11 +16,18 @@ export function MessagesPage() {
     hasQuestionnaire: sessionStorage.getItem('hasQuestionnaireCache') === 'true' || (isPaid && hasCachedChats),
     hasPaid: isPaid
   })
+  // Instant Resume: Check if we already synced this session
+  const sessionSynced = sessionStorage.getItem('chat_vault_synced') === 'true'
+  
   const [chats, setChats] = useState<any[]>(() => {
     const cached = localStorage.getItem('roommate_chat_threads')
     return cached ? JSON.parse(cached) : []
   })
-  const [isLoading, setIsLoading] = useState(() => !localStorage.getItem('roommate_chat_threads'))
+  
+  // Only show the deep sync UI if we haven't synced this session AND have no valid cache
+  const [isLoading, setIsLoading] = useState(!sessionSynced)
+  const [loadingStep, setLoadingStep] = useState(0) // 0: Handshake, 1: Verification, 2: Recovering, 3: Finalizing
+  const [progress, setProgress] = useState(sessionSynced ? 100 : 0)
   const navigate = useNavigate()
 
   // Re-sync profile status when AuthContext profile updates (e.g., on tab resume)
@@ -47,14 +54,17 @@ export function MessagesPage() {
       }
     }
 
-    async function fetchChats() {
+    async function fetchChats(retries = 2) {
       if (!user) {
         navigate('/auth')
         return
       }
 
+      // Step 1: Handshake
+      setLoadingStep(0)
+      setProgress(15)
+
       try {
-        // 2. Efficiently determine profile status using context profile first
         const currentProfile = profile || await (async () => {
           const { data } = await supabase.from('users').select('*').eq('auth_id', user.id).single()
           return data
@@ -64,6 +74,10 @@ export function MessagesPage() {
           setIsLoading(false)
           return
         }
+
+        // Step 2: Verification
+        setLoadingStep(1)
+        setProgress(40)
 
         // 3. Parallelize Questionnaire Check and Messages Fetch
         const isPaid = !!(currentProfile.has_paid || currentProfile.is_pioneer)
@@ -83,8 +97,14 @@ export function MessagesPage() {
 
         if (!isPaid) {
           setIsLoading(false)
+          sessionStorage.setItem('chat_vault_synced', 'true')
+          setProgress(100)
           return
         }
+
+        // Step 3: Recovering
+        setLoadingStep(2)
+        setProgress(65)
 
         const msgs = messagesRes.data
 
@@ -129,9 +149,21 @@ export function MessagesPage() {
           setChats(threadList)
           // Save to cache for next time
           localStorage.setItem('roommate_chat_threads', JSON.stringify(threadList))
+          
+          // Step 4: Finalizing
+          setLoadingStep(3)
+          setProgress(100)
+          sessionStorage.setItem('chat_vault_synced', 'true')
+          
+          // Small delay for boutique feel
+          await new Promise(r => setTimeout(r, 600))
         }
       } catch (error) {
         console.error('Error fetching chats:', error)
+        if (retries > 0) {
+          await new Promise(r => setTimeout(r, 1000))
+          return fetchChats(retries - 1)
+        }
       } finally {
         setIsLoading(false)
       }
@@ -148,7 +180,7 @@ export function MessagesPage() {
         event: 'INSERT',
         schema: 'public',
         table: 'messages',
-        filter: `receiver_id=eq.${user?.id}`
+        filter: `receiver_id=eq.${profile?.id}`
       }, async (payload: any) => {
         // When a new message arrives, we recalculate the specific thread
         const newMsg = payload.new
@@ -181,7 +213,12 @@ export function MessagesPage() {
           return updatedChats
         })
       })
-      .subscribe()
+      .subscribe((status) => {
+        if (status === 'TIMED_OUT' || status === 'CHANNEL_ERROR') {
+          console.warn('Realtime connection limited - switching to High Traffic Mode')
+          setIsTrafficHeavy(true)
+        }
+      })
 
     return () => {
       supabase.removeChannel(channel)
@@ -196,26 +233,80 @@ export function MessagesPage() {
         subtitle={chats.length > 0 ? `You have ${chats.length} active conversations.` : 'Your private conversations will appear here.'}
       />
 
+      <AnimatePresence>
+        {isTrafficHeavy && (
+          <motion.div 
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="bg-indigo-600 text-white overflow-hidden shadow-lg border-b border-white/10"
+          >
+            <div className="px-5 py-3 flex items-center justify-between gap-4 max-w-lg mx-auto">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-white/20 rounded-xl">
+                  <Cpu className="w-5 h-5 text-white animate-pulse" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[13px] font-black tracking-tight leading-tight">High Performance Mode</span>
+                  <p className="text-[10px] font-bold text-indigo-100 uppercase tracking-widest mt-0.5">Live updates paused to save resources</p>
+                </div>
+              </div>
+              <button onClick={() => window.location.reload()} className="px-3 py-1.5 bg-white text-indigo-600 text-[10px] font-black rounded-lg uppercase tracking-tighter hover:bg-indigo-50 transition-colors shrink-0">Reconnect</button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="flex-1 overflow-y-auto w-full md:max-w-2xl lg:max-w-4xl mx-auto pb-40">
 
         <AnimatePresence mode="wait">
           {isLoading ? (
             <motion.div 
-              key="loading"
+              key="vault-loading"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
+              className="flex flex-col items-center justify-center py-20 px-6 text-center"
             >
-              <div className="flex-1 overflow-y-auto px-4 py-8 space-y-6">
-                {[1, 2, 3, 4, 5].map(i => (
-                  <div key={i} className="flex items-center gap-4 p-5 bg-card/40 backdrop-blur-md rounded-[18px] border border-border/40 animate-pulse">
-                    <div className="w-14 h-14 rounded-[18px] bg-muted shrink-0" />
-                    <div className="flex-1 space-y-3">
-                      <div className="h-4 bg-muted rounded-full w-1/3" />
-                      <div className="h-3 bg-muted rounded-full w-2/3" />
-                    </div>
-                  </div>
-                ))}
+              <div className="w-24 h-24 bg-primary/10 rounded-[2.5rem] flex items-center justify-center mb-8 relative">
+                <div className="absolute inset-0 bg-primary/20 animate-ping opacity-25 rounded-[2.5rem]" />
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+                  className="absolute inset-0 border-2 border-dashed border-primary/30 rounded-[2.5rem]"
+                />
+                <Lock className="w-10 h-10 text-primary z-10" />
+              </div>
+
+              <div className="max-w-xs w-full space-y-6">
+                <div className="space-y-2">
+                  <h3 className="text-2xl font-black text-foreground tracking-tight">Syncing Vault</h3>
+                  <p className="text-xs font-black uppercase tracking-[0.3em] text-primary h-4">
+                    {loadingStep === 0 && "Establishing Secure Link"}
+                    {loadingStep === 1 && "Verifying Credentials"}
+                    {loadingStep === 2 && "Recovering Records"}
+                    {loadingStep === 3 && "Optimizing Inbox"}
+                  </p>
+                </div>
+
+                {/* Boutique Progress Bar */}
+                <div className="relative w-full h-2 bg-muted rounded-full overflow-hidden border border-border/40">
+                  <motion.div 
+                    initial={{ width: 0 }}
+                    animate={{ width: `${progress}%` }}
+                    transition={{ type: "spring", stiffness: 50, damping: 20 }}
+                    className="absolute inset-y-0 left-0 bg-primary shadow-[0_0_15px_rgba(79,70,229,0.4)]"
+                  />
+                  <motion.div 
+                    animate={{ x: ["-100%", "100%"] }}
+                    transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+                    className="absolute inset-y-0 left-0 w-1/2 bg-gradient-to-r from-transparent via-white/30 to-transparent skew-x-12"
+                  />
+                </div>
+
+                <p className="text-[13px] font-bold text-muted-foreground">
+                  Synchronizing with Institutional Servers...
+                </p>
               </div>
             </motion.div>
           ) : !profileStatus.isProfileComplete ? (

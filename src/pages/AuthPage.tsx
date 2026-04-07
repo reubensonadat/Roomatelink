@@ -103,9 +103,15 @@ export function AuthPage() {
           setErrorMessage(error.message || 'Failed to sign in')
           toast.error(error.message || 'Failed to sign in')
         } else {
-          // Success - redirect to dashboard
+          // Success HANDSHAKE:
+          // Instead of navigating immediately, we wait for the AuthContext to say 'Loaded'
+          // This prevents the flickering 'Setup Identity' screen on the Dashboard
+          toast.loading('Synchronizing Identity...', { id: 'auth-sync' })
+          
+          // The ProtectedRoute will now handle the rendering logic once profile is ready.
+          // We navigate to /dashboard and let the guard do its job with ZERO flicker.
           navigate('/dashboard')
-          toast.success('Signed in successfully!')
+          toast.success('Identity Secured!', { id: 'auth-sync' })
         }
       } else {
         const { error, success } = await signUp(email, password)

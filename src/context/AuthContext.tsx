@@ -1,23 +1,28 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react'
 import { supabase } from '../lib/supabase'
 import type { User, Session, AuthError } from '@supabase/supabase-js'
+import { UserProfile } from '../types/database'
 
 interface AuthContextType {
   user: User | null
   session: Session | null
-  profile: any | null
-  loading: boolean
+  profile: UserProfile | null
+  isSessionLoading: boolean
+  isProfileLoading: boolean
+  isHydrated: boolean
+  isTrafficHeavy: boolean
+  setIsTrafficHeavy: (value: boolean) => void
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>
   signUp: (email: string, password: string) => Promise<{ error: AuthError | null; success?: string }>
   signOut: () => Promise<void>
   signInWithGoogle: () => Promise<void>
   refreshProfile: () => Promise<void>
-  lastActivity: number
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 // Helpers for synchronous hydration to prevent "Loading Session" flash
+// KEPT INTACT: Existing synchronous hydration logic
 const getLocalSession = (): Session | null => {
   try {
     const key = Object.keys(localStorage).find(k => k.startsWith('sb-') && k.endsWith('-auth-token'))
@@ -45,29 +50,46 @@ const getLocalProfile = (userId: string) => {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  // 1. Initialize states synchronously from Local Storage to prevent any flash!
+  // KEPT INTACT: Initialize states synchronously from Local Storage to prevent any flash!
   const initialSession = getLocalSession()
   const initialUser = initialSession?.user ?? null
   const initialProfile = initialUser ? getLocalProfile(initialUser.id) : null
 
   const [user, setUser] = useState<User | null>(initialUser)
   const [session, setSession] = useState<Session | null>(initialSession)
-  const [profile, setProfile] = useState<any | null>(initialProfile)
-  
-  // If we already have a session, we are NOT loading. Instant rendering!
-  const [loading, setLoading] = useState(initialSession ? false : true)
-  const [lastActivity, setLastActivity] = useState(Date.now())
+  const [profile, setProfile] = useState<UserProfile | null>(initialProfile as UserProfile | null)
 
-  const handleUpdateActivity = () => setLastActivity(Date.now())
+  // Phase 3: Granular loading states
+  const [isSessionLoading, setIsSessionLoading] = useState(initialSession ? false : true)
+  // Silent Refresh: Only block the UI if we have no profile data yet (cold start)
+  const [isProfileLoading, setIsProfileLoading] = useState(true)
+  const [isHydrated, setIsHydrated] = useState(false)
+  const [isTrafficHeavy, setIsTrafficHeavy] = useState(false)
 
-  const fetchProfile = async (userId: string, retries = 1): Promise<any> => {
+  // Phase 1.1: useRef for activity tracking to prevent endless re-renders
+  // CHANGED: Was useState, now useRef to prevent effect re-runs on every interaction
+  const lastActivityRef = useRef<number>(Date.now())
+
+  // Phase 1.4: Ref to prevent stale closures when mapping cached data
+  const profileRef = useRef<UserProfile | null>(initialProfile as UserProfile | null)
+  const lastRefreshRef = useRef<number>(0)
+
+  // Helper to keep profile state and ref in sync
+  // NEW: Helper to synchronize state and ref
+  const updateProfile = (newProfile: UserProfile | null) => {
+    setProfile(newProfile)
+    profileRef.current = newProfile
+  }
+
+  // KEPT INTACT: Existing fetchProfile function
+  const fetchProfile = async (userId: string, retries = 1): Promise<UserProfile | null> => {
     try {
       const { data, error } = await supabase
         .from('users')
         .select('*')
         .eq('auth_id', userId)
         .maybeSingle()
-      
+
       if (error) {
         if (retries > 0) {
           await new Promise(resolve => setTimeout(resolve, 1000))
@@ -79,72 +101,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (data) {
         localStorage.setItem(`roommate_profile_${userId}`, JSON.stringify(data))
       }
-      
-      return data
+
+      return data as UserProfile | null
     } catch (err) {
       return null
     }
   }
 
+  // Phase 1.3: Removed redundant getSession() call, relying purely on onAuthStateChange
+  // CHANGED: Removed initializeAuth() with getSession() call to prevent race condition
   useEffect(() => {
     let isMounted = true
-
-    const initializeAuth = async () => {
-      // We still update the state from the actual async Supabase call to catch expired tokens
-      try {
-        const { data: { session: activeSession } } = await supabase.auth.getSession()
-        
-        if (!isMounted) return
-
-        if (activeSession) {
-          setSession(activeSession)
-          setUser(activeSession.user)
-          
-          // Background Sync Profile
-          const profileData = await fetchProfile(activeSession.user.id, 2)
-          if (isMounted) {
-            setProfile(profileData)
-            setLoading(false)
-          }
-        } else {
-          // If Supabase says we actually don't have a session, clear the optimistic cache
-          if (isMounted) {
-            setSession(null)
-            setUser(null)
-            setProfile(null)
-            setLoading(false)
-          }
-        }
-      } catch (error) {
-        console.error('Auth initialization error:', error)
-      } finally {
-        if (isMounted) setLoading(false)
-      }
-    }
-
-    initializeAuth()
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
         if (!isMounted) return
 
-        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
-          setSession(currentSession)
-          setUser(currentSession?.user ?? null)
-          
-          if (currentSession?.user) {
+        setSession(currentSession)
+        setUser(currentSession?.user ?? null)
+        setIsSessionLoading(false)
+        setIsHydrated(true)
+
+        if (currentSession?.user) {
+          if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+            setIsProfileLoading(true)
+
+            // Phase 1.4: Fixed stale closure bug by using profileRef
             const cached = getLocalProfile(currentSession.user.id)
-            if (cached && !profile) {
-              setProfile(cached)
+            if (cached && !profileRef.current) {
+              updateProfile(cached as UserProfile)
             }
-            const profileData = await fetchProfile(currentSession.user.id)
-            if (isMounted) setProfile(profileData)
+
+            const profileData = await fetchProfile(currentSession.user.id, 2)
+            if (isMounted) {
+              updateProfile(profileData)
+              setIsProfileLoading(false)
+              lastRefreshRef.current = Date.now()
+            }
           }
         } else if (event === 'SIGNED_OUT') {
-          setSession(null)
-          setUser(null)
-          setProfile(null)
-          setLoading(false)
+          updateProfile(null)
+          setIsProfileLoading(false)
+          setIsSessionLoading(false)
+          setIsHydrated(true)
           // Clean profiles cache
           for (const key of Object.keys(localStorage)) {
             if (key.startsWith('roommate_profile_')) localStorage.removeItem(key)
@@ -152,11 +151,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else if (event === 'USER_UPDATED') {
           if (currentSession?.user) {
             const profileData = await fetchProfile(currentSession.user.id)
-            if (isMounted) setProfile(profileData)
+            if (isMounted) {
+              updateProfile(profileData)
+            }
           }
         }
-
-        if (isMounted && event !== 'SIGNED_IN') setLoading(false)
       }
     )
 
@@ -166,9 +165,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  // ─── Real-Time Activity Heartbeat ────────────────────────
+  // ─── Hard Timeout Failsafe ─────────────────────────────────────────
+  // If loading states stay true too long, something silently failed.
+  // Force unlock to prevent "permanent loading" hangups.
   useEffect(() => {
-    if (!user || !profile) return
+    const timer = window.setTimeout(() => {
+      let changed = false
+      if (isSessionLoading) {
+        console.warn('AuthContext: Session loading timeout')
+        setIsSessionLoading(false)
+        changed = true
+      }
+      if (isProfileLoading) {
+        console.warn('AuthContext: Profile loading timeout')
+        setIsProfileLoading(false)
+        changed = true
+      }
+      if (changed) setIsHydrated(true)
+    }, 6000) // 6 second hard cap for critical auth auth
+    return () => clearTimeout(timer)
+  }, [isSessionLoading, isProfileLoading])
+
+  // Phase 1.2: Effect A - Activity Heartbeat (2-min DB update)
+  // NEW: Split from monolithic effect, depends only on [user]
+  useEffect(() => {
+    if (!user) return
 
     const updateActivity = async () => {
       try {
@@ -188,9 +209,64 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Update every 2 minutes while the tab is active
     const interval = setInterval(updateActivity, 2 * 60 * 1000)
 
+    return () => clearInterval(interval)
+  }, [user])
+
+  // Phase 1.2: Effect B - Inactivity Watchdog (15-min auto-logout)
+  // NEW: Split from monolithic effect, depends only on [user], uses lastActivityRef
+  useEffect(() => {
+    if (!user) return
+
+    const INACTIVITY_LIMIT = 15 * 60 * 1000 // 15 Minutes
+
+    const inactivityInterval = setInterval(() => {
+      const idleTime = Date.now() - lastActivityRef.current
+      if (user && idleTime > INACTIVITY_LIMIT) {
+        console.warn('Session Watchdog: Inactivity limit reached. Force Logout.')
+        signOut()
+      }
+    }, 60000) // Check every minute
+
+    return () => clearInterval(inactivityInterval)
+  }, [user])
+
+  // Phase 1.2: Effect C - Session Heartbeat (5-min token verification)
+  // NEW: Split from monolithic effect, depends only on [user]
+  useEffect(() => {
+    if (!user) return
+
+    const heartbeatInterval = setInterval(async () => {
+      const { data: { session: currentSession }, error } = await supabase.auth.getSession()
+      if (error || !currentSession) {
+        console.error('Session Watchdog: Heartbeat failed or session lost.')
+        signOut()
+      }
+    }, 5 * 60 * 1000)
+
+    return () => clearInterval(heartbeatInterval)
+  }, [user])
+
+  // NEW: Global activity listener to update the ref silently
+  // CHANGED: Was part of monolithic effect, now independent
+  useEffect(() => {
+    const handleActivity = () => {
+      lastActivityRef.current = Date.now()
+    }
+
+    const activityEvents = ['mousedown', 'keydown', 'touchstart', 'scroll', 'click']
+    activityEvents.forEach(event => window.addEventListener(event, handleActivity))
+
+    return () => {
+      activityEvents.forEach(event => window.removeEventListener(event, handleActivity))
+    }
+  }, [])
+
+  // KEPT INTACT: Existing visibility and focus handlers (moved to separate effect)
+  useEffect(() => {
+    if (!user) return
+
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
-        updateActivity()
         // Proactive Session Resurrection: Refresh session on wake
         supabase.auth.getSession().then(({ data: { session: s } }) => {
           if (s) {
@@ -203,48 +279,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const handleFocus = () => {
       // Secondary handshake for PWA/Mobile resume
-      updateActivity()
       refreshProfile()
     }
 
     document.addEventListener('visibilitychange', handleVisibility)
     window.addEventListener('focus', handleFocus)
 
-    // --- PROACTIVE INACTIVITY WATCHDOG (15 MINUTES) ---
-    const INACTIVITY_LIMIT = 15 * 60 * 1000 // 15 Minutes
-    
-    const activityEvents = ['mousedown', 'keydown', 'touchstart', 'scroll', 'click']
-    activityEvents.forEach(event => window.addEventListener(event, handleUpdateActivity))
-
-    const inactivityInterval = setInterval(() => {
-      const idleTime = Date.now() - lastActivity
-      if (user && idleTime > INACTIVITY_LIMIT) {
-        console.warn('Session Watchdog: Inactivity limit reached. Force Logout.')
-        signOut()
-      }
-    }, 60000) // Check every minute
-
-    // --- SESSION HEARTBEAT (5 MINUTES) ---
-    // Forcefully re-verify the token with Supabase even if the app is active
-    const heartbeatInterval = setInterval(async () => {
-      if (!user) return
-      const { data: { session: currentSession }, error } = await supabase.auth.getSession()
-      if (error || !currentSession) {
-        console.error('Session Watchdog: Heartbeat failed or session lost.')
-        signOut()
-      }
-    }, 5 * 60 * 1000)
-
     return () => {
-      clearInterval(interval)
-      clearInterval(inactivityInterval)
-      clearInterval(heartbeatInterval)
       document.removeEventListener('visibilitychange', handleVisibility)
       window.removeEventListener('focus', handleFocus)
-      activityEvents.forEach(event => window.removeEventListener(event, handleUpdateActivity))
     }
-  }, [user, profile, lastActivity])
+  }, [user])
 
+  // KEPT INTACT: Existing auth methods
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({
       email,
@@ -261,11 +308,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         emailRedirectTo: `${window.location.origin}/auth/callback`,
       },
     })
-    
+
     if (error) {
       return { error }
     }
-    
+
     return { error: null, success: 'Account created successfully! You can now sign in.' }
   }
 
@@ -280,9 +327,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // 2. Wipe memory states immediately
       setSession(null)
       setUser(null)
-      setProfile(null)
-      setLoading(false)
-      
+      updateProfile(null)
+      setIsSessionLoading(false)
+      setIsProfileLoading(false)
+      setIsHydrated(false)
+
       // 3. Forcefully clear ALL relevant caches (Profile and orphaned Supabase Auth tokens)
       for (const key of Object.keys(localStorage)) {
         if (key.startsWith('roommate_profile_') || key.startsWith('sb-')) {
@@ -299,20 +348,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         redirectTo: `${window.location.origin}/auth/callback`,
       },
     })
-    
+
     if (error) {
       console.error('Google sign in error:', error)
     }
   }
 
-  const refreshProfile = async () => {
+  const refreshProfile = async (force = false) => {
     if (!user) return
+    
+    // Throttle: Skip if refreshed in the last 10 minutes, unless forced
+    const now = Date.now()
+    if (!force && now - lastRefreshRef.current < 10 * 60 * 1000) {
+      return
+    }
+
     const profileData = await fetchProfile(user.id)
-    setProfile(profileData)
+    updateProfile(profileData)
+    lastRefreshRef.current = now
   }
 
   return (
-    <AuthContext.Provider value={{ user, session, profile, loading, signIn, signUp, signOut, signInWithGoogle, refreshProfile, lastActivity }}>
+    <AuthContext.Provider value={{
+      user,
+      session,
+      profile,
+      isSessionLoading,
+      isProfileLoading,
+      isHydrated,
+      isTrafficHeavy,
+      setIsTrafficHeavy,
+      signIn,
+      signUp,
+      signOut,
+      signInWithGoogle,
+      refreshProfile
+    }}>
       {children}
     </AuthContext.Provider>
   )

@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Check, Sparkles, ArrowRight, ShieldCheck, Cpu, Fingerprint, Lock, Brain, Signal } from 'lucide-react'
+import { Check, Sparkles, ArrowRight, ShieldCheck, Cpu, Fingerprint, Lock, Brain, Signal, Loader2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { supabase } from '../lib/supabase'
+import { useAuth } from '../context/AuthContext'
 
 const STEPS = [
   { text: "Encrypting lifestyle data", icon: <Lock className="w-4 h-4" />, detail: "AES-256 Secure" },
@@ -17,6 +19,8 @@ export default function CalculationPage() {
   const [studentsScanned, setStudentsScanned] = useState(0)
   const [complete, setComplete] = useState(false)
   const [scanY, setScanY] = useState(0)
+  const { profile } = useAuth()
+  const [dataArrived, setDataArrived] = useState(false)
   const navigate = useNavigate()
 
   // Scanning counter animation
@@ -31,17 +35,57 @@ export default function CalculationPage() {
     return () => clearInterval(interval)
   }, [complete])
 
-  // Step progression
+  // Step progression with data-driven completion
   useEffect(() => {
-    if (currentStep < STEPS.length) {
+    if (currentStep < STEPS.length - 1) {
+      // Run the first 5 steps on a timer (boutique experience)
       const timer = setTimeout(() => setCurrentStep(prev => prev + 1), 1600)
       return () => clearTimeout(timer)
-    } else {
-      setComplete(true)
+    } else if (currentStep === STEPS.length - 1) {
+      // We are on the final "Scoring" step. Now we wait for ACTUAL data.
+      let checkInterval: any = null
+      let failSafeTimeout: any = null
+
+      const startMonitoring = () => {
+        if (!profile?.id) return
+        
+        checkInterval = setInterval(async () => {
+          const { count, error } = await supabase
+            .from('matches')
+            .select('id', { count: 'exact', head: true })
+            .eq('user_a_id', profile.id)
+          
+          if (!error && count && count > 0) {
+            setDataArrived(true)
+            setComplete(true)
+            clearInterval(checkInterval)
+            clearTimeout(failSafeTimeout)
+          }
+        }, 2000)
+
+        // Fail-safe: After 15 seconds, proceed regardless
+        failSafeTimeout = setTimeout(() => {
+          setComplete(true)
+          clearInterval(checkInterval)
+        }, 15000)
+      }
+
+      startMonitoring()
+
+      return () => {
+        if (checkInterval) clearInterval(checkInterval)
+        if (failSafeTimeout) clearTimeout(failSafeTimeout)
+      }
+    }
+  }, [currentStep, profile?.id])
+
+  // Final Redirect
+  useEffect(() => {
+    if (complete) {
       const redirect = setTimeout(() => navigate('/dashboard'), 3000)
       return () => clearTimeout(redirect)
     }
-  }, [currentStep, navigate])
+  }, [complete, navigate])
 
   // Scanning line animation
   useEffect(() => {
@@ -166,12 +210,20 @@ export default function CalculationPage() {
               <motion.div
                 animate={{ opacity: [0.5, 1, 0.5] }}
                 transition={{ duration: 2, repeat: Infinity }}
-                className="flex items-center gap-2"
+                className="flex flex-col items-center gap-1.5"
               >
-                <Signal className="w-3 h-3 text-primary" />
-                <span className="text-[11px] font-black text-primary/70 uppercase tracking-[0.2em] tabular-nums">
-                  {studentsScanned} Profiles Scanned
-                </span>
+                <div className="flex items-center gap-2">
+                   <Signal className="w-3 h-3 text-primary" />
+                   <span className="text-[11px] font-black text-primary/70 uppercase tracking-[0.2em] tabular-nums">
+                     {studentsScanned} Profiles Scanned
+                   </span>
+                </div>
+                {currentStep === STEPS.length - 1 && (
+                  <div className="flex items-center gap-2 bg-primary/5 px-2 py-0.5 rounded-full">
+                    <Loader2 className="w-2.5 h-2.5 text-primary animate-spin" />
+                    <span className="text-[9px] font-bold text-primary uppercase tracking-tighter">Waiting for Records</span>
+                  </div>
+                )}
               </motion.div>
             )}
           </motion.div>
