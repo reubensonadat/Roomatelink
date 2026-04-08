@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { MatchCard } from './MatchCard'
+import DrawingHouseLoader from '../ui/DrawingHouseLoader'
 
 interface MatchFeedProps {
   matches: any[]
@@ -37,16 +38,9 @@ export function MatchFeed({ matches, hasPaid, onSelectMatch, isLoading }: MatchF
 
   if (isLoading) {
     return (
-      <div className="flex flex-col gap-3 md:gap-4 w-full">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="bg-card/50 w-full rounded-[2rem] p-4 flex gap-4 items-center border border-border/40 animate-pulse min-h-[110px] sm:min-h-[125px]">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-muted shrink-0" />
-            <div className="flex flex-col flex-1 gap-3">
-              <div className="h-4 w-28 bg-muted rounded-md" />
-              <div className="h-3 w-full bg-muted rounded-md" />
-            </div>
-          </div>
-        ))}
+      <div className="flex flex-col items-center justify-center py-20 px-6">
+        <DrawingHouseLoader />
+        <p className="mt-4 text-sm font-bold text-muted-foreground">Loading matches...</p>
       </div>
     );
   }

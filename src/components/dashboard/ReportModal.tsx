@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { ModalShell } from '../ui/ModalShell'
+import { OrbitalLoader } from '../ui/OrbitalLoader'
 
 interface ReportModalProps {
   isOpen: boolean
@@ -105,7 +106,7 @@ export function ReportModal({ isOpen, onClose, reportedName, reportedId }: Repor
           className={`w-full h-[64px] rounded-[22px] bg-red-600 text-white font-black text-[17px] transition-all flex items-center justify-center gap-3 shadow-xl shadow-red-600/20 active:scale-[0.98] uppercase tracking-[0.2em] ${!selectedReason || isSubmitting ? 'opacity-40 grayscale cursor-not-allowed' : 'hover:scale-[1.02] hover:bg-red-700'}`}
         >
           {isSubmitting ? (
-            <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+            <div className="scale-50 -mx-4 -my-4"><OrbitalLoader /></div>
           ) : (
             <>
               Submit Report <Flag className="w-5 h-5 fill-current" />

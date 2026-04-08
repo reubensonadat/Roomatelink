@@ -1,5 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import { ShieldCheck, Check } from 'lucide-react'
+import { OrbitalLoader } from '../ui/OrbitalLoader'
+import { Check } from 'lucide-react'
 
 interface PaymentVerificationOverlayProps {
   isVisible: boolean
@@ -21,12 +22,8 @@ export function PaymentVerificationOverlay({ isVisible, verifyCountdown, showPay
         className="fixed inset-0 z-[200] bg-background/95 backdrop-blur-xl flex flex-col items-center justify-center px-6"
       >
         {/* Spinner */}
-        <div className="relative w-20 h-20 mb-8">
-          <div className="absolute inset-0 rounded-full border-[4px] border-primary/20" />
-          <div className="absolute inset-0 rounded-full border-[4px] border-transparent border-t-primary animate-spin" />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <ShieldCheck className="w-8 h-8 text-primary" />
-          </div>
+        <div className="relative w-20 h-20 mb-8 flex items-center justify-center">
+          <OrbitalLoader />
         </div>
 
         <h2 className="text-[22px] font-black text-foreground mb-2 tracking-tight">Verifying Payment</h2>

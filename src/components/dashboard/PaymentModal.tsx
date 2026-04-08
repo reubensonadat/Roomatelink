@@ -19,14 +19,14 @@ interface PaymentModalProps {
   onPaymentClose: () => void
 }
 
-export function PaymentModal({ 
-  isOpen, 
-  onClose, 
-  email, 
-  amount, 
-  discountCode, 
-  discountApplied, 
-  discountError, 
+export function PaymentModal({
+  isOpen,
+  onClose,
+  email,
+  amount,
+  discountCode,
+  discountApplied,
+  discountError,
   finalPrice,
   isApplyingDiscount,
   onDiscountCodeChange,

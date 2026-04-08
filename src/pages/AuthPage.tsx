@@ -1,9 +1,11 @@
 import { useState, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Loader2, Mail, Lock, ChevronRight, ShieldCheck, AlertCircle, CheckCircle2 } from 'lucide-react'
+import { Mail, Lock, ChevronRight, ShieldCheck, AlertCircle, CheckCircle2 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { toast } from 'sonner'
+import { OrbitalLoader } from '../components/ui/OrbitalLoader'
+import { PremiumAuthLoader } from '../components/ui/PremiumAuthLoader'
 
 const GoogleIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-[18px] h-[18px]">
@@ -84,6 +86,7 @@ export function AuthPage() {
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
+  const [isRedirecting, setIsRedirecting] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
   
@@ -148,7 +151,10 @@ export function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen relative flex items-center justify-center bg-background overflow-hidden selection:bg-primary/20">
+    <>
+      {isRedirecting && <PremiumAuthLoader topLabel="Authentication" mainLabel="Redirecting to Google" subLabel="You will be redirected shortly..." />}
+      
+      <div className="min-h-screen relative flex items-center justify-center bg-background overflow-hidden selection:bg-primary/20">
       
       {/* Top-Right Anchored Grid Background */}
       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden flex justify-end items-start w-full">
@@ -256,14 +262,17 @@ export function AuthPage() {
               )}
             </AnimatePresence>
             
-            <DirectionalHoverButton 
-              onClick={handleGoogleSignIn} 
-              disabled={isGoogleLoading || isLoading} 
+            <DirectionalHoverButton
+              onClick={() => {
+                setIsRedirecting(true)
+                handleGoogleSignIn()
+              }}
+              disabled={isGoogleLoading || isLoading}
               isPrimary={false}
               className="bg-background border border-border/80 text-foreground shadow-sm hover:border-foreground/30"
             >
               {isGoogleLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                <div className="scale-50 -mx-4 -my-4"><OrbitalLoader /></div>
               ) : (
                 <>
                   <GoogleIcon /> <span className="pt-0.5">{mode === 'signin' ? 'Sign in with Google' : 'Sign up with Google'}</span>
@@ -343,7 +352,7 @@ export function AuthPage() {
                 className="mt-2 bg-primary text-white shadow-[0_4px_14px_rgba(79,70,229,0.3)] focus:ring-[3px] focus:ring-primary/20 hover:shadow-[0_6px_20px_rgba(79,70,229,0.4)] border-none"
               >
                 {isLoading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <div className="scale-50 -mx-4 -my-4"><OrbitalLoader /></div>
                 ) : (
                   <span className="pt-0.5">{mode === 'signin' ? "Sign in" : "Create Account"}</span>
                 )}
@@ -362,5 +371,6 @@ export function AuthPage() {
         </motion.p>
       </div>
     </div>
-  )
+  </>
+)
 }

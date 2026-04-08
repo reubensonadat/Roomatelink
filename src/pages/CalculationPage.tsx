@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Check, Sparkles, ArrowRight, ShieldCheck, Cpu, Fingerprint, Lock, Brain, Signal, Loader2 } from 'lucide-react'
+import { Check, Sparkles, ArrowRight, ShieldCheck, Cpu, Fingerprint, Lock, Brain, Signal } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import ClassicLoader from '../components/ui/ClassicLoader'
 
 const STEPS = [
   { text: "Encrypting lifestyle data", icon: <Lock className="w-4 h-4" />, detail: "AES-256 Secure" },
@@ -218,7 +219,7 @@ export default function CalculationPage() {
                 </div>
                 {currentStep === STEPS.length - 1 && (
                   <div className="flex items-center gap-2 bg-primary/5 px-2 py-0.5 rounded-full">
-                    <Loader2 className="w-2.5 h-2.5 text-primary animate-spin" />
+                    <div className="w-2.5 h-2.5"><ClassicLoader /></div>
                     <span className="text-[9px] font-bold text-primary uppercase tracking-tighter">Waiting for Records</span>
                   </div>
                 )}

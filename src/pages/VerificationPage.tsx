@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { GraduationCap, Mail, ChevronRight, Loader2, Info, ShieldCheck, ArrowLeft, Sparkles } from 'lucide-react'
+import { GraduationCap, Mail, ChevronRight, Info, ShieldCheck, ArrowLeft, Sparkles } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
+import { OrbitalLoader } from '../components/ui/OrbitalLoader'
 
 export function VerificationPage() {
   const { user } = useAuth()
@@ -139,7 +140,7 @@ export function VerificationPage() {
                   className="w-full flex items-center justify-center gap-3 p-5 bg-foreground text-background rounded-[22px] font-black text-lg hover:translate-y-[-2px] active:translate-y-[0px] transition-all shadow-xl shadow-foreground/5 disabled:opacity-50"
                 >
                   {loading ? (
-                    <Loader2 className="w-6 h-6 animate-spin" />
+                    <div className="scale-50 -mx-4 -my-4"><OrbitalLoader /></div>
                   ) : (
                     <>
                       Begin Verification
@@ -193,7 +194,7 @@ export function VerificationPage() {
                   className="w-full flex items-center justify-center gap-3 p-5 bg-primary text-white rounded-[22px] font-black text-lg hover:translate-y-[-2px] active:translate-y-[0px] transition-all shadow-xl shadow-primary/10 disabled:opacity-50"
                 >
                   {loading ? (
-                    <Loader2 className="w-6 h-6 animate-spin" />
+                    <div className="scale-50 -mx-4 -my-4"><OrbitalLoader /></div>
                   ) : (
                     <>
                       Confirm & Unlock

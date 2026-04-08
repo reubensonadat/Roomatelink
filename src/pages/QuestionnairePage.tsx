@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
-import { Check, ChevronLeft, Loader2, Edit2, Sparkles } from 'lucide-react'
+import { Check, ChevronLeft, Edit2, Sparkles } from 'lucide-react'
 import { questions as sourceQuestions, Question } from '../lib/questions'
 import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
 import { useAuth } from '../context/AuthContext'
+import ClassicLoader from '../components/ui/ClassicLoader'
 
 // Fisher-Yates shuffle
 function shuffle<T>(arr: T[]): T[] {
@@ -188,7 +189,7 @@ export function QuestionnairePage() {
          >
             <div className="relative">
                <div className="w-16 h-16 rounded-3xl bg-primary/10 flex items-center justify-center">
-                  <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                  <ClassicLoader />
                </div>
                <div className="absolute -inset-4 rounded-full border-2 border-primary/20 animate-ping opacity-20" />
             </div>
@@ -214,8 +215,8 @@ export function QuestionnairePage() {
   if (!ready || questions.length === 0) {
     return (
       <div className="min-h-screen bg-background flex flex-col justify-center items-center">
-      <Loader2 className="w-8 h-8 text-primary animate-spin mb-4" />
-      <span className="text-[13px] font-bold text-muted-foreground uppercase tracking-widest">Loading Questions</span>
+      <ClassicLoader />
+      <span className="text-[13px] font-bold text-muted-foreground uppercase tracking-widest mt-4">Loading Questions</span>
       </div>
     )
   }

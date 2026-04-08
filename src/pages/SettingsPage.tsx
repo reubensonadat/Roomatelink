@@ -1,4 +1,4 @@
-import { Shield, FileText, Bell, Lock, UserX, Moon, Sun, GraduationCap, ChevronRight, Loader2, AlertTriangle } from 'lucide-react';
+import { Shield, FileText, Bell, Lock, UserX, Moon, Sun, GraduationCap, ChevronRight, AlertTriangle } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -9,6 +9,7 @@ import { TopHeader } from '../components/layout/TopHeader';
 import { ActionButton } from '../components/ui/ActionButton';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { ModalShell } from '../components/ui/ModalShell';
+import { OrbitalLoader } from '../components/ui/OrbitalLoader';
 
 
 export function SettingsPage() {
@@ -207,7 +208,7 @@ export function SettingsPage() {
               />
 
               <ActionButton
-                icon={isVerifying ? <Loader2 className="w-5 h-5 animate-spin" /> : <GraduationCap className="w-5 h-5 text-foreground" />}
+                icon={isVerifying ? <div className="scale-50 -mx-4 -my-4"><OrbitalLoader /></div> : <GraduationCap className="w-5 h-5 text-foreground" />}
                 title="Student Email"
                 subtitle="Verify & whitebox identity"
                 onClick={() => setIsVerifyModalOpen(true)}
@@ -220,7 +221,7 @@ export function SettingsPage() {
               />
 
               <ActionButton
-                icon={isResetting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Lock className="w-5 h-5 text-foreground" />}
+                icon={isResetting ? <div className="scale-50 -mx-4 -my-4"><OrbitalLoader /></div> : <Lock className="w-5 h-5 text-foreground" />}
                 title="Security"
                 subtitle="Change Password"
                 onClick={handlePasswordReset}
@@ -362,7 +363,7 @@ export function SettingsPage() {
                   disabled={isVerifying || (verificationStep === 'email' ? !manualEmail : verificationCode.length < 6)}
                   className="w-full py-6 rounded-[22px] bg-primary text-white font-black text-[15px] shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-3 uppercase tracking-widest"
                 >
-                  {isVerifying ? <Loader2 className="w-5 h-5 animate-spin" /> : verificationStep === 'email' ? 'Generate Handshake' : 'Finalize Identity'}
+                  {isVerifying ? <div className="scale-50 -mx-4 -my-4"><OrbitalLoader /></div> : verificationStep === 'email' ? 'Generate Handshake' : 'Finalize Identity'}
                 </button>
                 <button
                   onClick={() => {
@@ -385,7 +386,7 @@ export function SettingsPage() {
           onConfirm={handleLogout}
           title="Terminate Session"
           subtitle="Are you sure you want to exit?"
-          confirmText={isLoggingOut ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Log Out Now'}
+          confirmText={isLoggingOut ? <div className="scale-50 -mx-4 -my-4"><OrbitalLoader /></div> : 'Log Out Now'}
           cancelText="Hold on"
           variant="danger"
         />
@@ -421,7 +422,7 @@ export function SettingsPage() {
                 disabled={isDeleting || deleteInput !== 'DELETE'}
                 className="w-full py-3.5 bg-red-500 text-white font-bold rounded-2xl hover:bg-red-600 transition-all flex items-center justify-center disabled:opacity-40"
               >
-                {isDeleting ? <Loader2 className="w-5 h-5 animate-spin" /> : "Permanently Delete"}
+                {isDeleting ? <div className="scale-50 -mx-4 -my-4"><OrbitalLoader /></div> : "Permanently Delete"}
               </button>
               <button
                 onClick={() => !isDeleting && setIsDeleteOpen(false)}

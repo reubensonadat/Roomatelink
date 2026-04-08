@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { User, Upload, Check, ChevronRight, Sparkles, Loader2, ShieldCheck } from 'lucide-react'
+import { User, Upload, Check, ChevronRight, Sparkles, ShieldCheck } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
@@ -9,6 +9,7 @@ import { ModalShell } from '../components/ui/ModalShell'
 import { TopHeader } from '../components/layout/TopHeader'
 import { FormInput } from '../components/ui/FormInput'
 import { PillToggle } from '../components/ui/PillToggle'
+import DrawingHouseLoader from '../components/ui/DrawingHouseLoader'
 
 const avatars = {
   M: [
@@ -681,7 +682,7 @@ export function ProfilePage() {
           >
             <div className="relative">
               <div className="w-16 h-16 rounded-3xl bg-indigo-600/10 flex items-center justify-center">
-                <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
+                <DrawingHouseLoader />
               </div>
               <div className="absolute -inset-4 rounded-full border-2 border-indigo-600/20 animate-ping opacity-20" />
             </div>

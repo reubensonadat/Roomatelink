@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext'
 import { useChatThreads } from '../hooks/useChatThreads'
 import { useUserFlowStatus } from '../hooks/useUserFlowStatus'
 import { PAYMENT_AMOUNT } from '../lib/constants'
+import DrawingHouseLoader from '../components/ui/DrawingHouseLoader'
 
 export function MessagesPage() {
   const { isTrafficHeavy } = useAuth()
@@ -61,12 +62,9 @@ export function MessagesPage() {
             exit={{ opacity: 0 }}
             className="flex flex-col items-center justify-center py-20 px-6 text-center"
           >
-              <div className="w-24 h-24 bg-primary/10 rounded-[2.5rem] flex items-center justify-center mb-8 relative">
-                <div className="absolute inset-0 bg-primary/20 animate-ping opacity-25 rounded-[2.5rem]" />
-                <Lock className="w-10 h-10 text-primary" />
-              </div>
+              <DrawingHouseLoader />
 
-              <div className="max-w-xs">
+              <div className="max-w-xs mt-8">
                 <h3 className="text-2xl font-black text-foreground tracking-tight">Syncing Vault</h3>
                 <p className="text-xs font-black uppercase tracking-[0.3em] text-primary h-4">
                     Establishing Secure Link
@@ -75,7 +73,7 @@ export function MessagesPage() {
 
               {/* Boutique Progress Bar */}
               <div className="relative w-full h-2 bg-muted rounded-full overflow-hidden border border-border/40">
-                <motion.div 
+                <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: '100%' }}
                   transition={{ type: "spring", stiffness: 50, damping: 20 }}

@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
-import { Sparkles, UserCheck, Loader2 } from 'lucide-react'
+import { Sparkles, UserCheck } from 'lucide-react'
+import { OrbitalLoader } from '../ui/OrbitalLoader'
 
 interface UserFlowGateProps {
   isProfileComplete: boolean
@@ -97,7 +98,7 @@ export function UserFlowGate({
             disabled={isVerifyingPayment}
             className="group px-8 py-4 bg-card border border-border/40 rounded-[22px] text-[11px] font-black uppercase tracking-widest text-muted-foreground transition-all flex items-center gap-2.5 active:scale-[0.98] disabled:opacity-50 hover:text-foreground hover:bg-muted/50 shadow-sm"
           >
-            {isVerifyingPayment ? <Loader2 className="w-4 h-4 animate-spin text-primary" /> : <UserCheck className="w-4 h-4" />}
+            {isVerifyingPayment ? <div className="scale-50 -mx-4 -my-4"><OrbitalLoader /></div> : <UserCheck className="w-4 h-4" />}
             {isVerifyingPayment ? "Checking Vault..." : "Already Paid? Verify Status"}
           </button>
         </div>

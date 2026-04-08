@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, Check, Loader2 } from 'lucide-react'
+import { ChevronLeft, Check } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { questions as sourceQuestions } from '../lib/questions'
+import ClassicLoader from '../components/ui/ClassicLoader'
 
 export function QuestionnaireReviewPage() {
   const { profile } = useAuth()
@@ -39,7 +40,7 @@ export function QuestionnaireReviewPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center">
-        <Loader2 className="w-8 h-8 text-primary animate-spin" />
+        <ClassicLoader />
       </div>
     )
   }

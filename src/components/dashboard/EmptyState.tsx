@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion'
-import { Sparkles, Lock as LockIcon, Loader2, Timer } from 'lucide-react'
+import { Sparkles, Lock as LockIcon, Timer } from 'lucide-react'
 import { useState, useEffect } from 'react'
+import { OrbitalLoader } from '../ui/OrbitalLoader'
 
 interface EmptyStateProps {
   isPioneerUser: boolean
@@ -79,7 +80,7 @@ export function EmptyState({ isPioneerUser, isRecalculating, forceRecalculate }:
         className="mt-2 px-8 py-4 bg-muted text-foreground border border-border/50 rounded-[22px] font-bold flex items-center gap-2 hover:bg-muted/80 transition-all active:scale-95 disabled:opacity-50 tracking-tight"
       >
         {isRecalculating ? (
-          <Loader2 className="w-4 h-4 animate-spin" />
+          <div className="scale-50 -mx-4 -my-4"><OrbitalLoader /></div>
         ) : timeLeft > 0 ? (
           <Timer className="w-4 h-4 text-amber-500" />
         ) : (
