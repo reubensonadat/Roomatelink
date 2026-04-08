@@ -122,21 +122,32 @@ export function DashboardPage() {
   if (!mounted || showSplash) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-background p-6 selection:bg-indigo-100 dark:selection:bg-indigo-500/30 uppercase tracking-tight">
-        <div className="relative w-28 h-28 mb-12">
+        {/* Premium Spinning Ring Loader - Scaled Up */}
+        <div className="relative w-40 h-40 mb-16">
           {/* Outer Ring Glow */}
-          <div className="absolute inset-[-8px] rounded-full bg-indigo-500/5 blur-2xl animate-pulse" />
-
-          {/* Main Spinner (Silky Glass Sphere) */}
-          <div className="absolute inset-0 rounded-full border-[3px] border-border/40" />
+          <div className="absolute inset-[-16px] rounded-full bg-indigo-500/10 blur-3xl animate-pulse" />
+          
+          {/* Background Ring */}
+          <div className="absolute inset-0 rounded-full border-[4px] border-border/30" />
+          
+          {/* Spinning Ring */}
           <motion.div
             animate={{ rotate: 360 }}
-            transition={{ duration: 1.5, repeat: Infinity, ease: [0.4, 0, 0.2, 1] }}
-            className="absolute inset-0 rounded-full border-[3px] border-transparent border-t-indigo-600 shadow-[0_0_20px_rgba(79,70,229,0.2)]"
+            transition={{ duration: 1.2, repeat: Infinity, ease: [0.4, 0, 0.2, 1] }}
+            className="absolute inset-0 rounded-full border-[4px] border-transparent border-t-indigo-600 shadow-[0_0_30px_rgba(79,70,229,0.4)]"
           />
-
+          
+          {/* Inner Spinning Ring (counter-rotating) */}
+          <motion.div
+            animate={{ rotate: -360 }}
+            transition={{ duration: 1.8, repeat: Infinity, ease: [0.4, 0, 0.2, 1] }}
+            className="absolute inset-[12px] rounded-full border-[2px] border-transparent border-t-indigo-400/60"
+          />
+          
+          {/* Center Icon */}
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-16 h-16 bg-card rounded-full flex items-center justify-center shadow-lg border border-border/80 backdrop-blur-xl">
-              <Sparkles className="w-8 h-8 text-indigo-600 animate-pulse" />
+            <div className="w-20 h-20 bg-card/80 rounded-full flex items-center justify-center shadow-2xl border border-border/60 backdrop-blur-xl">
+              <Sparkles className="w-10 h-10 text-indigo-600 animate-pulse" />
             </div>
           </div>
         </div>
@@ -144,6 +155,7 @@ export function DashboardPage() {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
           className="flex flex-col items-center text-center"
         >
           <h2 className="text-[12px] font-black text-indigo-600 uppercase tracking-[0.4em] mb-4">
@@ -152,16 +164,6 @@ export function DashboardPage() {
           <div className="flex flex-col items-center gap-2">
             <span className="text-[32px] font-black tracking-tighter text-foreground leading-none">Starting Roommate Link</span>
             <p className="text-[14px] font-bold text-muted-foreground">Synchronizing your matching preferences</p>
-          </div>
-
-          {/* Premium Progress Bar */}
-          <div className="mt-8 w-48 h-1.5 bg-muted rounded-full overflow-hidden relative">
-            <motion.div
-              initial={{ x: "-100%" }}
-              animate={{ x: "100%" }}
-              transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-              className="absolute inset-0 h-full bg-indigo-600 shadow-[0_0_10px_rgba(79,70,229,0.5)] w-[60%]"
-            />
           </div>
         </motion.div>
       </div>

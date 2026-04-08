@@ -7,6 +7,26 @@ import { useChatMessages } from '../hooks/useChatMessages'
 import { PAYMENT_AMOUNT } from '../lib/constants'
 import DrawingHouseLoader from '../components/ui/DrawingHouseLoader'
 
+// Helper function to format relative time
+function formatLastSeen(lastActive: string | null | undefined): string {
+  if (!lastActive) return 'Unknown'
+  
+  const now = new Date()
+  const lastSeen = new Date(lastActive)
+  const diffMs = now.getTime() - lastSeen.getTime()
+  const diffMins = Math.floor(diffMs / 60000)
+  const diffHours = Math.floor(diffMs / 3600000)
+  const diffDays = Math.floor(diffMs / 86400000)
+  
+  if (diffMins < 1) return 'Just now'
+  if (diffMins < 60) return `${diffMins}m ago`
+  if (diffHours < 24) return `${diffHours}h ago`
+  if (diffDays === 1) return 'Yesterday'
+  if (diffDays < 7) return `${diffDays}d ago`
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`
+  return lastSeen.toLocaleDateString()
+}
+
 export function ChatPage() {
   const { id: receiverId } = useParams()
   const navigate = useNavigate()
@@ -23,12 +43,17 @@ export function ChatPage() {
     sendMessage,
     setTyping,
     isOtherUserTyping,
-    isRealtimeConnected
+    isRealtimeConnected,
+    loadMoreMessages,
+    hasMoreMessages,
+    isLoadingMore
   } = useChatMessages(receiverId)
 
   const [isReportModalOpen, setIsReportModalOpen] = useState(false)
   const [messageText, setMessageText] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
+  const scrollPositionRef = useRef<number>(0)
   const typingTimeoutRef = useRef<number | null>(null)
 
   // Scroll to bottom on messages change and on initial mount
@@ -71,6 +96,29 @@ export function ChatPage() {
       }
     }
   }, [])
+  
+  // Scroll handler for upward pagination
+  const handleScroll = useCallback(() => {
+    const container = messagesContainerRef.current
+    if (!container || isLoadingMore || !hasMoreMessages) return
+    
+    // Trigger load more when near top (within 50px)
+    if (container.scrollTop < 50) {
+      // Save scroll position before prepending
+      const oldScrollHeight = container.scrollHeight
+      scrollPositionRef.current = container.scrollTop
+      
+      loadMoreMessages().then(() => {
+        // Restore scroll position after React re-renders
+        requestAnimationFrame(() => {
+          if (container) {
+            const newScrollHeight = container.scrollHeight
+            container.scrollTop = newScrollHeight - oldScrollHeight + scrollPositionRef.current
+          }
+        })
+      })
+    }
+  }, [isLoadingMore, hasMoreMessages, loadMoreMessages])
 
 
   return (
@@ -212,14 +260,8 @@ export function ChatPage() {
                       <div className="flex flex-col min-w-0">
                         <span className="text-[17px] font-black text-foreground truncate tracking-tight">{otherUser.full_name}</span>
                         <span className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                          {otherUser.last_active ? (
-                            <>
-                              <Clock className="w-3 h-3" />
-                              Last seen today
-                            </>
-                          ) : (
-                            <>Last seen {otherUser.last_active}</>
-                          )}
+                          <Clock className="w-3 h-3" />
+                          Last seen {formatLastSeen(otherUser.last_active)}
                         </span>
                       </div>
                     </div>
@@ -233,8 +275,18 @@ export function ChatPage() {
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto px-4 pb-4">
+              <div
+                ref={messagesContainerRef}
+                onScroll={handleScroll}
+                className="flex-1 overflow-y-auto px-4 pb-4"
+              >
                 <div className="max-w-2xl mx-auto space-y-4">
+                  {/* Load more indicator at top */}
+                  {isLoadingMore && (
+                    <div className="py-4 flex justify-center">
+                      <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  )}
                   {messages.map((msg, i) => (
                     <motion.div
                       key={msg.id}

@@ -27,6 +27,9 @@ interface UseChatMessagesReturn {
   setTyping: (isTyping: boolean) => void
   isOtherUserTyping: boolean
   isRealtimeConnected: boolean
+  loadMoreMessages: () => Promise<void>
+  hasMoreMessages: boolean
+  isLoadingMore: boolean
 }
 
 export function useChatMessages(threadId: string | undefined): UseChatMessagesReturn {
@@ -45,6 +48,8 @@ export function useChatMessages(threadId: string | undefined): UseChatMessagesRe
   })
   const [isOtherUserTyping, setIsOtherUserTyping] = useState(false)
   const [isRealtimeConnected, setIsRealtimeConnected] = useState(false)
+  const [hasMoreMessages, setHasMoreMessages] = useState(true)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
   
   // Law D: useRef to prevent infinite refetch loops
   const isFetchingRef = useRef(false)
@@ -493,6 +498,60 @@ export function useChatMessages(threadId: string | undefined): UseChatMessagesRe
     }
   }
 
+  const loadMoreMessages = async () => {
+    if (!threadId || !profile || isLoadingMore || !hasMoreMessages) return
+    
+    setIsLoadingMore(true)
+    const oldestMessage = messages[0]
+    if (!oldestMessage) {
+      setIsLoadingMore(false)
+      return
+    }
+    
+    try {
+      const { data } = await supabase
+        .from('messages')
+        .select('*')
+        .or(`and(sender_id.eq.${profile.id},receiver_id.eq.${threadId}),and(sender_id.eq.${threadId},receiver_id.eq.${profile.id})`)
+        .lt('created_at', oldestMessage.timestamp)
+        .order('created_at', { ascending: false })
+        .limit(20)
+      
+      if (data && data.length > 0) {
+        // Reverse to chronological order for prepending
+        const olderMessages = data.reverse().map((m: any) => ({
+          id: m.id,
+          text: m.content,
+          sender: (m.sender_id === profile.id ? 'me' : 'them') as 'me' | 'them',
+          time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          timestamp: m.created_at,
+          status: (m.status || 'PENDING') as 'PENDING' | 'SENT' | 'DELIVERED' | 'READ'
+        }))
+        
+        setMessages(prev => {
+          const combined = [...olderMessages, ...prev]
+          // Update cache with all messages
+          debouncedLocalStorageWrite(threadId, {
+            messages: combined,
+            otherUser
+          })
+          return combined
+        })
+        
+        // If we got fewer than 20 messages, we've reached the beginning
+        if (data.length < 20) {
+          setHasMoreMessages(false)
+        }
+      } else {
+        setHasMoreMessages(false)
+      }
+    } catch (error) {
+      console.error('Error loading more messages:', error)
+    } finally {
+      setIsLoadingMore(false)
+    }
+  }
+
   const refreshMessages = async () => {
     if (!threadId || !profile || isFetchingRef.current) return
 
@@ -575,6 +634,9 @@ export function useChatMessages(threadId: string | undefined): UseChatMessagesRe
     refreshMessages,
     setTyping,
     isOtherUserTyping,
-    isRealtimeConnected
+    isRealtimeConnected,
+    loadMoreMessages,
+    hasMoreMessages,
+    isLoadingMore
   }
 }

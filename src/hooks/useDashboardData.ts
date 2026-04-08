@@ -39,11 +39,11 @@ export function useDashboardData(): UseDashboardDataReturn {
   const [isLoading, setIsLoading] = useState(true)
   const isInitializingRef = useRef(false)
   
-  // State Healing: If we have matches in cache, we MUST have a questionnaire
+  // hasQuestionnaire is derived from questionnaire_responses table - source of truth
+  // We use cached value as fallback, but never infer from matches
   const [hasQuestionnaire, setHasQuestionnaire] = useState(() => {
     const cachedQ = sessionStorage.getItem('hasQuestionnaireCache') === 'true'
-    const hasMatchesInCache = matches.length > 0
-    return cachedQ || hasMatchesInCache
+    return cachedQ
   })
 
   const [isPioneerUser, setIsPioneerUser] = useState(() => !!profile?.is_pioneer)
@@ -132,15 +132,27 @@ export function useDashboardData(): UseDashboardDataReturn {
         const pioneerStatus = !!activeProfile.is_pioneer
         setIsPioneerUser(pioneerStatus)
 
-        // Check if user has completed questionnaire
-        const { data: qResp } = await supabase
+        // Check if user has completed questionnaire - source of truth
+        const { data: qResp, error: qError } = await supabase
           .from('questionnaire_responses')
           .select('id')
           .eq('user_id', activeProfile.id)
           .maybeSingle()
 
-        setHasQuestionnaire(!!qResp)
-        sessionStorage.setItem('hasQuestionnaireCache', String(!!qResp))
+        // Only update state if query succeeds; keep cached value on error
+        if (!qError) {
+          const hasQ = !!qResp
+          setHasQuestionnaire(hasQ)
+          sessionStorage.setItem('hasQuestionnaireCache', String(hasQ))
+          console.log('[Questionnaire Check] User has questionnaire:', hasQ)
+        } else {
+          console.error('[Questionnaire Check] Query failed:', qError)
+          // Keep existing cached value if query fails
+          const cachedQ = sessionStorage.getItem('hasQuestionnaireCache') === 'true'
+          if (cachedQ !== null) {
+            setHasQuestionnaire(cachedQ)
+          }
+        }
 
         // Step 3: Fetch Matches — query BOTH sides for bulletproof loading
         // A user can be user_a_id OR user_b_id depending on insertion order
@@ -219,10 +231,6 @@ export function useDashboardData(): UseDashboardDataReturn {
             }))
           setMatches(mappedMatches)
           sessionStorage.setItem('matchesCache', JSON.stringify(mappedMatches))
-          
-          // State Healing: If matches exist, questionnaire status MUST be true
-          setHasQuestionnaire(true)
-          sessionStorage.setItem('hasQuestionnaireCache', 'true')
           successOnceRef.current = true
         } else {
           setMatches([])
