@@ -24,6 +24,9 @@ interface UseChatMessagesReturn {
   progress: number
   sendMessage: (text: string) => Promise<void>
   refreshMessages: () => Promise<void>
+  setTyping: (isTyping: boolean) => void
+  isOtherUserTyping: boolean
+  isRealtimeConnected: boolean
 }
 
 export function useChatMessages(threadId: string | undefined): UseChatMessagesReturn {
@@ -40,11 +43,38 @@ export function useChatMessages(threadId: string | undefined): UseChatMessagesRe
     if (!profile) return false
     return !(profile.has_paid || profile.is_pioneer)
   })
-  
+  const [isOtherUserTyping, setIsOtherUserTyping] = useState(false)
+  const [isRealtimeConnected, setIsRealtimeConnected] = useState(false)
   
   // Law D: useRef to prevent infinite refetch loops
   const isFetchingRef = useRef(false)
   const lastRefreshRef = useRef<number>(0)
+  
+  // Debounced localStorage write ref
+  const localStorageWriteTimeoutRef = useRef<number | null>(null)
+  const typingTimeoutRef = useRef<number | null>(null)
+  const channelRef = useRef<any>(null)
+  
+  // App visibility refs for foreground delta sync
+  const lastVisibilityChangeRef = useRef<number>(0)
+  const isAppVisibleRef = useRef(true)
+  
+  // Debounced localStorage write function
+  const debouncedLocalStorageWrite = useRef((threadId: string | undefined, data: any) => {
+    if (localStorageWriteTimeoutRef.current) {
+      clearTimeout(localStorageWriteTimeoutRef.current)
+    }
+    
+    localStorageWriteTimeoutRef.current = setTimeout(() => {
+      if (threadId) {
+        try {
+          localStorage.setItem(`roommate_chat_${threadId}`, JSON.stringify(data))
+        } catch (e) {
+          console.error("LocalStorage write error:", e)
+        }
+      }
+    }, 2000) // 2 second debounce
+  }).current
 
 
   useEffect(() => {
@@ -68,6 +98,8 @@ export function useChatMessages(threadId: string | undefined): UseChatMessagesRe
     let isMounted = true
     let channel: any = null
     let syncTimeout: any = null
+    let handleVisibilityChange: (() => void) | null = null
+    let handleFocus: (() => void) | null = null
 
     async function setupChat(retries = 2) {
       if (!user || !threadId || isFetchingRef.current) return
@@ -221,10 +253,11 @@ export function useChatMessages(threadId: string | undefined): UseChatMessagesRe
               }
               setMessages(prev => {
                 const updated = [...prev, newMessage]
-                localStorage.setItem(`roommate_chat_${threadId}`, JSON.stringify({
+                // Use debounced localStorage write instead of immediate write
+                debouncedLocalStorageWrite(threadId, {
                   messages: updated,
                   otherUser: them
-                }))
+                })
                 return updated
               })
               // Mark as read immediately if chat is open
@@ -241,12 +274,52 @@ export function useChatMessages(threadId: string | undefined): UseChatMessagesRe
               msg.id === payload.new.id ? { ...msg, status: (payload.new.status || 'PENDING') as 'PENDING' | 'SENT' | 'DELIVERED' | 'READ' } : msg
             ))
           })
-          .subscribe((status) => {
-            if (status === 'TIMED_OUT' || status === 'CHANNEL_ERROR') {
-              console.warn('Realtime connection limited - switching to High Traffic Mode')
-              setIsTrafficHeavy(true)
+          .on('broadcast', { event: 'typing' }, (payload: any) => {
+            if (payload.payload?.isTyping === true) {
+              setIsOtherUserTyping(true)
+              // Clear previous timeout
+              if (typingTimeoutRef.current) {
+                clearTimeout(typingTimeoutRef.current)
+              }
+              // Reset typing indicator after 3 seconds of no typing events
+              typingTimeoutRef.current = setTimeout(() => {
+                setIsOtherUserTyping(false)
+              }, 3000)
             }
           })
+          .subscribe((status) => {
+            if (status === 'SUBSCRIBED') {
+              setIsRealtimeConnected(true)
+            } else if (status === 'TIMED_OUT' || status === 'CHANNEL_ERROR') {
+              console.warn('Realtime connection limited - switching to High Traffic Mode')
+              setIsTrafficHeavy(true)
+              setIsRealtimeConnected(false)
+            } else if (status === 'CLOSED') {
+              setIsRealtimeConnected(false)
+            }
+          })
+        
+        channelRef.current = channel
+
+        // Add visibilitychange and focus listeners for foreground delta sync
+        handleVisibilityChange = () => {
+          if (document.visibilityState === 'visible' && !isAppVisibleRef.current) {
+            isAppVisibleRef.current = true
+            performForegroundDeltaSync()
+          } else if (document.visibilityState === 'hidden') {
+            isAppVisibleRef.current = false
+          }
+        }
+
+        handleFocus = () => {
+          if (!isAppVisibleRef.current) {
+            isAppVisibleRef.current = true
+            performForegroundDeltaSync()
+          }
+        }
+
+        document.addEventListener('visibilitychange', handleVisibilityChange)
+        window.addEventListener('focus', handleFocus)
 
       } catch (err) {
         console.error("Chat setup error:", err)
@@ -269,7 +342,17 @@ export function useChatMessages(threadId: string | undefined): UseChatMessagesRe
       isMounted = false
       isFetchingRef.current = false
       if (syncTimeout) clearTimeout(syncTimeout)
+      if (localStorageWriteTimeoutRef.current) clearTimeout(localStorageWriteTimeoutRef.current)
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
       if (channel) supabase.removeChannel(channel)
+      
+      // Clean up visibility/focus listeners
+      if (handleVisibilityChange) {
+        document.removeEventListener('visibilitychange', handleVisibilityChange)
+      }
+      if (handleFocus) {
+        window.removeEventListener('focus', handleFocus)
+      }
     }
   }, [threadId, user, profile, navigate, setIsTrafficHeavy])
 
@@ -300,26 +383,113 @@ export function useChatMessages(threadId: string | undefined): UseChatMessagesRe
     }).select().single()
 
     if (error) {
-      toast.error("Failed to send message")
+      console.error('Message send error:', error)
+      
+      // Remove the optimistic message so it doesn't stay as a ghost
+      setMessages(prev => prev.filter(m => m.id !== tempId))
+      
+      // Show user feedback only for actual errors (not network drops)
+      if (error.code !== 'PGRST116' && error.message !== 'Failed to fetch') {
+        toast.error("Failed to send message")
+      }
+      
+      return
+    }
+
+    // Also handle case where data is null/undefined (network drop scenario)
+    if (!data) {
+      console.error('Message send returned no data - possible network drop')
       setMessages(prev => prev.filter(m => m.id !== tempId))
       return
     }
 
     // 3. Update status to SENT and replace tempId with real ID + SERVER TIMESTAMP
-    if (data) {
-      setMessages(prev => {
-        const updated = prev.map(m => m.id === tempId ? {
-          ...m,
-          id: data.id,
-          status: 'SENT' as 'PENDING' | 'SENT' | 'DELIVERED' | 'READ',
-          timestamp: data.created_at // Enforce server timeline!
-        } : m)
-        localStorage.setItem(`roommate_chat_${threadId}`, JSON.stringify({
-          messages: updated,
-          otherUser
-        }))
-        return updated
+    setMessages(prev => {
+      const updated = prev.map(m => m.id === tempId ? {
+        ...m,
+        id: data.id,
+        status: 'SENT' as 'PENDING' | 'SENT' | 'DELIVERED' | 'READ',
+        timestamp: data.created_at // Enforce server timeline!
+      } : m)
+      // Use debounced localStorage write instead of immediate write
+      debouncedLocalStorageWrite(threadId, {
+        messages: updated,
+        otherUser
       })
+      return updated
+    })
+  }
+
+  const performForegroundDeltaSync = async () => {
+    if (!threadId || !profile || isFetchingRef.current) return
+    
+    const now = Date.now()
+    // Debounce: prevent rapid syncs (minimum 2 seconds apart)
+    if (now - lastVisibilityChangeRef.current < 2000) return
+    lastVisibilityChangeRef.current = now
+    
+    isFetchingRef.current = true
+    
+    try {
+      // Get latest cached timestamp
+      const cachedSlice = localStorage.getItem(`roommate_chat_${threadId}`)
+      let lastTimestamp = '1970-01-01T00:00:00Z'
+      
+      if (cachedSlice) {
+        try {
+          const parsed = JSON.parse(cachedSlice)
+          const initialMessages = parsed.messages || []
+          if (initialMessages.length > 0) {
+            lastTimestamp = initialMessages[initialMessages.length - 1].timestamp || '1970-01-01T00:00:00Z'
+          }
+        } catch (e) {
+          console.error("Cache read error:", e)
+        }
+      }
+      
+      // Quick delta sync for messages missed while app was backgrounded
+      const { data: deltaRes } = await supabase
+        .from('messages')
+        .select('*')
+        .or(`and(sender_id.eq.${profile.id},receiver_id.eq.${threadId}),and(sender_id.eq.${threadId},receiver_id.eq.${profile.id})`)
+        .gt('created_at', lastTimestamp)
+        .order('created_at', { ascending: true })
+        .limit(50)
+      
+      if (deltaRes && deltaRes.length > 0) {
+        const fetchedMessages = deltaRes.map((m: any) => ({
+          id: m.id,
+          text: m.content,
+          sender: (m.sender_id === profile.id ? 'me' : 'them') as 'me' | 'them',
+          time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          timestamp: m.created_at,
+          status: (m.status || 'PENDING') as 'PENDING' | 'SENT' | 'DELIVERED' | 'READ'
+        }))
+        
+        setMessages(prev => {
+          const existingIds = new Set(prev.map(m => m.id))
+          const newMessages = fetchedMessages.filter(m => !existingIds.has(m.id))
+          const combined = [...prev, ...newMessages]
+          const final = combined.slice(-100)
+          
+          debouncedLocalStorageWrite(threadId, {
+            messages: final,
+            otherUser
+          })
+          return final
+        })
+        
+        // Mark incoming messages as read
+        supabase.from('messages').update({ status: 'READ' })
+          .eq('receiver_id', profile.id)
+          .eq('sender_id', threadId)
+          .neq('status', 'READ')
+          .then(() => {})
+      }
+    } catch (error) {
+      console.error('Foreground delta sync error:', error)
+    } finally {
+      isFetchingRef.current = false
     }
   }
 
@@ -360,10 +530,11 @@ export function useChatMessages(threadId: string | undefined): UseChatMessagesRe
       }))
 
       setMessages(displayMessages)
-      localStorage.setItem(`roommate_chat_${threadId}`, JSON.stringify({
+      // Use debounced localStorage write instead of immediate write
+      debouncedLocalStorageWrite(threadId, {
         messages: displayMessages,
         otherUser
-      }))
+      })
 
       setLoadingStep(3)
       setProgress(100)
@@ -379,6 +550,19 @@ export function useChatMessages(threadId: string | undefined): UseChatMessagesRe
     }
   }
 
+  // Typing indicator function
+  const setTyping = (isTyping: boolean) => {
+    if (!channelRef.current || !threadId || !profile) return
+    
+    if (isTyping) {
+      channelRef.current.send({
+        type: 'broadcast',
+        event: 'typing',
+        payload: { isTyping: true }
+      })
+    }
+  }
+  
   return {
     messages,
     otherUser,
@@ -388,6 +572,9 @@ export function useChatMessages(threadId: string | undefined): UseChatMessagesRe
     loadingStep,
     progress,
     sendMessage,
-    refreshMessages
+    refreshMessages,
+    setTyping,
+    isOtherUserTyping,
+    isRealtimeConnected
   }
 }

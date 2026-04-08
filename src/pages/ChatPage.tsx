@@ -1,6 +1,6 @@
-import { useRef, useEffect, useState } from 'react'
+import { useRef, useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Flag, Lock, CheckCheck, Clock, ChevronLeft, Send } from 'lucide-react'
+import { Flag, Lock, CheckCheck, Clock, ChevronLeft, Send, WifiOff } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ReportModal } from '../components/dashboard/ReportModal'
 import { useChatMessages } from '../hooks/useChatMessages'
@@ -20,17 +20,57 @@ export function ChatPage() {
     isLocked,
     loadingStep,
     progress,
-    sendMessage
+    sendMessage,
+    setTyping,
+    isOtherUserTyping,
+    isRealtimeConnected
   } = useChatMessages(receiverId)
 
   const [isReportModalOpen, setIsReportModalOpen] = useState(false)
   const [messageText, setMessageText] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
+  const typingTimeoutRef = useRef<number | null>(null)
 
-  // Scroll to bottom on messages change
+  // Scroll to bottom on messages change and on initial mount
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+  
+  // Also scroll on initial mount when messages are loaded
+  useEffect(() => {
+    if (!isLoading && messages.length > 0) {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [isLoading, messages.length])
+  
+  // Debounced typing indicator
+  const handleInputChange = useCallback((value: string) => {
+    setMessageText(value)
+    
+    // Send typing indicator when user starts typing
+    if (value.trim()) {
+      setTyping(true)
+      
+      // Clear previous timeout
+      if (typingTimeoutRef.current !== null) {
+        clearTimeout(typingTimeoutRef.current)
+      }
+      
+      // Stop typing indicator after 2 seconds of no input
+      typingTimeoutRef.current = window.setTimeout(() => {
+        setTyping(false)
+      }, 2000)
+    }
+  }, [setTyping])
+  
+  // Cleanup typing timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (typingTimeoutRef.current !== null) {
+        clearTimeout(typingTimeoutRef.current)
+      }
+    }
+  }, [])
 
 
   return (
@@ -141,6 +181,21 @@ export function ChatPage() {
             </div>
           ) : (
             <>
+              {/* Network Status Indicator */}
+              <AnimatePresence>
+                {!isRealtimeConnected && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="bg-amber-500/90 backdrop-blur-sm text-white px-4 py-2 text-sm font-bold flex items-center gap-2"
+                  >
+                    <WifiOff className="w-4 h-4" />
+                    Waiting for network...
+                  </motion.div>
+                )}
+              </AnimatePresence>
+              
               <div className="flex items-center justify-between px-4 py-3 bg-card border-b border-border/40">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                   <button
@@ -224,8 +279,28 @@ export function ChatPage() {
                       </div>
                     </motion.div>
                   ))}
+                  {/* Bottom scroll anchor */}
+                  <div ref={bottomRef} />
                 </div>
               </div>
+
+              {/* Typing Indicator - iOS iMessage Style */}
+              <AnimatePresence>
+                {isOtherUserTyping && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 10 }}
+                    className="px-4 py-2 flex justify-start"
+                  >
+                    <div className="flex gap-1">
+                      <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {/* Message Input Bar */}
               <div className="px-4 py-3 bg-card border-t border-border/40">
@@ -233,11 +308,12 @@ export function ChatPage() {
                   <input
                     type="text"
                     value={messageText}
-                    onChange={(e) => setMessageText(e.target.value)}
+                    onChange={(e) => handleInputChange(e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && messageText.trim()) {
                         sendMessage(messageText.trim())
                         setMessageText('')
+                        setTyping(false)
                       }
                     }}
                     placeholder="Type a message..."
@@ -248,6 +324,7 @@ export function ChatPage() {
                       if (messageText.trim()) {
                         sendMessage(messageText.trim())
                         setMessageText('')
+                        setTyping(false)
                       }
                     }}
                     disabled={!messageText.trim()}
