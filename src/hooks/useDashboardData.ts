@@ -17,6 +17,7 @@ interface UseDashboardDataReturn {
   isRecalculating: boolean
   setMatches: (matches: MatchProfile[]) => void
   setIsLoading: (loading: boolean) => void
+  fetchError: boolean
 }
 
 // ─── Hook ────────────────────────────────────────────────────────────
@@ -38,6 +39,7 @@ export function useDashboardData(): UseDashboardDataReturn {
   
   const [isLoading, setIsLoading] = useState(true)
   const isInitializingRef = useRef(false)
+  const timeoutRef = useRef<number | null>(null)
   
   // hasQuestionnaire is derived from questionnaire_responses table - source of truth
   // We use cached value as fallback, but never infer from matches
@@ -51,6 +53,7 @@ export function useDashboardData(): UseDashboardDataReturn {
   const [isDevMode, setIsDevMode] = useState(false)
   const [devClickCount, setDevClickCount] = useState(0)
   const [isRecalculating, setIsRecalculating] = useState(false)
+  const [fetchError, setFetchError] = useState(false)
   const lastFetchRef = useRef<number>(0)
   const previousHasPaidRef = useRef<boolean>(false)
   const successOnceRef = useRef<boolean>(false)
@@ -108,6 +111,7 @@ export function useDashboardData(): UseDashboardDataReturn {
 
     // Always mark loading at the start to prevent stale cache from rendering wrong state
     setIsLoading(true)
+    setFetchError(false) // Reset error state on new fetch attempt
 
     try {
       // Step 1: Dev Mode Override
@@ -229,6 +233,7 @@ export function useDashboardData(): UseDashboardDataReturn {
               tensions: (m as any).tensions || ['None Detected'],
               categoryScores: m.category_scores || []
             }))
+          
           setMatches(mappedMatches)
           sessionStorage.setItem('matchesCache', JSON.stringify(mappedMatches))
           successOnceRef.current = true
@@ -259,7 +264,8 @@ export function useDashboardData(): UseDashboardDataReturn {
       }
     } catch (err) {
       console.error('Error initializing dashboard:', err)
-      setMatches([])
+      // DO NOT wipe matches on error - preserve cached data
+      setFetchError(true)
     } finally {
       setIsLoading(false)
       isInitializingRef.current = false
@@ -269,37 +275,56 @@ export function useDashboardData(): UseDashboardDataReturn {
   // ─── Hard Timeout Failsafe ─────────────────────────────────────────
   // If isLoading is still true after 8 seconds, force unlock.
   // This prevents permanent "Starting Roommate Link" hangups.
+  // IMPORTANT: DO NOT wipe matches state on timeout - preserve cached data
   useEffect(() => {
-    if (!isLoading) return
-    const timer = window.setTimeout(() => {
-      console.warn('useDashboardData: Initialization timeout — forcing isLoading=false')
+    if (!isLoading) {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current)
+        timeoutRef.current = null
+      }
+      return
+    }
+    
+    timeoutRef.current = window.setTimeout(() => {
+      console.warn('useDashboardData: Initialization timeout — stopping loading spinner only (preserving cached matches)')
       setIsLoading(false)
+      setFetchError(true)
+      timeoutRef.current = null
     }, 8000)
-    return () => clearTimeout(timer)
+    
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current)
+        timeoutRef.current = null
+      }
+    }
   }, [isLoading])
 
   const forceRecalculate = async () => {
     if (!profile) return
     setIsRecalculating(true)
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) throw new Error("No active session")
+      // DIAGNOSTIC: Blind trigger disabled - Edge function needs UPSERT logic first
+      console.warn('[Force Recalculate] Blocked: Edge function is a blind trigger and needs UPSERT logic first.')
+      
+      // const { data: { session } } = await supabase.auth.getSession()
+      // if (!session) throw new Error("No active session")
 
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/match-calculate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({ userId: profile.id })
-      })
+      // const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/match-calculate`, {
+      //   method: 'POST',
+      //   headers: {
+      //     'Content-Type': 'application/json',
+      //     'Authorization': `Bearer ${session.access_token}`
+      //   },
+      //   body: JSON.stringify({ userId: profile.id })
+      // })
 
-      if (!res.ok) throw new Error("Edge function failed")
+      // if (!res.ok) throw new Error("Edge function failed")
 
-      toast.success("Algorithm triggered!")
+      // toast.success("Algorithm triggered!")
       // Reload dashboard
-      setIsLoading(true)
-      await initializeDashboard()
+      // setIsLoading(true)
+      // await initializeDashboard()
     } catch (err: any) {
       toast.error(`Refresh failed: ${err.message}`)
     } finally {
@@ -330,5 +355,6 @@ export function useDashboardData(): UseDashboardDataReturn {
     isRecalculating,
     setMatches,
     setIsLoading,
+    fetchError,
   }
 }

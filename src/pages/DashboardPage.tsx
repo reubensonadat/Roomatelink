@@ -37,6 +37,7 @@ export function DashboardPage() {
     forceRecalculate,
     isDevMode,
     isRecalculating,
+    fetchError,
   } = useDashboardData()
 
   const {
@@ -126,17 +127,17 @@ export function DashboardPage() {
         <div className="relative w-40 h-40 mb-16">
           {/* Outer Ring Glow */}
           <div className="absolute inset-[-16px] rounded-full bg-indigo-500/10 blur-3xl animate-pulse" />
-          
+
           {/* Background Ring */}
           <div className="absolute inset-0 rounded-full border-[4px] border-border/30" />
-          
+
           {/* Spinning Ring */}
           <motion.div
             animate={{ rotate: 360 }}
             transition={{ duration: 1.2, repeat: Infinity, ease: [0.4, 0, 0.2, 1] }}
             className="absolute inset-0 rounded-full border-[4px] border-transparent border-t-indigo-600 shadow-[0_0_30px_rgba(79,70,229,0.4)]"
           />
-          
+
           {/* Inner Spinning Ring (counter-rotating) */}
           <motion.div
             animate={{ rotate: -360 }}
@@ -209,7 +210,7 @@ export function DashboardPage() {
                     </button>
                   </div>
                 )}
-                <UserFlowGate 
+                <UserFlowGate
                   isProfileComplete={isProfileComplete}
                   hasQuestionnaire={hasQuestionnaire}
                   hasPaid={hasPaid}
@@ -290,6 +291,36 @@ export function DashboardPage() {
                   >
                     Start DNA Test <Sparkles className="w-4 h-4 ml-1" />
                   </Link>
+                </div>
+              </motion.div>
+            ) : fetchError ? (
+              <motion.div
+                key="network-error"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="w-full max-w-lg mx-auto"
+              >
+                <div className="bg-card/50 backdrop-blur-xl rounded-[2.5rem] border border-border/80 p-8 shadow-premium flex flex-col items-center text-center gap-6 relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 w-40 h-40 bg-red-500/5 blur-[80px] -translate-y-1/2 translate-x-1/2" />
+                  <div className="w-20 h-20 bg-red-500/10 rounded-3xl flex items-center justify-center relative group-hover:scale-110 transition-transform duration-500">
+                    <div className="absolute inset-0 bg-red-500/20 animate-pulse rounded-3xl" />
+                    <svg className="w-9 h-9 text-red-500 z-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                  </div>
+                  <div className="space-y-2">
+                    <h2 className="text-[24px] font-black tracking-tight text-foreground leading-tight">Network Error</h2>
+                    <p className="text-muted-foreground text-[14px] font-semibold leading-relaxed max-w-[280px]">
+                      Unable to connect to the matching engine. Please check your connection and try again.
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleRefresh}
+                    className="w-full py-6 bg-red-500 text-white font-black text-[15px] rounded-[22px] shadow-xl shadow-red-500/20 hover:bg-red-600 hover:shadow-red-500/40 active:scale-95 transition-all flex items-center justify-center gap-2 uppercase tracking-widest"
+                  >
+                    Retry Connection
+                  </button>
                 </div>
               </motion.div>
             ) : (
