@@ -37,11 +37,55 @@ export function OnboardingPage() {
   const totalSteps = 4 // 3 info slides + 1 theme chooser
   const isDark = mounted && theme === 'dark'
 
-  const handleThemeChange = (newTheme: 'light' | 'dark') => {
-    setTheme(newTheme)
-    localStorage.setItem('theme', newTheme)
-    document.documentElement.classList.remove('light', 'dark')
-    document.documentElement.classList.add(newTheme)
+  const handleThemeChange = (newTheme: 'light' | 'dark', event?: React.MouseEvent<HTMLButtonElement>) => {
+    // Core theme toggle logic
+    const applyTheme = () => {
+      setTheme(newTheme)
+      localStorage.setItem('theme', newTheme)
+      document.documentElement.classList.remove('light', 'dark')
+      document.documentElement.classList.add(newTheme)
+    }
+
+    // Check if View Transitions API is supported
+    if (typeof document.startViewTransition === 'function' && event) {
+      try {
+        // Calculate click position for circular wipe origin
+        const clickX = event.clientX
+        const clickY = event.clientY
+        
+        // Calculate maximum radius to cover entire screen with buffer
+        const maxRadius = Math.hypot(
+          Math.max(clickX, window.innerWidth - clickX),
+          Math.max(clickY, window.innerHeight - clickY)
+        ) * 1.5; // Add 50% buffer to ensure full coverage
+
+        // Start the view transition
+        document.startViewTransition(() => {
+          applyTheme()
+        }).ready.then(() => {
+          // Animate circular clip-path expanding from click point
+          document.documentElement.animate(
+            {
+              clipPath: [
+                `circle(0px at ${clickX}px ${clickY}px)`,
+                `circle(${maxRadius}px at ${clickX}px ${clickY}px)`
+              ]
+            },
+            {
+              duration: 1000,
+              easing: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)', // Smooth, gradual expansion
+              pseudoElement: '::view-transition-new(root)'
+            }
+          )
+        })
+      } catch {
+        // Fallback: Apply theme instantly if view transition fails
+        applyTheme()
+      }
+    } else {
+      // Fallback: Apply theme instantly for unsupported browsers
+      applyTheme()
+    }
   }
 
   const handleNext = () => {
@@ -203,13 +247,13 @@ export function OnboardingPage() {
                 <div className="flex flex-col gap-4 max-w-sm">
                   <div className="relative flex bg-muted/60 p-2 rounded-3xl border border-border/40 shadow-inner overflow-hidden">
                     <button
-                      onClick={() => handleThemeChange("light")}
+                      onClick={(e) => handleThemeChange("light", e)}
                       className={`flex items-center justify-center gap-3 flex-1 py-4 px-6 rounded-2xl transition-all duration-300 relative z-10 font-black text-[15px] ${!isDark ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
                     >
                       <Sun className={`w-5 h-5 ${!isDark ? 'text-primary' : ''}`} /> light
                     </button>
                     <button
-                      onClick={() => handleThemeChange("dark")}
+                      onClick={(e) => handleThemeChange("dark", e)}
                       className={`flex items-center justify-center gap-3 flex-1 py-4 px-6 rounded-2xl transition-all duration-300 relative z-10 font-black text-[15px] ${isDark ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
                     >
                       <Moon className={`w-5 h-5 ${isDark ? 'text-primary' : ''}`} /> dark

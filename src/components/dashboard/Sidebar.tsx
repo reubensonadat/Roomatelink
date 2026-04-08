@@ -1,4 +1,4 @@
-import { useLocation, Link } from "react-router-dom";
+ import { useLocation, Link } from "react-router-dom";
 import { Users, MessageCircle, User, Settings, CheckCircle2 } from 'lucide-react';
 import { cn } from "../../lib/utils";
 import { useAuth } from "../../context/AuthContext";
@@ -23,9 +23,11 @@ export function Sidebar() {
       {/* Brand */}
       <div className="flex flex-col mb-10 px-2">
         <Link to="/dashboard" className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity">
-          <div className="w-9 h-9 bg-card rounded-[10px] flex items-center justify-center shadow-xs overflow-hidden p-[5px] border border-border/50">
-            <img src="/logo.png" alt="Roommate Link" className="w-full h-full object-contain" />
-          </div>
+          <img
+            src="/logo.png"
+            alt="Roommate Link"
+            className="w-9 h-9 object-contain rounded-[10px] bg-card shadow-xs p-[5px] border border-border/50"
+          />
           <span className="font-bold text-lg tracking-tight text-foreground">Roommate Link</span>
         </Link>
       </div>

@@ -33,15 +33,60 @@ export function SettingsPage() {
   const [isVerifying, setIsVerifying] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
 
-  const toggleTheme = () => {
+  const toggleTheme = (event?: React.MouseEvent<HTMLButtonElement>) => {
     const newTheme = theme === 'dark' ? 'light' : 'dark';
-    setTheme(newTheme);
-    if (newTheme === 'dark') {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
+
+    // Core theme toggle logic
+    const applyTheme = () => {
+      setTheme(newTheme);
+      if (newTheme === 'dark') {
+        document.documentElement.classList.add('dark');
+        localStorage.setItem('theme', 'dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+        localStorage.setItem('theme', 'light');
+      }
+    };
+
+    // Check if View Transitions API is supported
+    if (typeof document.startViewTransition === 'function' && event) {
+      try {
+        // Calculate click position for circular wipe origin
+        const clickX = event.clientX;
+        const clickY = event.clientY;
+
+        // Calculate maximum radius to cover entire screen with buffer
+        const maxRadius = Math.hypot(
+          Math.max(clickX, window.innerWidth - clickX),
+          Math.max(clickY, window.innerHeight - clickY)
+        ) * 1.5; // Add 50% buffer to ensure full coverage
+
+        // Start the view transition
+        document.startViewTransition(() => {
+          applyTheme();
+        }).ready.then(() => {
+          // Animate circular clip-path expanding from click point
+          document.documentElement.animate(
+            {
+              clipPath: [
+                `circle(0px at ${clickX}px ${clickY}px)`,
+                `circle(${maxRadius}px at ${clickX}px ${clickY}px)`
+              ]
+            },
+            {
+              duration: 1000,
+              easing: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)', // Smooth, gradual expansion
+              pseudoElement: '::view-transition-new(root)'
+            }
+          );
+        });
+      } catch {
+        // Fallback: Apply theme instantly if view transition fails
+        applyTheme();
+      }
     } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
+      // Fallback: Apply theme instantly for unsupported browsers
+      applyTheme();
     }
   };
 
@@ -199,12 +244,12 @@ export function SettingsPage() {
           <section>
             <h2 className="text-[12px] font-bold text-muted-foreground uppercase tracking-widest pl-1 mb-3">Account</h2>
             <div className="bg-card rounded-4xl shadow-premium border border-border flex flex-col p-2 gap-1 overflow-hidden">
-              
+
               <ActionButton
                 icon={theme === 'dark' ? <Sun className="w-5 h-5 text-foreground" /> : <Moon className="w-5 h-5 text-foreground" />}
                 title="Theme"
                 subtitle={theme === 'dark' ? 'Dark Mode' : 'Light Mode'}
-                onClick={toggleTheme}
+                onClick={(e) => toggleTheme(e)}
               />
 
               <ActionButton
