@@ -143,13 +143,6 @@ export function DashboardPage() {
             transition={{ duration: 1.8, repeat: Infinity, ease: [0.4, 0, 0.2, 1] }}
             className="absolute inset-[12px] rounded-full border-[2px] border-transparent border-t-indigo-400/60"
           />
-          
-          {/* Center Icon */}
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-20 h-20 bg-card/80 rounded-full flex items-center justify-center shadow-2xl border border-border/60 backdrop-blur-xl">
-              <Sparkles className="w-10 h-10 text-indigo-600 animate-pulse" />
-            </div>
-          </div>
         </div>
 
         <motion.div
