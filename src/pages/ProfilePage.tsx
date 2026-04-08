@@ -92,6 +92,7 @@ export function ProfilePage() {
   const [hasQuestionnaire, setHasQuestionnaire] = useState<boolean | null>(null)
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [isProfileLocked, setIsProfileLocked] = useState(false)
 
 
 
@@ -109,9 +110,11 @@ export function ProfilePage() {
       if (profile.avatar_url) setSelectedAvatar(profile.avatar_url)
       if (profile.gender) {
         setGender(profile.gender === 'MALE' ? 'M' : 'F')
+        setIsProfileLocked(true)
       }
       if (profile.gender_pref) {
         setMatchPref(profile.gender_pref === 'SAME_GENDER' ? 'same' : 'any')
+        setIsProfileLocked(true)
       }
       if (profile.status) setMatchingStatus(profile.status)
 
@@ -140,9 +143,9 @@ export function ProfilePage() {
     }
   }
 
-  const isComplete = gender && level && matchPref && displayName.trim().length > 0 && phone.trim().length >= 10
-  const isGenderLocked = !!profile?.gender
-  const isPrefLocked = !!profile?.gender_pref
+  const isComplete = (isProfileLocked || (gender && matchPref)) && level && displayName.trim().length > 0 && phone.trim().length >= 10
+  const isGenderLocked = isProfileLocked || !!profile?.gender
+  const isPrefLocked = isProfileLocked || !!profile?.gender_pref
 
   const handleSave = async (isConfirmed = false) => {
     if (!isComplete || isSaving || !user) return
@@ -168,8 +171,8 @@ export function ProfilePage() {
         level: parseInt(level as string) || null,
         bio: bio,
         avatar_url: selectedAvatar || '',
-        gender: gender === 'M' ? 'MALE' : 'FEMALE',
-        gender_pref: matchPref === 'same' ? 'SAME_GENDER' : 'ANY_GENDER',
+        gender: gender ? (gender === 'M' ? 'MALE' : 'FEMALE') : null,
+        gender_pref: matchPref ? (matchPref === 'same' ? 'SAME_GENDER' : 'ANY_GENDER') : null,
         status: matchingStatus
       }
 
@@ -209,6 +212,7 @@ export function ProfilePage() {
         setSyncStep(1)
         setSyncProgress(60)
         await refreshProfile()
+        setIsProfileLocked(true)
 
         // Step 3: Finalizing
         setSyncStep(2)

@@ -186,6 +186,12 @@ Users who do not wish to upload a photo may select from a curated grid of ten hi
 •	The Quiet One — Minimal, calm, introspective
 
 Avatars serve a secondary function: they signal to matches that this person values privacy and personality-first evaluation. That itself is compatibility information.
+
+3.5 — Auth Lifecycle: Handshake & Resurrection
+Authentication is handled via a **Zero-Flicker Handshake** model designed to eliminate loading flashes on PWA cold starts:
+• **Synchronous Hydration**: On mount, the Auth Provider reads the Supabase session from `localStorage` *synchronously* before the first render. This allows the app to render the private Dashboard immediately without waiting for a server round-trip.
+• **Proactive Resurrection**: We listen for the browser's `visibilitychange` event. When the user wakes their phone or switches back to the app, we immediately call `refreshProfile()` to resurrect the session.
+• **The Inactivity Watchdog**: To ensure shared-device security, a background watchdog monitors client-side activity. If no interaction (scroll, click, keydown) is detected for 15 minutes, the user is automatically logged out.
  
 4. Detailed User Flows
 
@@ -232,7 +238,7 @@ The Edge Function:
 3. Fetches ALL active users' answers from questionnaire_responses
 4. Runs calculateMatchesForUser() (pure TypeScript math, zero external dependencies)
 5. Inserts visible matches into the matches table
-6. Returns the top matches to the frontend
+6. Blind Trigger Handshake: Function returns 200 OK immediately; UI relies on Realtime/Refresh to display matches.
 
 While this runs (typically 2-5 seconds), the user sees the animated sequence:
 • "Analysing your sleep and study habits..."
@@ -271,10 +277,10 @@ Real-time chat powered by Supabase WebSockets — unchanged from v1.0.
 
 • Only paid users can initiate or receive messages
 • Message delivery via Firebase Cloud Messaging push notifications
-• Message lifecycle (PENDING → SENT → DELIVERED → READ) tracked in the messages table
+• Message lifecycle (PENDING → SENT → DELIVERED → READ) tracked via the single 'status' column
 • No phone number or external contact exchange facilitated in the app
 
-Implementation Change: The message status updates now happen via Supabase Realtime subscriptions in the React frontend, not through Next.js server actions. When a message is inserted, the sender subscribes to real-time updates on that message row to watch for read/delivery status changes.
+Implementation Change (The resurrection pattern): The message status updates happen via Supabase Realtime subscriptions. To handle PWA backgrounding, the system uses **Foreground Delta Sync**—whenever the app regains focus or visibility, it performs a targeted fetch of all messages with a timestamp later than the last cached message to catch up on missed websocket events.
 4.4 Phase 4 — Resolution
 Found Roommate Prompts
 The platform prompts users to confirm their roommate search status at three strategic points rather than relying on voluntary self-reporting:
@@ -772,8 +778,7 @@ sender_id	uuid, FK to users
 receiver_id	uuid, FK to users
 content	text, NOT NULL
 created_at	timestamp, default now()
-is_read	boolean, default false
-is_delivered	boolean, default false — true when FCM notification confirmed
+status     enum — (PENDING, SENT, DELIVERED, READ)
 
 7.5 Entity: reports
 Column	Type & Notes
@@ -798,6 +803,12 @@ Matching Algorithm	Pure TypeScript, executed inside Supabase Edge Function (Deno
 Payment Init (Client)	Paystack JS popup with PUBLIC key only — runs in the browser
 Payment Webhook (Server)	Supabase Edge Function — Verifies signature via Web Crypto API, updates DB with SECRET key
 Push Notifications	Firebase Cloud Messaging (FCM) — Free, works when app is closed
+
+8.1 Architectural Performance Patterns
+To maintain the "Boutique" high-fidelity feel without the overhead of massive state libraries:
+• **The useRef Rule**: Frequent updates that do not impact layout (e.g., Last Activity timestamps, background timers) MUST be stored in `useRef` rather than `useState`. This prevents unnecessary component re-renders that would otherwise tear down and rebuild global providers.
+• **maybeSingle() over single()**: When fetching profiles during onboarding, we always use `.maybeSingle()` to prevent 406 "Not Acceptable" errors from breaking the initialization flow when a profile record does not yet exist.
+• **Proactive Error Hard-Cap**: All global loading states (Auth, Dashboard) have a 6-second hard-coded failsafe. If the network hangs, the app forces a transition to the error state or becomes interactive with cached data rather than hanging indefinitely.
 Styling	Tailwind CSS — Utility-first, consistent with Indigo/Violet design system
 Hosting (Frontend)	Cloudflare Pages — Static site hosting, deploys React/Vite build in seconds
 Hosting (Backend)	Supabase Edge Functions — Serverless Deno, triggered by frontend calls and DB webhooks
