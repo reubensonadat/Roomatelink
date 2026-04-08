@@ -3,7 +3,7 @@ import { AlertTriangle, UserX, Flag, Check } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
-import { ModalShell } from './ModalShell'
+import { ModalShell } from '../ui/ModalShell'
 
 interface ReportModalProps {
   isOpen: boolean

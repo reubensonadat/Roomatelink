@@ -2,11 +2,10 @@ import { motion } from 'framer-motion'
 import { Flame } from 'lucide-react'
 
 interface PioneerBannerProps {
-  isPioneerUser: boolean
   handlePioneerClaim: () => void
 }
 
-export function PioneerBanner({ isPioneerUser, handlePioneerClaim }: PioneerBannerProps) {
+export function PioneerBanner({ handlePioneerClaim }: PioneerBannerProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: -20 }}

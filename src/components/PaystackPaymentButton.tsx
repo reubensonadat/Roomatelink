@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 interface PaystackPaymentButtonProps {
   email: string
   amount: number
+  promoCode?: string
   onSuccess: (reference: any) => void
   onClose: () => void
   className?: string
@@ -15,6 +16,7 @@ interface PaystackPaymentButtonProps {
 export default function PaystackPaymentButton({
   email,
   amount,
+  promoCode,
   onSuccess,
   onClose,
   className,
@@ -33,8 +35,9 @@ export default function PaystackPaymentButton({
     paystack.newTransaction({
       key: paystackKey,
       email: email,
-      amount: amount * 100, // Paystack expects amount in pesewas (GHS 25 = 2500)
+      amount: amount * 100, // Paystack expects amount in pesewas (e.g., GHS 25 = 2500)
       currency: 'GHS',
+      metadata: { promoCode }, // Pass promo code for webhook verification
       onSuccess: (transaction: any) => {
         // console.log('Transaction Successful:', transaction.reference)
         onSuccess(transaction)

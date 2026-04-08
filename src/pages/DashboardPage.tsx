@@ -3,7 +3,6 @@ import { Sparkles, UserCheck } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
-import { supabase } from '../lib/supabase'
 import { PullToRefresh } from '../components/PullToRefresh'
 import { useAuth } from '../context/AuthContext'
 import { MatchFeed } from '../components/dashboard/MatchFeed'
@@ -11,8 +10,8 @@ import { ProfilePreviewModal } from '../components/dashboard/ProfilePreviewModal
 import { PaymentModal } from '../components/dashboard/PaymentModal'
 import { PioneerModal } from '../components/dashboard/PioneerModal'
 import { PaymentVerificationOverlay } from '../components/dashboard/PaymentVerificationOverlay'
-import { ReportModal } from '../components/ui/ReportModal'
-import { FoundRoommateModal } from '../components/ui/FoundRoommateModal'
+import { ReportModal } from '../components/dashboard/ReportModal'
+import { FoundRoommateModal } from '../components/dashboard/FoundRoommateModal'
 import { TopHeader } from '../components/layout/TopHeader'
 import { PioneerBanner } from '../components/dashboard/PioneerBanner'
 import { EmptyState } from '../components/dashboard/EmptyState'
@@ -20,41 +19,13 @@ import { UserFlowGate } from '../components/dashboard/UserFlowGate'
 import { useDashboardData } from '../hooks/useDashboardData'
 import { usePaymentFlow } from '../hooks/usePaymentFlow'
 import { useUserFlowStatus } from '../hooks/useUserFlowStatus'
-
-// ─── Types ────────────────────────────────────────────────────
-
-type CategoryScore = { name: string; score: number; insight: string }
-
-interface MatchProfile {
-  id: string
-  name: string
-  verified: boolean
-  matchPercent: number
-  gender: string
-  course: string
-  level: string
-  avatar: string
-  bio: string
-  trait: string
-  lifestyle: { icon: any; text: string }[]
-  tags: string[]
-  sharedTraits: string[]
-  tensions: string[]
-  categoryScores: CategoryScore[]
-}
-
-// ─── Helpers ────────────────────────────────────────────────────
-
-function getTierInfo(pct: number) {
-  if (pct >= 90) return { label: 'Exceptional', color: 'text-emerald-500', stroke: '#10b981', textColor: 'text-emerald-600 dark:text-emerald-400', bgLight: 'bg-emerald-500/10', icon: '🔥' }
-  if (pct >= 80) return { label: 'Strong', color: 'text-green-500', stroke: '#22c55e', textColor: 'text-green-600 dark:text-green-400', bgLight: 'bg-green-500/10', icon: '💚' }
-  if (pct >= 70) return { label: 'Good', color: 'text-amber-500', stroke: '#f59e0b', textColor: 'text-amber-600 dark:text-amber-400', bgLight: 'bg-amber-500/10', icon: '💛' }
-  return { label: 'Potential', color: 'text-slate-400', stroke: '#94a3b8', textColor: 'text-slate-500 dark:text-slate-400', bgLight: 'bg-slate-400/10', icon: '⚪' }
-}
+import { useFoundRoommatePrompt } from '../hooks/useFoundRoommatePrompt'
+import { getTierInfo } from '../lib/utils'
+import { MatchProfile } from '../types/database'
 
 
 export function DashboardPage() {
-  const { user, profile, refreshProfile } = useAuth()
+  const { user, refreshProfile } = useAuth()
 
   // Use custom hooks for extracted logic
   const {
@@ -64,11 +35,8 @@ export function DashboardPage() {
     isPioneerUser,
     initializeDashboard,
     forceRecalculate,
-    incrementDevClickCount,
     isDevMode,
     isRecalculating,
-    setMatches,
-    setIsLoading,
   } = useDashboardData()
 
   const {
@@ -98,59 +66,27 @@ export function DashboardPage() {
     handlePaymentFallbackCheck,
     handlePioneerClaim,
     handleStartPayment,
-    handleStartUnlock,
     handleCancelVerification,
   } = usePaymentFlow()
 
-  // Modal states (kept in DashboardPage for now)
+  // Modal states (kept in DashboardPage orchestrator)
   const [isReportModalOpen, setIsReportModalOpen] = useState(false)
-  const [isFoundRoommateModalOpen, setIsFoundRoommateModalOpen] = useState(false)
   const [selectedMatch, setSelectedMatch] = useState<MatchProfile | null>(null)
   const [displayLimit, setDisplayLimit] = useState(10)
-  const [currentDayNumber, setCurrentDayNumber] = useState<number | null>(null)
-  const [profileFoundRoommate, setProfileFoundRoommate] = useState(false)
   const [mounted, setMounted] = useState(false)
+
+  // Found Roommate Prompt Hook
+  const {
+    isModalOpen: isFoundRoommateModalOpen,
+    dayNumber: currentDayNumber,
+    handleConfirm: handleFoundRoommateConfirm,
+    handleClose: handleFoundRoommateClose,
+  } = useFoundRoommatePrompt()
 
   // Mounted effect
   useEffect(() => {
     setMounted(true)
   }, [])
-
-  // ─── Found Roommate Logic Effects ─────────────────────────────
-  useEffect(() => {
-    if (profileFoundRoommate) return
-
-    const PROFILE_CREATED_KEY = 'roommate_profile_created_date'
-    const PROFILE_FOUND_KEY = 'roommate_found_roommate'
-    const PROMPT_SHOWN_KEY = 'roommate_prompt_shown'
-
-    const profileCreatedStr = localStorage.getItem(PROFILE_CREATED_KEY)
-    const foundStatus = localStorage.getItem(PROFILE_FOUND_KEY)
-
-    if (foundStatus === 'true') {
-      setProfileFoundRoommate(true)
-      return
-    }
-
-    if (!profileCreatedStr) {
-      localStorage.setItem(PROFILE_CREATED_KEY, Date.now().toString())
-      return
-    }
-
-    const profileCreatedDate = parseInt(profileCreatedStr)
-    const daysSinceCreation = Math.floor((Date.now() - profileCreatedDate) / (1000 * 60 * 60 * 24))
-    const promptShownStr = localStorage.getItem(PROMPT_SHOWN_KEY)
-    const lastShownDay = promptShownStr ? parseInt(promptShownStr) : -1
-
-    const promptIntervals = [7, 30, 50]
-    const targetDay = promptIntervals.find(day => daysSinceCreation >= day && lastShownDay < day)
-
-    if (targetDay) {
-      setCurrentDayNumber(targetDay)
-      setIsFoundRoommateModalOpen(true)
-      localStorage.setItem(PROMPT_SHOWN_KEY, targetDay.toString())
-    }
-  }, [profileFoundRoommate])
 
   // ─── Unlock Animation Effect ───────────────────────────────────
   useEffect(() => {
@@ -164,16 +100,6 @@ export function DashboardPage() {
   const handleSelectMatch = (match: MatchProfile) => {
     if (hasPaid || isPioneerUser) setSelectedMatch(match)
     else handleStartPayment()
-  }
-
-  const handleFoundRoommateConfirm = async () => {
-    if (!profile) return
-    const { error } = await supabase.from('users').update({ is_matched: true }).eq('id', profile.id)
-    if (!error) {
-      setIsFoundRoommateModalOpen(false)
-      setCurrentDayNumber(null)
-      toast.success('Status updated!')
-    }
   }
 
   const handleReportModalOpen = () => setIsReportModalOpen(true)
@@ -260,7 +186,7 @@ export function DashboardPage() {
 
         <div className="flex flex-col px-4 sm:px-5 pt-6 pb-40 w-full max-w-2xl lg:max-w-4xl mx-auto">
           {isPioneerUser && !hasPaid && (
-            <PioneerBanner isPioneerUser={isPioneerUser} handlePioneerClaim={handlePioneerClaim} />
+            <PioneerBanner handlePioneerClaim={handlePioneerClaim} />
           )}
 
           <AnimatePresence mode="wait">
@@ -411,7 +337,7 @@ export function DashboardPage() {
 
       <PioneerModal isOpen={isPioneerModalOpen} onClose={() => setIsPioneerModalOpen(false)} onClaim={handlePioneerClaim} />
       <ReportModal isOpen={isReportModalOpen} onClose={() => setIsReportModalOpen(false)} reportedName={selectedMatch?.name || ''} reportedId={selectedMatch?.id || ''} />
-      {currentDayNumber && <FoundRoommateModal isOpen={isFoundRoommateModalOpen} onClose={() => setIsFoundRoommateModalOpen(false)} onConfirm={handleFoundRoommateConfirm} dayNumber={currentDayNumber} />}
+      {currentDayNumber !== null && <FoundRoommateModal isOpen={isFoundRoommateModalOpen} onClose={handleFoundRoommateClose} onConfirm={handleFoundRoommateConfirm} dayNumber={currentDayNumber} />}
     </div>
   )
 }

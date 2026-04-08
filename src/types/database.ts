@@ -3,6 +3,25 @@ export type GenderPref = 'SAME_GENDER' | 'ANY_GENDER';
 export type UserStatus = 'ACTIVE' | 'COMPLETED' | 'EXPIRED' | 'HIDDEN' | 'SUSPENDED';
 export type MessageStatus = 'PENDING' | 'SENT' | 'DELIVERED' | 'READ';
 export type ReportStatus = 'PENDING' | 'REVIEWED' | 'ACTIONED' | 'DISMISSED';
+export type CategoryScore = { name: string; score: number; insight: string };
+
+export interface MatchProfile {
+  id: string;
+  name: string;
+  verified: boolean;
+  matchPercent: number;
+  gender: Gender;
+  course: string;
+  level: string;
+  avatar: string;
+  bio: string;
+  trait: string;
+  lifestyle: { icon: any; text: string }[];
+  tags: string[];
+  sharedTraits: string[];
+  tensions: string[];
+  categoryScores: CategoryScore[];
+}
 
 export interface UserProfile {
   id: string; // uuid

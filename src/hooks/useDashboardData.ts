@@ -3,28 +3,7 @@ import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
 import { useAuth } from '../context/AuthContext'
 import { MOCK_MATCHES } from '../lib/mockData'
-
-// ─── Types ────────────────────────────────────────────────────────────
-
-type CategoryScore = { name: string; score: number; insight: string }
-
-interface MatchProfile {
-  id: string
-  name: string
-  verified: boolean
-  matchPercent: number
-  gender: string
-  course: string
-  level: string
-  avatar: string
-  bio: string
-  trait: string
-  lifestyle: { icon: any; text: string }[]
-  tags: string[]
-  sharedTraits: string[]
-  tensions: string[]
-  categoryScores: CategoryScore[]
-}
+import { MatchProfile } from '../types/database'
 
 interface UseDashboardDataReturn {
   matches: MatchProfile[]

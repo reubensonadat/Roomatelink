@@ -174,6 +174,7 @@ export function PaymentModal({
                   <PaystackPaymentButton
                     email={email}
                     amount={finalPrice}
+                    promoCode={discountCode}
                     onSuccess={onPaymentSuccess}
                     onClose={onPaymentClose}
                     className="w-full h-[72px] bg-foreground text-background font-black rounded-[22px] shadow-2xl hover:bg-primary hover:text-white transition-all active:scale-[0.98] text-[17px] flex items-center justify-center gap-4 uppercase tracking-[0.3em] border border-white/5 group"

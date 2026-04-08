@@ -7,6 +7,8 @@ import { toast } from 'sonner'
 import { useAuth } from '../context/AuthContext'
 import { ModalShell } from '../components/ui/ModalShell'
 import { TopHeader } from '../components/layout/TopHeader'
+import { FormInput } from '../components/ui/FormInput'
+import { PillToggle } from '../components/ui/PillToggle'
 
 const avatars = {
   M: [
@@ -181,7 +183,7 @@ export function ProfilePage() {
         // Step 1: Handshake
         setSyncStep(0)
         setSyncProgress(25)
-        
+
         if (profileId) {
           const { error } = await withTimeout(
             supabase.from('users').update(profileData).eq('id', profileId),
@@ -201,16 +203,16 @@ export function ProfilePage() {
           )
           if (error) throw error
         }
-        
+
         // Step 2: Verification
         setSyncStep(1)
         setSyncProgress(60)
         await refreshProfile()
-        
+
         // Step 3: Finalizing
         setSyncStep(2)
         setSyncProgress(100)
-        
+
         // Boutique delay for visual confirmation
         await new Promise(r => setTimeout(r, 800))
       }
@@ -219,7 +221,7 @@ export function ProfilePage() {
         performSync,
         3,
         2000,
-        (attempt) => toast.info(`Sync Interrupted. Reconnecting... (Attempt ${4-attempt}/3)`)
+        (attempt) => toast.info(`Sync Interrupted. Reconnecting... (Attempt ${4 - attempt}/3)`)
       )
 
       // If matching-relevant fields changed, trigger match recalculation in background
@@ -234,7 +236,7 @@ export function ProfilePage() {
                 'Authorization': `Bearer ${session.access_token}`
               },
               body: JSON.stringify({ userId: profileId })
-            }).catch(() => {}) // Fire-and-forget, don't block navigation
+            }).catch(() => { }) // Fire-and-forget, don't block navigation
             toast.info('Recalculating your matches with updated preferences...')
           }
         } catch {
@@ -290,9 +292,9 @@ export function ProfilePage() {
     <div className="flex flex-col w-full min-h-screen bg-background relative selection:bg-indigo-100 dark:selection:bg-indigo-500/30">
       <AnimatePresence>
         {isSaving && (
-          <motion.div 
-            initial={{ opacity: 0 }} 
-            animate={{ opacity: 1 }} 
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[100] bg-background/80 backdrop-blur-xl flex flex-col items-center justify-center p-6 text-center"
           >
@@ -318,7 +320,7 @@ export function ProfilePage() {
 
               {/* Progress Bar */}
               <div className="relative w-full h-2 bg-muted rounded-full overflow-hidden border border-border/40">
-                <motion.div 
+                <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${syncProgress}%` }}
                   transition={{ type: "spring", stiffness: 50, damping: 20 }}
@@ -376,32 +378,28 @@ export function ProfilePage() {
           <section>
             <h3 className="px-5 text-[11px] font-black text-muted-foreground uppercase tracking-widest mb-3">Institutional Creds</h3>
             <div className="bg-card rounded-boutique shadow-sm border border-border p-6 space-y-6">
-              <div>
-                <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Academic Programme</label>
-                <input
-                  type="text"
-                  value={course}
-                  onChange={(e) => setCourse(e.target.value)}
-                  placeholder="e.g. Information Technology"
-                  className="w-full px-5 py-3.5 bg-muted border border-border rounded-xl text-foreground font-bold text-sm focus:outline-none focus:border-primary transition-all placeholder:text-muted-foreground/50"
-                />
-              </div>
+              <FormInput
+                id="course"
+                label="Academic Programme"
+                type="text"
+                value={course}
+                onChange={(e) => setCourse(e.target.value)}
+                placeholder="e.g. Information Technology"
+              />
               <div>
                 <label className="text-xs font-semibold text-muted-foreground mb-2.5 block">Current Level</label>
-                <div className="flex flex-wrap gap-2">
-                  {['100', '200', '300', '400', '500', '600'].map(lvl => (
-                    <button
-                      key={lvl}
-                      onClick={() => setLevel(lvl as any)}
-                      className={`w-14 py-2.5 rounded-xl text-sm font-bold transition-all border ${level === lvl
-                        ? 'bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/20'
-                        : 'bg-muted text-muted-foreground border-muted hover:bg-accent'
-                        }`}
-                    >
-                      {lvl}
-                    </button>
-                  ))}
-                </div>
+                <PillToggle
+                  options={[
+                    { value: '100', label: '100' },
+                    { value: '200', label: '200' },
+                    { value: '300', label: '300' },
+                    { value: '400', label: '400' },
+                    { value: '500', label: '500' },
+                    { value: '600', label: '600' },
+                  ]}
+                  value={level || ''}
+                  onChange={(val) => setLevel(val as any)}
+                />
               </div>
             </div>
           </section>
@@ -412,24 +410,24 @@ export function ProfilePage() {
             <div className="bg-card rounded-boutique shadow-sm border border-border overflow-hidden">
 
               <div className="px-5 py-4 border-b border-border">
-                <label className="text-xs font-semibold text-muted-foreground mb-2 block">Full Name</label>
-                <input
+                <FormInput
+                  id="displayName"
+                  label="Full Name"
                   type="text"
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
                   placeholder="e.g. John Doe"
-                  className="w-full px-5 py-3.5 bg-muted border border-border rounded-xl text-foreground font-bold text-sm focus:outline-none focus:border-primary transition-all placeholder:text-muted-foreground/50"
                 />
               </div>
 
               <div className="px-5 py-4 border-b border-border">
-                <label className="text-xs font-semibold text-muted-foreground mb-2 block">Phone Number</label>
-                <input
+                <FormInput
+                  id="phone"
+                  label="Phone Number"
                   type="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="e.g. 054 165 1298"
-                  className="w-full px-5 py-3.5 bg-muted border border-border rounded-xl text-foreground font-bold text-sm focus:outline-none focus:border-primary transition-all placeholder:text-muted-foreground/50"
                 />
                 <div className="mt-3 bg-muted/30 border border-border/40 rounded-xl p-4 flex items-start">
                   <Check size={16} className="text-primary mt-0.5 mr-3 shrink-0" />
@@ -444,12 +442,12 @@ export function ProfilePage() {
                   <label className="text-xs font-semibold text-muted-foreground">Short Bio</label>
                   <span className="text-[10px] text-muted-foreground/50 uppercase tracking-wider font-extrabold">Optional</span>
                 </div>
-                <input
+                <FormInput
+                  id="bio"
                   type="text"
                   value={bio}
                   onChange={(e) => setBio(e.target.value)}
                   placeholder="Tell us about yourself..."
-                  className="w-full px-5 py-3.5 bg-muted border border-border rounded-xl text-foreground font-bold text-sm focus:outline-none focus:border-primary transition-all placeholder:text-muted-foreground/50"
                 />
               </div>
 
@@ -643,7 +641,7 @@ export function ProfilePage() {
           <div className="w-20 h-20 bg-amber-500/10 rounded-full flex items-center justify-center ring-2 ring-amber-500/20">
             <ShieldCheck className="w-10 h-10 text-amber-600" />
           </div>
-          
+
           <div className="space-y-4">
             <h4 className="text-xl font-black text-foreground tracking-tight">Final Confirmation Required</h4>
             <p className="text-sm font-semibold text-muted-foreground leading-relaxed">
@@ -667,7 +665,7 @@ export function ProfilePage() {
               onClick={() => setIsConfirmModalOpen(false)}
               className="w-full py-4 bg-muted text-foreground font-bold text-sm rounded-[22px] hover:bg-muted/80 active:scale-95 transition-all"
             >
-                Wait, let me review
+              Wait, let me review
             </button>
           </div>
         </div>

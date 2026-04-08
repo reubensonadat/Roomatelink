@@ -37,6 +37,9 @@ interface PaystackWebhookEvent {
     reference: string
     status: string
     paid_at: string
+    metadata?: {
+      promo_code?: string
+    }
   }
 }
 
@@ -61,7 +64,7 @@ Deno.serve(async (req: Request) => {
 
       console.log('Manual verification requested for:', email)
 
-      // 1. Fetch transactions from Paystack for this email
+      //1. Fetch transactions from Paystack for this email
       const paystackRes = await fetch(`https://api.paystack.co/transaction?customer=${email}`, {
         headers: {
           Authorization: `Bearer ${paystackSecretKey}`,
@@ -84,7 +87,7 @@ Deno.serve(async (req: Request) => {
       )
 
       if (successfulTx) {
-        // 3. Update the user in Supabase
+        // 3. Update user in Supabase
         const { error: updateError } = await supabase
           .from('users')
           .update({
@@ -131,7 +134,7 @@ Deno.serve(async (req: Request) => {
       
       const computedSig = await crypto.subtle.sign('HMAC', key, encoder.encode(rawBody))
       const expectedSig = Array.from(new Uint8Array(computedSig)).map(b => b.toString(16).padStart(2, '0')).join('')
-
+      
       if (expectedSig !== signature) {
         console.error('Invalid Paystack signature')
         return new Response('Invalid signature', { status: 401 })
@@ -140,17 +143,31 @@ Deno.serve(async (req: Request) => {
       // 4. Parse webhook event
       const event: PaystackWebhookEvent = JSON.parse(rawBody)
       console.log('Paystack webhook received:', event.event, 'Reference:', event.data.reference)
-
+      
       // 5. Handle successful payment
       if (event.event === 'charge.success') {
-        const { customer, reference, amount, paid_at } = event.data
+        const { customer, reference, amount, paid_at, metadata } = event.data
 
-        // CRITICAL FIX: Verify the payload amount meets the minimum 15 GHS threshold (in pesewas)
-        if (amount < 2500) { // Assuming 25 GHS is the price, wait, verify GET says '1500 // Min fee is 15 GHS'. Let's use 1500 to match the GET logic exactly.
-          if (amount < 1500) {
-            console.error(`Invalid Payment Amount: ${amount} is less than the required 1500 limit.`)
-            return new Response('Invalid amount', { status: 400 })
-          }
+        // SECURITY: Verify exact expected amount based on promo code
+        const promoCode = metadata?.promo_code
+        let expectedAmount = 2500 // Default: 25 GHS in pesewas
+
+        if (promoCode) {
+          // Query promo_codes table for discount amount
+          const { data: promo } = await supabase
+            .from('promo_codes')
+            .select('discount_amount')
+            .eq('code', promoCode.toUpperCase())
+            .maybeSingle()
+
+          const discount = promo?.discount_amount || 0
+          expectedAmount = (25 - discount) * 100 // Calculate exact expected amount
+        }
+
+        // Verify EXACT amount match (not just minimum threshold)
+        if (amount !== expectedAmount) {
+          console.error(`Invalid Payment Amount: ${amount} does not match expected ${expectedAmount}`)
+          return new Response('Invalid amount', { status: 400 })
         }
 
         const { data: user } = await supabase

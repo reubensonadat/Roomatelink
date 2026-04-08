@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Smartphone, ChevronRight, Monitor, Laptop, X, ShieldCheck, Zap } from 'lucide-react'
+import { Smartphone, ChevronRight, Monitor, X, ShieldCheck, Zap } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 const SafariShareIcon = () => (

@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { Shield, EyeOff, Lock, Users, ChevronLeft, ArrowRight } from 'lucide-react'
+import { Shield, EyeOff, Lock, Users, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { UserGroupIcon } from '../components/ui/CustomIcons'
 
@@ -181,7 +181,7 @@ export function PrivacyPage() {
             onClick={() => navigate('/support')}
             className="inline-flex items-center gap-3 px-8 py-4 bg-foreground text-background rounded-2xl font-bold hover:scale-105 active:scale-95 transition-all shadow-lg shadow-foreground/10"
           >
-            Contact Transparency Team <ArrowRight className="w-4 h-4" />
+            Contact Transparency Team <ChevronRight className="w-4 h-4" />
           </button>
         </div>
       </main>

@@ -86,7 +86,9 @@ export function QuestionnairePage() {
         } else {
           setCurrentIndex(count)
         }
-      } catch { /* fresh start */ }
+      } catch { 
+        // Fresh start on catch
+      }
     }
 
     setReady(true)
@@ -155,7 +157,9 @@ export function QuestionnairePage() {
       audio.volume = 0.1
       audio.play().catch(() => {})
       if (navigator.vibrate) navigator.vibrate(10)
-    } catch (e) {}
+    } catch (_e) {
+      // Sound play error ignored
+    }
 
     const nextAnswers = { ...answers, [currentQ.id]: optionId }
     setAnswers(nextAnswers)
