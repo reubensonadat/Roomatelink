@@ -26,11 +26,11 @@ Deno.serve(async (req: Request) => {
 
     const authClient = createClient(
       supabaseUrl,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: authHeader } } }
+      Deno.env.get('SUPABASE_ANON_KEY')!
     )
 
-    const { data: { user }, error: authError } = await authClient.auth.getUser()
+    const token = authHeader.replace('Bearer ', '')
+    const { data: { user }, error: authError } = await authClient.auth.getUser(token)
     if (authError || !user) {
       throw new Error('Unauthorized or invalid token')
     }
@@ -67,8 +67,8 @@ Deno.serve(async (req: Request) => {
 
     // Force sync the database so it stops reporting 'false' structurally
     if (isPioneer) {
-      // Background update without blocking the response
-      adminClient.from('users').update({ is_pioneer: true }).eq('auth_id', user.id).then();
+      // Safely await the update so Deno doesn't abort it upon returning the response
+      await adminClient.from('users').update({ is_pioneer: true }).eq('auth_id', user.id);
     }
 
     return new Response(

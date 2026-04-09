@@ -91,8 +91,8 @@ export function ProfilePage() {
   const [syncProgress, setSyncProgress] = useState(0)
   const [hasQuestionnaire, setHasQuestionnaire] = useState<boolean | null>(null)
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false)
+  const [hasVerified, setHasVerified] = useState(false)
   const [mounted, setMounted] = useState(false)
-  const [isProfileLocked, setIsProfileLocked] = useState(false)
 
 
 
@@ -110,11 +110,9 @@ export function ProfilePage() {
       if (profile.avatar_url) setSelectedAvatar(profile.avatar_url)
       if (profile.gender) {
         setGender(profile.gender === 'MALE' ? 'M' : 'F')
-        setIsProfileLocked(true)
       }
       if (profile.gender_pref) {
         setMatchPref(profile.gender_pref === 'SAME_GENDER' ? 'same' : 'any')
-        setIsProfileLocked(true)
       }
       if (profile.status) setMatchingStatus(profile.status)
 
@@ -143,15 +141,16 @@ export function ProfilePage() {
     }
   }
 
-  const isComplete = (isProfileLocked || (gender && matchPref)) && level && displayName.trim().length > 0 && phone.trim().length >= 10
-  const isGenderLocked = isProfileLocked || !!profile?.gender
-  const isPrefLocked = isProfileLocked || !!profile?.gender_pref
+  const isComplete = gender && level && matchPref && displayName.trim().length > 0 && phone.trim().length >= 10
+  const isGenderLocked = !!profile?.gender
+  const isPrefLocked = !!profile?.gender_pref
 
   const handleSave = async (isConfirmed = false) => {
     if (!isComplete || isSaving || !user) return
 
     // Show confirmation modal for the FIRST sync of critical identity data
     if (!isGenderLocked && !isConfirmed) {
+      setHasVerified(false)
       setIsConfirmModalOpen(true)
       return
     }
@@ -171,8 +170,9 @@ export function ProfilePage() {
         level: parseInt(level as string) || null,
         bio: bio,
         avatar_url: selectedAvatar || '',
-        gender: gender ? (gender === 'M' ? 'MALE' : 'FEMALE') : null,
-        gender_pref: matchPref ? (matchPref === 'same' ? 'SAME_GENDER' : 'ANY_GENDER') : null,
+        // Only write gender/pref when user has explicitly chosen them (DB is now nullable)
+        ...(gender !== null && { gender: gender === 'M' ? 'MALE' : 'FEMALE' }),
+        ...(matchPref !== null && { gender_pref: matchPref === 'same' ? 'SAME_GENDER' : 'ANY_GENDER' }),
         status: matchingStatus
       }
 
@@ -212,7 +212,6 @@ export function ProfilePage() {
         setSyncStep(1)
         setSyncProgress(60)
         await refreshProfile()
-        setIsProfileLocked(true)
 
         // Step 3: Finalizing
         setSyncStep(2)
@@ -456,56 +455,80 @@ export function ProfilePage() {
                 />
               </div>
 
-              <div className="px-5 py-4 border-b border-border flex items-center justify-between">
-                <div className="flex flex-col">
+              <div className="px-5 py-4 border-b border-border flex items-center justify-between gap-4">
+                <div className="flex flex-col min-w-0">
                   <span className="text-xs font-bold text-muted-foreground">Biological Gender</span>
-                  {isGenderLocked && (
-                    <span className="text-[10px] text-amber-600 font-black uppercase tracking-widest flex items-center gap-1 mt-1 transition-all">
-                      <ShieldCheck size={10} strokeWidth={3} /> Identity Permanent
+                  {isGenderLocked ? (
+                    <span className="text-[10px] text-primary font-black uppercase tracking-widest flex items-center gap-1 mt-1">
+                      <ShieldCheck size={10} strokeWidth={3} /> Identity Sealed
                     </span>
-                  )}
+                  ) : !gender ? (
+                    <span className="text-[10px] text-amber-500 font-black uppercase tracking-widest flex items-center gap-1 mt-1 animate-pulse">
+                      ● Required to match
+                    </span>
+                  ) : null}
                 </div>
-                <div className={`flex bg-muted p-1.5 rounded-xl border border-border/50 shadow-inner ${isGenderLocked ? 'opacity-60 grayscale' : ''}`}>
-                  {(['M', 'F'] as const).map((opt) => (
-                    <button
-                      key={opt}
-                      onClick={() => !isGenderLocked && handleGenderChange(opt)}
-                      disabled={isGenderLocked}
-                      className={`px-5 py-2 flex-1 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${gender === opt
-                        ? 'bg-card text-primary shadow-md border border-border/80'
-                        : 'text-muted-foreground hover:text-foreground'
-                        }`}
-                    >
-                      {gender === opt && <Check size={13} className="stroke-[3]" />} {opt === 'M' ? 'Male' : 'Female'}
-                    </button>
-                  ))}
-                </div>
+
+                {isGenderLocked ? (
+                  <div className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/25 rounded-xl shrink-0 shadow-sm">
+                    <ShieldCheck size={13} className="text-primary shrink-0" strokeWidth={2.5} />
+                    <span className="text-xs font-black text-primary">{gender === 'M' ? 'Male' : 'Female'}</span>
+                    <span className="ml-1 text-[9px] font-extrabold uppercase tracking-widest text-primary/60 border border-primary/20 bg-primary/10 px-1.5 py-0.5 rounded-md">Sealed</span>
+                  </div>
+                ) : (
+                  <div className="flex bg-muted p-1.5 rounded-xl border border-border/50 shadow-inner shrink-0">
+                    {(['M', 'F'] as const).map((opt) => (
+                      <button
+                        key={opt}
+                        onClick={() => handleGenderChange(opt)}
+                        className={`px-5 py-2 flex-1 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${gender === opt
+                          ? 'bg-card text-primary shadow-md border border-border/80'
+                          : 'text-muted-foreground hover:text-foreground'
+                          }`}
+                      >
+                        {gender === opt && <Check size={13} className="stroke-[3]" />} {opt === 'M' ? 'Male' : 'Female'}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
-              <div className="px-5 py-4 flex items-center justify-between">
-                <div className="flex flex-col">
+              <div className="px-5 py-4 flex items-center justify-between gap-4">
+                <div className="flex flex-col min-w-0">
                   <span className="text-xs font-bold text-muted-foreground">Roommate Preference</span>
-                  {isPrefLocked && (
-                    <span className="text-[10px] text-amber-600 font-black uppercase tracking-widest flex items-center gap-1 mt-1 transition-all">
-                      <ShieldCheck size={10} strokeWidth={3} /> Priority Locked
+                  {isPrefLocked ? (
+                    <span className="text-[10px] text-primary font-black uppercase tracking-widest flex items-center gap-1 mt-1">
+                      <ShieldCheck size={10} strokeWidth={3} /> Priority Sealed
                     </span>
-                  )}
+                  ) : !matchPref ? (
+                    <span className="text-[10px] text-amber-500 font-black uppercase tracking-widest flex items-center gap-1 mt-1 animate-pulse">
+                      ● Required to match
+                    </span>
+                  ) : null}
                 </div>
-                <div className={`flex bg-muted p-1.5 rounded-xl border border-border/50 shadow-inner ${isPrefLocked ? 'opacity-60 grayscale' : ''}`}>
-                  {(['same', 'any'] as const).map((opt) => (
-                    <button
-                      key={opt}
-                      onClick={() => !isPrefLocked && setMatchPref(opt)}
-                      disabled={isPrefLocked}
-                      className={`px-5 py-2 flex-1 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${matchPref === opt
-                        ? 'bg-card text-primary shadow-md border border-border/80'
-                        : 'text-muted-foreground hover:text-foreground'
-                        }`}
-                    >
-                      {matchPref === opt && <Check size={13} className="stroke-[3]" />} {opt === 'same' ? 'Same Sex' : 'Any Sex'}
-                    </button>
-                  ))}
-                </div>
+
+                {isPrefLocked ? (
+                  <div className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/25 rounded-xl shrink-0 shadow-sm">
+                    <ShieldCheck size={13} className="text-primary shrink-0" strokeWidth={2.5} />
+                    <span className="text-xs font-black text-primary">{matchPref === 'same' ? 'Same Sex' : 'Any Sex'}</span>
+                    <span className="ml-1 text-[9px] font-extrabold uppercase tracking-widest text-primary/60 border border-primary/20 bg-primary/10 px-1.5 py-0.5 rounded-md">Sealed</span>
+                  </div>
+                ) : (
+                  <div className="flex bg-muted p-1.5 rounded-xl border border-border/50 shadow-inner shrink-0">
+                    {(['same', 'any'] as const).map((opt) => (
+                      <button
+                        key={opt}
+                        onClick={() => setMatchPref(opt)}
+                        className={`px-5 py-2 flex-1 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${matchPref === opt
+                          ? 'bg-card text-primary shadow-md border border-border/80'
+                          : 'text-muted-foreground hover:text-foreground'
+                          }`}
+                      >
+                        {matchPref === opt && <Check size={13} className="stroke-[3]" />} {opt === 'same' ? 'Same Sex' : 'Any Sex'}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </section>
@@ -638,37 +661,75 @@ export function ProfilePage() {
       <ModalShell
         isOpen={isConfirmModalOpen}
         onClose={() => setIsConfirmModalOpen(false)}
-        title="Permanent Identity Locked"
-        subtitle="Verification required before synchronization"
-        maxWidth="md:w-[480px]"
+        title="Permanent Identity Lock"
+        subtitle="Read carefully — this cannot be undone"
+        maxWidth="md:w-[500px]"
       >
-        <div className="flex flex-col items-center p-6 text-center gap-6">
-          <div className="w-20 h-20 bg-amber-500/10 rounded-full flex items-center justify-center ring-2 ring-amber-500/20">
-            <ShieldCheck className="w-10 h-10 text-amber-600" />
+        <div className="flex flex-col items-center p-6 text-center gap-5">
+
+          {/* Icon */}
+          <div className="w-16 h-16 bg-amber-500/10 rounded-full flex items-center justify-center ring-2 ring-amber-500/20">
+            <ShieldCheck className="w-8 h-8 text-amber-600" />
           </div>
 
-          <div className="space-y-4">
-            <h4 className="text-xl font-black text-foreground tracking-tight">Final Confirmation Required</h4>
-            <p className="text-sm font-semibold text-muted-foreground leading-relaxed">
-              Once you synchronize, your <span className="text-foreground font-black">Biological Gender</span> and <span className="text-foreground font-black">Roommate Preference</span> will be locked to your profile permanently.
+          {/* Headline */}
+          <div className="space-y-2">
+            <h4 className="text-xl font-black text-foreground tracking-tight">This Is Your One Chance</h4>
+            <p className="text-sm font-medium text-muted-foreground leading-relaxed max-w-sm">
+              Your <span className="text-foreground font-black">Gender</span> and <span className="text-foreground font-black">Roommate Preference</span> will be <span className="text-amber-600 font-black">permanently sealed</span> after this sync. They cannot be changed — not by you, not by support.
             </p>
-            <div className="bg-amber-50 rounded-2xl p-4 border border-amber-100/50">
-              <p className="text-[11px] font-black uppercase tracking-widest text-amber-700">
-                You will not be able to change these values later to game the matching algorithm.
-              </p>
+          </div>
+
+          {/* Preview of what they selected */}
+          <div className="w-full bg-muted/50 border border-border rounded-2xl p-4 space-y-3">
+            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">You are sealing</p>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-muted-foreground">Biological Gender</span>
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 border border-primary/20 rounded-xl">
+                <ShieldCheck size={11} className="text-primary" strokeWidth={3} />
+                <span className="text-xs font-black text-primary">{gender === 'M' ? 'Male' : 'Female'}</span>
+              </div>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-muted-foreground">Roommate Preference</span>
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 border border-primary/20 rounded-xl">
+                <ShieldCheck size={11} className="text-primary" strokeWidth={3} />
+                <span className="text-xs font-black text-primary">{matchPref === 'same' ? 'Same Sex' : 'Any Sex'}</span>
+              </div>
             </div>
           </div>
 
-          <div className="flex flex-col w-full gap-3 pt-4">
+          {/* Verification checkbox */}
+          <label className="w-full flex items-start gap-3 cursor-pointer text-left bg-card border border-border rounded-2xl p-4 hover:border-primary/30 transition-colors group">
+            <div className="mt-0.5 shrink-0">
+              <input
+                type="checkbox"
+                checked={hasVerified}
+                onChange={(e) => setHasVerified(e.target.checked)}
+                className="w-4 h-4 rounded accent-primary cursor-pointer"
+              />
+            </div>
+            <span className="text-[12px] font-bold text-muted-foreground leading-relaxed group-hover:text-foreground transition-colors">
+              I have verified the above selections. I understand they are <span className="text-foreground font-black">permanent</span> and cannot be changed after this sync.
+            </span>
+          </label>
+
+          {/* Actions */}
+          <div className="flex flex-col w-full gap-3">
             <button
               onClick={() => handleSave(true)}
-              className="w-full py-4 bg-foreground text-background font-black text-sm rounded-[22px] shadow-xl hover:opacity-90 active:scale-95 transition-all uppercase tracking-widest"
+              disabled={!hasVerified}
+              className={`w-full py-4 font-black text-sm rounded-[22px] shadow-xl transition-all uppercase tracking-widest ${
+                hasVerified
+                  ? 'bg-foreground text-background hover:opacity-90 active:scale-95'
+                  : 'bg-muted text-muted-foreground/40 cursor-not-allowed'
+              }`}
             >
-              I Understand, Continue Sync
+              Seal & Synchronize Identity
             </button>
             <button
               onClick={() => setIsConfirmModalOpen(false)}
-              className="w-full py-4 bg-muted text-foreground font-bold text-sm rounded-[22px] hover:bg-muted/80 active:scale-95 transition-all"
+              className="w-full py-4 bg-transparent text-muted-foreground font-bold text-sm rounded-[22px] hover:text-foreground hover:bg-muted/60 active:scale-95 transition-all"
             >
               Wait, let me review
             </button>

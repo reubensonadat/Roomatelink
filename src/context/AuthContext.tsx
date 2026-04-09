@@ -100,6 +100,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (data) {
         localStorage.setItem(`roommate_profile_${userId}`, JSON.stringify(data))
+      } else {
+        // DB row is gone — evict the stale cache so isGenderLocked doesn't fire incorrectly
+        localStorage.removeItem(`roommate_profile_${userId}`)
       }
 
       return data as UserProfile | null
@@ -212,39 +215,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(interval)
   }, [user])
 
-  // Phase 1.2: Effect B - Inactivity Watchdog (15-min auto-logout)
-  // NEW: Split from monolithic effect, depends only on [user], uses lastActivityRef
-  useEffect(() => {
-    if (!user) return
 
-    const INACTIVITY_LIMIT = 15 * 60 * 1000 // 15 Minutes
-
-    const inactivityInterval = setInterval(() => {
-      const idleTime = Date.now() - lastActivityRef.current
-      if (user && idleTime > INACTIVITY_LIMIT) {
-        console.warn('Session Watchdog: Inactivity limit reached. Force Logout.')
-        signOut()
-      }
-    }, 60000) // Check every minute
-
-    return () => clearInterval(inactivityInterval)
-  }, [user])
-
-  // Phase 1.2: Effect C - Session Heartbeat (5-min token verification)
-  // NEW: Split from monolithic effect, depends only on [user]
-  useEffect(() => {
-    if (!user) return
-
-    const heartbeatInterval = setInterval(async () => {
-      const { data: { session: currentSession }, error } = await supabase.auth.getSession()
-      if (error || !currentSession) {
-        console.error('Session Watchdog: Heartbeat failed or session lost.')
-        signOut()
-      }
-    }, 5 * 60 * 1000)
-
-    return () => clearInterval(heartbeatInterval)
-  }, [user])
 
   // NEW: Global activity listener to update the ref silently
   // CHANGED: Was part of monolithic effect, now independent
