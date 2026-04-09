@@ -19,16 +19,16 @@ export function PaymentVerificationOverlay({ isVisible, verifyCountdown, showPay
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[200] bg-background/95 backdrop-blur-xl flex flex-col items-center justify-center px-6"
+        className="fixed inset-0 z-[200] bg-background/80 backdrop-blur-2xl flex flex-col items-center justify-center px-6"
       >
         {/* Spinner */}
         <div className="relative w-20 h-20 mb-8 flex items-center justify-center">
           <OrbitalLoader />
         </div>
 
-        <h2 className="text-[22px] font-black text-foreground mb-2 tracking-tight">Verifying Payment</h2>
-        <p className="text-[14px] font-medium text-muted-foreground text-center max-w-[260px] mb-8">
-          Please hold on while we confirm your payment securely.
+        <h2 className="text-[20px] font-black text-foreground mb-3 tracking-tight uppercase text-center">Checking payment</h2>
+        <p className="text-[13px] font-bold text-muted-foreground text-center max-w-[240px] mb-8 leading-relaxed opacity-80">
+          Please hold on while we confirm your access.
         </p>
 
         {/* Animated progress bar */}
@@ -54,10 +54,10 @@ export function PaymentVerificationOverlay({ isVisible, verifyCountdown, showPay
               </p>
               <button
                 onClick={onFallback}
-                className="px-6 py-3 bg-primary text-primary-foreground font-bold text-[14px] rounded-2xl active:scale-95 transition-all shadow-lg flex items-center gap-2"
+                className="px-8 py-4 bg-primary text-primary-foreground font-black text-[13px] uppercase tracking-widest rounded-2xl active:scale-95 transition-all shadow-xl shadow-primary/20 flex items-center gap-2 border border-white/10"
               >
-                <Check className="w-4 h-4" />
-                I've Completed Payment
+                <Check className="w-4 h-4 stroke-[3]" />
+                I've Paid
               </button>
               <button
                 onClick={onCancel}

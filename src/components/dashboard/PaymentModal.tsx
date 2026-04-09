@@ -54,10 +54,10 @@ export function PaymentModal({
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: "100%", opacity: 0 }}
             transition={{ type: "spring", damping: 30, stiffness: 300, mass: 0.8 }}
-            className="relative w-full max-w-[960px] bg-card border-t sm:border border-border/80 rounded-t-[2.5rem] sm:rounded-[2.5rem] shadow-premium overflow-hidden flex flex-col md:flex-row max-h-[92vh] sm:max-h-[85vh]"
+            className="relative w-full max-w-[92%] md:max-w-4xl bg-card border-t sm:border border-border/80 rounded-t-[2.5rem] sm:rounded-[2.5rem] shadow-premium overflow-hidden flex flex-col md:flex-row max-h-[92vh] sm:max-h-[85vh]"
           >
             {/* Left Column (Desktop - Feature Area) */}
-            <div className="hidden md:flex md:w-[420px] bg-primary/5 p-12 flex-col justify-center border-r border-border/40 relative overflow-hidden">
+            <div className="hidden md:flex md:w-[380px] bg-primary/5 p-10 flex-col justify-center border-r border-border/40 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-3xl blur-3xl translate-x-1/2 -translate-y-1/2" />
               <div className="absolute bottom-0 left-0 w-64 h-64 bg-primary/5 rounded-3xl blur-3xl -translate-x-1/2 translate-y-1/2" />
 
@@ -73,7 +73,7 @@ export function PaymentModal({
                   />
                 </div>
                 <h2 className="text-[28px] font-black text-foreground leading-tight mb-4 tracking-tight uppercase">The Smart Move.</h2>
-                <p className="text-[14px] font-bold text-muted-foreground/70 leading-relaxed mb-10 text-center uppercase tracking-wide">
+                <p className="text-[14px] font-bold text-muted-foreground/70 leading-relaxed mb-8 text-center uppercase tracking-wide">
                   A small verification fee ensures every student is real and Campus-Verified.
                 </p>
 
@@ -104,15 +104,15 @@ export function PaymentModal({
                 <X className="w-5 h-5" />
               </button>
 
-              <div className="flex-1 p-8 md:p-14 overflow-y-auto flex flex-col justify-center scroll-smooth">
-                <div className="mb-12 text-center md:text-left">
+              <div className="flex-1 p-6 md:p-10 overflow-y-auto flex flex-col justify-center scroll-smooth">
+                <div className="mb-10 text-center md:text-left">
                   <h3 className="text-[12px] font-black text-primary uppercase tracking-[0.4em] mb-4">Verification Hub</h3>
                   <h4 className="text-[32px] font-black text-foreground tracking-tighter uppercase leading-none">Checkout Securely</h4>
                 </div>
 
                 {/* Discount Code Area */}
                 {!discountApplied ? (
-                  <div className="w-full mb-12">
+                  <div className="w-full mb-10">
                     <div className="flex gap-2">
                       <div className="relative flex-1">
                         <input
@@ -134,7 +134,7 @@ export function PaymentModal({
                     {discountError && <p className="text-[11px] text-red-500 font-black mt-3 pl-2 uppercase tracking-wider animate-pulse">{discountError}</p>}
                   </div>
                 ) : (
-                  <div className="w-full mb-12 animate-in slide-in-from-top-4 duration-500">
+                  <div className="w-full mb-10 animate-in slide-in-from-top-4 duration-500">
                     <div className="flex items-center justify-between bg-primary/5 border border-primary/20 rounded-[22px] p-6 shadow-inner">
                       <div className="flex items-center gap-5">
                         <div className="w-12 h-12 rounded-[18px] bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
@@ -151,7 +151,7 @@ export function PaymentModal({
                 )}
 
                 {/* Summary Area */}
-                <div className="flex flex-col gap-6 mb-12">
+                <div className="flex flex-col gap-5 mb-10">
                   <div className="flex justify-between items-center text-[13px] font-black text-muted-foreground/60 uppercase tracking-[0.3em]">
                     <span>Campus Entry Fee</span>
                     <span>₵{amount.toFixed(2)}</span>

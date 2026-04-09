@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { User, Upload, Check, ChevronRight, Sparkles, ShieldCheck } from 'lucide-react'
+import { User, Upload, Check, ChevronRight, Sparkles, ShieldCheck, Lock } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
@@ -663,20 +663,20 @@ export function ProfilePage() {
         onClose={() => setIsConfirmModalOpen(false)}
         title="Permanent Identity Lock"
         subtitle="Read carefully — this cannot be undone"
-        maxWidth="md:w-[500px]"
+        maxWidth="max-w-[92%] md:max-w-md"
       >
-        <div className="flex flex-col items-center p-6 text-center gap-5">
+        <div className="flex flex-col items-center p-5 text-center gap-4">
 
           {/* Icon */}
-          <div className="w-16 h-16 bg-amber-500/10 rounded-full flex items-center justify-center ring-2 ring-amber-500/20">
-            <ShieldCheck className="w-8 h-8 text-amber-600" />
+          <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center ring-2 ring-primary/20">
+            <Lock className="w-8 h-8 text-primary" />
           </div>
 
           {/* Headline */}
           <div className="space-y-2">
             <h4 className="text-xl font-black text-foreground tracking-tight">This Is Your One Chance</h4>
             <p className="text-sm font-medium text-muted-foreground leading-relaxed max-w-sm">
-              Your <span className="text-foreground font-black">Gender</span> and <span className="text-foreground font-black">Roommate Preference</span> will be <span className="text-amber-600 font-black">permanently sealed</span> after this sync. They cannot be changed — not by you, not by support.
+              Your <span className="text-foreground font-black">Gender</span> and <span className="text-foreground font-black">Roommate Preference</span> will be <span className="text-primary font-black">permanently sealed</span> after this sync. They cannot be changed — not by you, not by support.
             </p>
           </div>
 

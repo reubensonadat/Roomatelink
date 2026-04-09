@@ -67,8 +67,9 @@ export function ReportModal({ isOpen, onClose, reportedName, reportedId }: Repor
       onClose={onClose}
       title={`Report ${reportedName}`}
       subtitle="Help us keep the Campus ecosystem safe"
+      maxWidth="max-w-[92%] md:max-w-md"
     >
-      <div className="space-y-6">
+      <div className="space-y-4">
         <div className="space-y-2">
           {REPORT_REASONS.map((reason) => {
             const Icon = reason.icon
@@ -103,7 +104,7 @@ export function ReportModal({ isOpen, onClose, reportedName, reportedId }: Repor
         <button
           onClick={handleSubmit}
           disabled={!selectedReason || isSubmitting}
-          className={`w-full h-[64px] rounded-[22px] bg-red-600 text-white font-black text-[17px] transition-all flex items-center justify-center gap-3 shadow-xl shadow-red-600/20 active:scale-[0.98] uppercase tracking-[0.2em] ${!selectedReason || isSubmitting ? 'opacity-40 grayscale cursor-not-allowed' : 'hover:scale-[1.02] hover:bg-red-700'}`}
+          className={`w-full h-[64px] rounded-[22px] bg-destructive text-white font-black text-[17px] transition-all flex items-center justify-center gap-3 shadow-xl shadow-destructive/20 active:scale-[0.98] uppercase tracking-[0.2em] ${!selectedReason || isSubmitting ? 'opacity-40 grayscale cursor-not-allowed' : 'hover:scale-[1.02] hover:bg-destructive/90'}`}
         >
           {isSubmitting ? (
             <div className="scale-50 -mx-4 -my-4"><OrbitalLoader /></div>

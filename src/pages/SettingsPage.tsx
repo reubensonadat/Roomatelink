@@ -236,14 +236,14 @@ export function SettingsPage() {
     <div className="flex flex-col w-full min-h-screen bg-background selection:bg-indigo-100 dark:selection:bg-indigo-500/30">
       <TopHeader title="Settings" showBackButton />
 
-      <div className="flex-1 overflow-y-auto w-full md:max-w-2xl lg:max-w-3xl mx-auto px-4 pt-8 pb-32">
+      <div className="flex-1 overflow-y-auto w-full md:max-w-xl lg:max-w-2xl mx-auto px-4 pt-8 pb-32">
 
-        <div className="flex flex-col gap-10">
+        <div className="flex flex-col gap-8">
 
           {/* Account Settings */}
           <section>
             <h2 className="text-[12px] font-bold text-muted-foreground uppercase tracking-widest pl-1 mb-3">Account</h2>
-            <div className="bg-card rounded-4xl shadow-premium border border-border flex flex-col p-2 gap-1 overflow-hidden">
+            <div className="bg-card rounded-[22px] shadow-premium border border-border flex flex-col p-2 gap-1 overflow-hidden">
 
               <ActionButton
                 icon={theme === 'dark' ? <Sun className="w-5 h-5 text-foreground" /> : <Moon className="w-5 h-5 text-foreground" />}
@@ -360,6 +360,7 @@ export function SettingsPage() {
           onClose={() => !isVerifying && setIsVerifyModalOpen(false)}
           title="Student ID Hub"
           subtitle="Type your official university email below to synchronize your student status."
+          maxWidth="max-w-[92%] md:max-w-md"
         >
           <div className="flex flex-col items-center text-center">
             <div className="w-20 h-20 rounded-[22px] bg-primary/10 flex items-center justify-center mb-6 shadow-inner">

@@ -174,7 +174,7 @@ export function OnboardingPage() {
       </div>
 
       {/* ─── RIGHT SECTION (Square UI Text Area) ─── */}
-      <div className="w-full md:w-1/2 p-6 md:p-12 lg:px-24 lg:py-20 flex flex-col min-h-[50vh] md:min-h-screen">
+      <div className="w-full md:w-1/2 p-6 md:p-10 lg:px-16 lg:py-14 flex flex-col min-h-[50vh] md:min-h-screen">
         {/* Top Header */}
         <div className="flex items-center justify-between mb-auto">
           <button onClick={handleBack} className="p-4 rounded-2xl bg-muted/50 hover:bg-muted text-muted-foreground transition-colors group">
@@ -195,7 +195,7 @@ export function OnboardingPage() {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.35, ease: "easeOut" }}
-                className="flex flex-col gap-8"
+                className="flex flex-col gap-6"
               >
                 {/* Progress Bars (Square Geometric) */}
                 <div className="flex gap-2">
@@ -208,7 +208,7 @@ export function OnboardingPage() {
                 </div>
 
                 <div>
-                  <h1 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tighter text-foreground leading-none mb-6 whitespace-pre-line">
+                  <h1 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tighter text-foreground leading-none mb-5 whitespace-pre-line">
                     {SLIDES[currentSlide].title}
                   </h1>
                   <p className="text-lg md:text-xl font-medium text-muted-foreground leading-relaxed max-w-md">
@@ -223,7 +223,7 @@ export function OnboardingPage() {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.35, ease: "easeOut" }}
-                className="flex flex-col gap-10"
+                className="flex flex-col gap-8"
               >
                 <div className="flex gap-2">
                   {[...Array(4)].map((_, i) => (
@@ -244,7 +244,7 @@ export function OnboardingPage() {
                 </div>
 
                 {/* Square Theme Controls */}
-                <div className="flex flex-col gap-4 max-w-sm">
+                <div className="flex flex-col gap-3 max-w-sm">
                   <div className="relative flex bg-muted/60 p-2 rounded-3xl border border-border/40 shadow-inner overflow-hidden">
                     <button
                       onClick={(e) => handleThemeChange("light", e)}
@@ -280,7 +280,7 @@ export function OnboardingPage() {
         </main>
  
         {/* Square Footer Button */}
-        <div className="pt-12">
+        <div className="pt-8 md:pt-10">
           <button
             onClick={handleNext}
             className="premium-btn py-5 w-full md:w-auto md:min-w-[240px] bg-foreground text-background flex items-center justify-center gap-3 group hover:scale-[1.02] active:scale-[0.98]"

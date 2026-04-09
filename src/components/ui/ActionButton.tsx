@@ -12,7 +12,7 @@ export function ActionButton({ icon, title, subtitle, className, ...props }: Act
   return (
     <button
       className={cn(
-        'flex items-center justify-between p-3 rounded-3xl hover:bg-muted/50 transition-colors text-left group',
+        'flex items-center justify-between p-3 rounded-3xl hover:bg-muted/50 transition-all active:scale-[0.98] text-left group',
         className
       )}
       {...props}

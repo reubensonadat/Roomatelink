@@ -38,9 +38,9 @@ export function ProtectedRoute() {
     return (
       <>
         <PremiumAuthLoader
-          topLabel="Security Check"
-          mainLabel="Verifying Account"
-          subLabel="Ensuring your Roommate Link session is active"
+          topLabel="Security"
+          mainLabel="Checking Account"
+          subLabel="Ensuring your session is active"
         />
         
         {showFallback && (
@@ -77,9 +77,9 @@ export function ProtectedRoute() {
   if (isProfileLoading && !profile && !loadingTimedOut) {
     return (
       <PremiumAuthLoader
-        topLabel="Identity Sync"
-        mainLabel="Establishing Session"
-        subLabel="Synchronizing your institutional credentials"
+        topLabel="Security"
+        mainLabel="One moment..."
+        subLabel="Getting things ready for you"
       />
     )
   }

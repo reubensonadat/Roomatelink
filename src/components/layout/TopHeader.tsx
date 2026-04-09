@@ -11,12 +11,12 @@ export function TopHeader({ title, subtitle, showBackButton = false }: TopHeader
   const navigate = useNavigate();
 
   return (
-    <div className="bg-background px-4 sm:px-6 py-4 flex flex-col sticky top-0 z-50 border-b border-border shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
-      <div className="flex items-center w-full relative min-h-[40px]">
+    <div className="bg-background/80 backdrop-blur-xl px-4 sm:px-6 py-4 flex flex-col sticky top-0 z-50 border-b border-border shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
+      <div className="flex items-center w-full relative min-h-[44px]">
         {showBackButton && (
           <button 
             onClick={() => navigate(-1)}
-            className="p-2.5 bg-muted rounded-2xl text-foreground hover:bg-accent transition-colors group active:scale-95 absolute left-0 z-10"
+            className="p-2.5 bg-muted rounded-2xl text-foreground hover:bg-accent transition-colors group active:scale-[0.98] absolute left-0 z-10"
           >
             <ChevronRight className="w-5 h-5 rotate-180 group-hover:-translate-x-0.5 transition-transform text-foreground" />
           </button>

@@ -37,7 +37,7 @@ export function MessagesPage() {
             exit={{ height: 0, opacity: 0 }}
             className="bg-indigo-600 text-white overflow-hidden shadow-lg border-b border-white/10"
           >
-            <div className="px-5 py-3 flex items-center justify-between gap-4 max-w-lg mx-auto">
+            <div className="px-5 py-3 flex items-center justify-between gap-4 max-w-md mx-auto">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-white/20 rounded-xl">
                   <Cpu className="w-5 h-5 text-white animate-pulse" />
@@ -65,29 +65,28 @@ export function MessagesPage() {
               <DrawingHouseLoader />
 
               <div className="max-w-xs mt-8">
-                <h3 className="text-2xl font-black text-foreground tracking-tight">Syncing Vault</h3>
+                <h3 className="text-2xl font-black text-foreground tracking-tight">Loading messages</h3>
                 <p className="text-xs font-black uppercase tracking-[0.3em] text-primary h-4">
-                    Establishing Secure Link
+                    Just a second...
                   </p>
               </div>
 
-              {/* Boutique Progress Bar */}
-              <div className="relative w-full h-2 bg-muted rounded-full overflow-hidden border border-border/40">
+              <div className="relative w-full max-w-[240px] h-1.5 bg-muted rounded-full overflow-hidden border border-border/40">
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: '100%' }}
                   transition={{ type: "spring", stiffness: 50, damping: 20 }}
-                  className="absolute inset-y-0 left-0 bg-primary shadow-[0_0_15px_rgba(79,70,229,0.4)]"
+                  className="absolute inset-y-0 left-0 bg-primary shadow-[0_0_15px_rgba(79,70,229,0.3)]"
                 />
                 <motion.div 
                   animate={{ x: ["-100%", "100%"] }}
                   transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-                  className="absolute inset-y-0 left-0 w-1/2 bg-gradient-to-r from-transparent via-white/30 to-transparent skew-x-12"
+                  className="absolute inset-y-0 left-0 w-1/2 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-12"
                 />
               </div>
 
-              <p className="text-[13px] font-bold text-muted-foreground">
-                  Synchronizing with Institutional Servers...
+              <p className="text-[13px] font-bold text-muted-foreground/60">
+                  Getting your conversations ready...
                 </p>
           </motion.div>
         ) : !profileStatus.isProfileComplete ? (
@@ -97,9 +96,9 @@ export function MessagesPage() {
           animate={{ opacity: 1, y: 0 }}
           className="flex flex-col items-center py-20 px-6 text-center gap-6"
         >
-              <div className="w-24 h-24 bg-amber-500/10 rounded-[2.5rem] flex items-center justify-center relative">
-                <div className="absolute inset-0 bg-amber-500/20 animate-pulse rounded-[2.5rem]" />
-                <UserCheck className="w-10 h-10 text-amber-500 z-10" />
+              <div className="w-20 h-20 bg-amber-500/10 rounded-[2rem] flex items-center justify-center relative">
+                <div className="absolute inset-0 bg-amber-500/20 animate-pulse rounded-[2rem]" />
+                <UserCheck className="w-9 h-9 text-amber-500 z-10" />
               </div>
               <div className="max-w-xs">
                 <h2 className="text-2xl font-black text-foreground tracking-tight mb-2">Identity Check</h2>
@@ -116,8 +115,8 @@ export function MessagesPage() {
           animate={{ opacity: 1, y: 0 }}
           className="flex flex-col items-center py-20 px-6 text-center gap-6"
         >
-              <div className="w-24 h-24 bg-primary/10 rounded-[2.5rem] flex items-center justify-center relative">
-                <Lock className="w-10 h-10 text-primary" />
+              <div className="w-20 h-20 bg-primary/10 rounded-[2rem] flex items-center justify-center relative">
+                <Lock className="w-9 h-9 text-primary" />
               </div>
               <div className="max-w-xs">
                 <h2 className="text-2xl font-black text-foreground tracking-tight mb-2">Unlock Messages</h2>
@@ -136,9 +135,9 @@ export function MessagesPage() {
           animate={{ opacity: 1, scale: 1 }}
           className="flex flex-col items-center py-20 px-6 text-center gap-6"
         >
-              <div className="w-24 h-24 bg-primary/10 rounded-[2.5rem] flex items-center justify-center relative">
-                <div className="absolute inset-0 bg-primary/20 animate-pulse rounded-[2.5rem]" />
-                <MessageCircle className="w-10 h-10 text-primary" />
+              <div className="w-20 h-20 bg-primary/10 rounded-[2rem] flex items-center justify-center relative">
+                <div className="absolute inset-0 bg-primary/20 animate-pulse rounded-[2rem]" />
+                <MessageCircle className="w-9 h-9 text-primary" />
               </div>
               <div className="max-w-xs">
                 <h2 className="text-2xl font-black text-foreground tracking-tight mb-2">Quiet in Here</h2>
@@ -147,10 +146,10 @@ export function MessagesPage() {
               <Link to="/dashboard" className="px-8 py-4 bg-primary text-primary-foreground font-black rounded-2xl hover:scale-[1.02] active:scale-[0.98] transition-all">Browse Matches</Link>
           </motion.div>
         ) : (
-          <div className="px-5 space-y-4 max-w-lg mx-auto pt-6">
+          <div className="px-5 space-y-3 max-w-md mx-auto pt-6">
               {/* Search Bar Refined: Only shows with active threads */}
-              <div className="pt-2 mb-8 animate-in fade-in slide-in-from-top-4 duration-700">
-                <div className="relative group w-full max-w-lg mx-auto">
+              <div className="pt-2 mb-6 animate-in fade-in slide-in-from-top-4 duration-700">
+                <div className="relative group w-full max-w-md mx-auto">
                   <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-6 h-6 text-muted-foreground/60 transition-colors group-focus-within:text-primary z-10" />
                   <input
                     type="text"
@@ -170,7 +169,7 @@ export function MessagesPage() {
                 >
                   <Link 
                     to={`/dashboard/messages/${chat.id}`} 
-                    className="flex items-start gap-5 p-6 bg-card rounded-[24px] border border-border/80 shadow-premium hover:shadow-elevated hover:border-primary/20 transition-all active:scale-[0.98] group relative"
+                    className="flex items-start gap-4 p-4 md:p-5 bg-card rounded-[22px] border border-border/80 shadow-premium hover:shadow-elevated hover:border-primary/20 transition-all active:scale-[0.98] group relative"
                   >
                     <div className="relative shrink-0">
                       <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-[22px] bg-muted border border shadow-inner overflow-hidden relative">

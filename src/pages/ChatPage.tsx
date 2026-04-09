@@ -135,32 +135,31 @@ export function ChatPage() {
 
             <div className="max-w-xs w-full space-y-6 mt-8">
               <div className="space-y-2">
-                <h3 className="text-2xl font-black text-foreground tracking-tight">Syncing Vault</h3>
+                <h3 className="text-2xl font-black text-foreground tracking-tight">Loading Chat</h3>
                 <p className="text-xs font-black uppercase tracking-[0.3em] text-primary h-4">
-                  {loadingStep === 0 && "Establishing Secure Link"}
-                  {loadingStep === 1 && "Verifying Credentials"}
-                  {loadingStep === 2 && "Recovering Records"}
-                  {loadingStep === 3 && "Optimizing Inbox"}
+                  {loadingStep === 0 && "Checking account"}
+                  {loadingStep === 1 && "Signing you in"}
+                  {loadingStep === 2 && "Updating data"}
+                  {loadingStep === 3 && "Opening chatroom"}
                 </p>
               </div>
 
-              {/* Boutique Progress Bar */}
-              <div className="relative w-full h-2 bg-muted rounded-full overflow-hidden border border-border/40">
+              <div className="relative w-full max-w-[240px] h-1.5 bg-muted rounded-full overflow-hidden border border-border/40">
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${progress}%` }}
                   transition={{ type: "spring", stiffness: 50, damping: 20 }}
-                  className="absolute inset-y-0 left-0 bg-primary shadow-[0_0_15px_rgba(79,70,229,0.4)]"
+                  className="absolute inset-y-0 left-0 bg-primary shadow-[0_0_15px_rgba(79,70,229,0.3)]"
                 />
                 <motion.div
                   animate={{ x: ["-100%", "100%"] }}
                   transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-                  className="absolute inset-y-0 left-0 w-1/2 bg-gradient-to-r from-transparent via-white/30 to-transparent skew-x-12"
+                  className="absolute inset-y-0 left-0 w-1/2 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-12"
                 />
               </div>
 
-              <p className="text-[13px] font-bold text-muted-foreground">
-                Synchronizing with Institutional Servers...
+              <p className="text-[13px] font-bold text-muted-foreground/60">
+                Opening your conversation...
               </p>
             </div>
           </motion.div>
@@ -180,32 +179,31 @@ export function ChatPage() {
 
             <div className="max-w-xs w-full space-y-6 mt-8">
               <div className="space-y-2">
-                <h3 className="text-2xl font-black text-foreground tracking-tight">Syncing Vault</h3>
+                <h3 className="text-2xl font-black text-foreground tracking-tight">Checking messages</h3>
                 <p className="text-xs font-black uppercase tracking-[0.3em] text-primary h-4">
-                  {loadingStep === 0 && "Establishing Secure Link"}
-                  {loadingStep === 1 && "Verifying Credentials"}
-                  {loadingStep === 2 && "Recovering Records"}
-                  {loadingStep === 3 && "Optimizing Inbox"}
+                  {loadingStep === 0 && "Checking account"}
+                  {loadingStep === 1 && "Signing you in"}
+                  {loadingStep === 2 && "Almost done"}
+                  {loadingStep === 3 && "Opening chatroom"}
                 </p>
               </div>
 
-              {/* Boutique Progress Bar */}
-              <div className="relative w-full h-2 bg-muted rounded-full overflow-hidden border border-border/40">
+              <div className="relative w-full max-w-[240px] h-1.5 bg-muted rounded-full overflow-hidden border border-border/40">
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: '100%' }}
                   transition={{ type: "spring", stiffness: 50, damping: 20 }}
-                  className="absolute inset-y-0 left-0 bg-primary shadow-[0_0_15px_rgba(79,70,229,0.4)]"
+                  className="absolute inset-y-0 left-0 bg-primary shadow-[0_0_15px_rgba(79,70,229,0.3)]"
                 />
                 <motion.div
                   animate={{ x: ["-100%", "100%"] }}
                   transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-                  className="absolute inset-y-0 left-0 w-1/2 bg-gradient-to-r from-transparent via-white/30 to-transparent skew-x-12"
+                  className="absolute inset-y-0 left-0 w-1/2 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-12"
                 />
               </div>
 
-              <p className="text-[13px] font-bold text-muted-foreground">
-                Synchronizing with Institutional Servers...
+              <p className="text-[13px] font-bold text-muted-foreground/60">
+                One moment...
               </p>
             </div>
           </motion.div>
@@ -216,9 +214,9 @@ export function ChatPage() {
         <>
           {isLocked ? (
             <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
-              <div className="w-24 h-24 bg-primary/10 rounded-[2.5rem] flex items-center justify-center mb-8 relative">
-                <div className="absolute inset-0 bg-primary/20 animate-pulse rounded-[2.5rem]" />
-                <Lock className="w-10 h-10 text-primary z-10" />
+              <div className="w-20 h-20 bg-primary/10 rounded-[2rem] flex items-center justify-center mb-8 relative">
+                <div className="absolute inset-0 bg-primary/20 animate-pulse rounded-[2rem]" />
+                <Lock className="w-9 h-9 text-primary z-10" />
               </div>
               <div className="max-w-xs">
                 <h2 className="text-2xl font-black text-foreground tracking-tight mb-2">Messages Locked</h2>
@@ -245,34 +243,36 @@ export function ChatPage() {
               </AnimatePresence>
               
               <div className="flex items-center justify-between px-4 py-3 bg-card border-b border-border/40">
-                <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div className="max-w-2xl mx-auto w-full flex items-center justify-between">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <button
+                      onClick={() => navigate('/dashboard/messages')}
+                      className="p-2 rounded-xl hover:bg-muted/50 transition-colors flex-shrink-0"
+                    >
+                      <ChevronLeft className="w-5 h-5 text-foreground" />
+                    </button>
+                    {otherUser && (
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-[18px] bg-muted border border shadow-inner overflow-hidden relative flex-shrink-0">
+                          <img src={otherUser.avatar_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + otherUser.id} alt="" className="w-full h-full object-cover" />
+                        </div>
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-[16px] font-black text-foreground truncate tracking-tight">{otherUser.full_name}</span>
+                          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
+                            <Clock className="w-3 h-3" />
+                            {formatLastSeen(otherUser.last_active)}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                   <button
-                    onClick={() => navigate('/dashboard/messages')}
+                    onClick={() => setIsReportModalOpen(true)}
                     className="p-2 rounded-xl hover:bg-muted/50 transition-colors flex-shrink-0"
                   >
-                    <ChevronLeft className="w-5 h-5 text-foreground" />
+                    <Flag className="w-5 h-5 text-muted-foreground" />
                   </button>
-                  {otherUser && (
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-[22px] bg-muted border border shadow-inner overflow-hidden relative flex-shrink-0">
-                        <img src={otherUser.avatar_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + otherUser.id} alt="" className="w-full h-full object-cover" />
-                      </div>
-                      <div className="flex flex-col min-w-0">
-                        <span className="text-[17px] font-black text-foreground truncate tracking-tight">{otherUser.full_name}</span>
-                        <span className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          Last seen {formatLastSeen(otherUser.last_active)}
-                        </span>
-                      </div>
-                    </div>
-                  )}
                 </div>
-                <button
-                  onClick={() => setIsReportModalOpen(true)}
-                  className="p-2 rounded-xl hover:bg-muted/50 transition-colors flex-shrink-0"
-                >
-                  <Flag className="w-5 h-5 text-muted-foreground" />
-                </button>
               </div>
 
               <div
@@ -297,7 +297,7 @@ export function ChatPage() {
                     >
                       <div className={`flex flex-col ${msg.sender === 'me' ? 'items-end' : 'items-start'} max-w-[80%]`}>
                         <div className={`flex gap-3 ${msg.sender === 'me' ? 'flex-row-reverse' : 'flex-row'}`}>
-                          <div className={`relative flex-shrink-0 overflow-hidden ${msg.sender === 'me' ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground'} p-3.5 rounded-[22px] max-w-[280px] shadow-sm`}>
+                          <div className={`relative flex-shrink-0 overflow-hidden ${msg.sender === 'me' ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground'} p-3 rounded-[22px] max-w-[280px] shadow-sm`}>
                             <p className={`text-sm leading-relaxed break-words overflow-wrap-anywhere ${msg.sender === 'me' ? 'text-right' : 'text-left'}`}>
                               {msg.text}
                             </p>

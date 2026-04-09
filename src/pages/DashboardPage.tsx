@@ -156,8 +156,7 @@ export function DashboardPage() {
             Welcome Back {isDevMode && <span className="text-muted-foreground tracking-normal">(DEV)</span>}
           </h2>
           <div className="flex flex-col items-center gap-2">
-            <span className="text-[32px] font-black tracking-tighter text-foreground leading-none">Starting Roommate Link</span>
-            <p className="text-[14px] font-bold text-muted-foreground">Synchronizing your matching preferences</p>
+            <span className="text-[32px] font-black tracking-tighter text-foreground leading-none">Finding your roommates...</span>
           </div>
         </motion.div>
       </div>
@@ -180,7 +179,7 @@ export function DashboardPage() {
           subtitle={`${matches.length} highly compatible roommates found.`}
         />
 
-        <div className="flex flex-col px-4 sm:px-5 pt-6 pb-40 w-full max-w-2xl lg:max-w-4xl mx-auto">
+        <div className="flex flex-col px-4 sm:px-5 pt-6 pb-32 w-full max-w-2xl lg:max-w-3xl mx-auto">
           {isPioneerUser && !hasPaid && (
             <PioneerBanner handlePioneerClaim={handlePioneerClaim} />
           )}
@@ -243,9 +242,9 @@ export function DashboardPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="w-full max-w-lg mx-auto"
+                className="w-full max-w-[92%] md:max-w-md mx-auto"
               >
-                <div className="bg-card/50 backdrop-blur-xl rounded-[2.5rem] border border-border/80 p-8 shadow-premium flex flex-col items-center text-center gap-6 relative overflow-hidden group">
+                <div className="bg-card/50 backdrop-blur-xl rounded-[2rem] border border-border/80 p-6 shadow-premium flex flex-col items-center text-center gap-5 relative overflow-hidden group">
                   <div className="absolute top-0 right-0 w-40 h-40 bg-amber-500/5 blur-[80px] -translate-y-1/2 translate-x-1/2" />
                   <div className="w-20 h-20 bg-amber-500/10 rounded-3xl flex items-center justify-center relative group-hover:scale-110 transition-transform duration-500">
                     <div className="absolute inset-0 bg-amber-500/20 animate-pulse rounded-3xl" />
@@ -271,9 +270,9 @@ export function DashboardPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="w-full max-w-lg mx-auto"
+                className="w-full max-w-[92%] md:max-w-md mx-auto"
               >
-                <div className="bg-card/50 backdrop-blur-xl rounded-[3xl] border border-border/80 p-8 shadow-premium flex flex-col items-center text-center gap-6 relative overflow-hidden group">
+                <div className="bg-card/50 backdrop-blur-xl rounded-[2rem] border border-border/80 p-6 shadow-premium flex flex-col items-center text-center gap-5 relative overflow-hidden group">
                   <div className="absolute top-0 right-0 w-40 h-40 bg-primary/5 blur-[80px] -translate-y-1/2 translate-x-1/2" />
                   <div className="w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center relative group-hover:scale-110 transition-transform duration-500">
                     <div className="absolute inset-0 bg-primary/20 animate-pulse rounded-3xl" />
@@ -299,9 +298,9 @@ export function DashboardPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="w-full max-w-lg mx-auto"
+                className="w-full max-w-[92%] md:max-w-md mx-auto"
               >
-                <div className="bg-card/50 backdrop-blur-xl rounded-[2.5rem] border border-border/80 p-8 shadow-premium flex flex-col items-center text-center gap-6 relative overflow-hidden group">
+                <div className="bg-card/50 backdrop-blur-xl rounded-[2rem] border border-border/80 p-6 shadow-premium flex flex-col items-center text-center gap-5 relative overflow-hidden group">
                   <div className="absolute top-0 right-0 w-40 h-40 bg-red-500/5 blur-[80px] -translate-y-1/2 translate-x-1/2" />
                   <div className="w-20 h-20 bg-red-500/10 rounded-3xl flex items-center justify-center relative group-hover:scale-110 transition-transform duration-500">
                     <div className="absolute inset-0 bg-red-500/20 animate-pulse rounded-3xl" />

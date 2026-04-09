@@ -8,7 +8,7 @@ const SupportCard = ({ icon: Icon, title, description }: { icon: React.ElementTy
     initial={{ opacity: 0, y: 20 }}
     whileInView={{ opacity: 1, y: 0 }}
     viewport={{ once: true }}
-    className="bg-card rounded-boutique border border-border/50 p-8 flex flex-col gap-6 hover:shadow-xl transition-all group"
+    className="bg-card rounded-boutique border border-border/50 p-6 flex flex-col gap-6 hover:shadow-xl transition-all group"
   >
     <div className="w-14 h-14 rounded-xl bg-muted flex items-center justify-center group-hover:scale-110 transition-transform">
       <Icon className="w-7 h-7 text-foreground" />
@@ -23,7 +23,7 @@ const SupportCard = ({ icon: Icon, title, description }: { icon: React.ElementTy
 const FAQItem = ({ question, answer }: { question: string; answer: string }) => (
   <div className="py-6 border-b border-border/50">
     <h4 className="text-lg font-bold mb-3 flex items-start gap-3">
-      <HelpCircle className="w-5 h-5 text-foreground mt-1 shrink-0" />
+      <HelpCircle className="w-5 h-5 text-primary mt-1 shrink-0" />
       {question}
     </h4>
     <p className="text-muted-foreground font-medium leading-relaxed pl-8">{answer}</p>
@@ -52,16 +52,16 @@ export function SupportPage() {
         </div>
       </header>
 
-      <main className="flex-1 w-full max-w-4xl mx-auto px-6 py-12 pb-32">
+      <main className="flex-1 w-full max-w-3xl mx-auto px-6 py-12 pb-32">
         {/* Hero Section */}
-        <div className="mb-20">
+        <div className="mb-14">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="flex items-center gap-4 mb-6 text-foreground"
           >
-            <div className="w-12 h-12 rounded-2xl bg-foreground/5 flex items-center justify-center">
-              <UserGroupIcon className="w-8 h-8" />
+          <div className="w-12 h-12 rounded-2xl bg-primary/5 flex items-center justify-center">
+              <UserGroupIcon className="w-8 h-8 text-primary" />
             </div>
             <span className="text-[14px] font-black uppercase tracking-[0.2em]">Roommate Link Support</span>
           </motion.div>
@@ -74,7 +74,7 @@ export function SupportPage() {
         </div>
 
         {/* Support Categories */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-24">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-16">
           <SupportCard
             icon={CustomMatch}
             title="Matching & Vibe Checks"
@@ -98,7 +98,7 @@ export function SupportPage() {
         </div>
 
         {/* Commitment Section */}
-        <div className="bg-muted/40 rounded-boutique p-8 md:p-12 border border-border/50 mb-24">
+        <div className="bg-muted/40 rounded-boutique p-6 md:p-10 border border-border/50 mb-20">
           <div className="flex flex-col md:flex-row items-center gap-10">
             <div className="w-full md:w-1/2">
               <h2 className="text-3xl font-black mb-6 tracking-tight dark:text-foreground">Our Support Commitment</h2>
@@ -136,7 +136,7 @@ export function SupportPage() {
         </div>
 
         {/* FAQ Section */}
-        <section className="mb-32">
+        <section className="mb-20">
           <h2 className="text-3xl font-black mb-10 tracking-tight">Common Inquiries</h2>
           <div className="divide-y divide-border/50">
             <FAQItem

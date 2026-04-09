@@ -50,26 +50,26 @@ export function EmptyState({ isPioneerUser, isRecalculating, forceRecalculate }:
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="flex flex-col items-center justify-center pt-12 pb-20 px-6 text-center"
+      className="flex flex-col items-center justify-center pt-10 pb-16 px-6 text-center"
     >
-      <div className="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center mb-6 relative">
+      <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-5 relative">
         <div className="absolute inset-0 bg-primary/20 animate-ping opacity-25 rounded-full" />
-        <LockIcon className="w-10 h-10 text-primary animate-pulse" />
+        <LockIcon className="w-8 h-8 text-primary animate-pulse" />
       </div>
       {isPioneerUser ? (
         <>
           <h3 className="text-[20px] font-black text-foreground mb-2">Pioneer Hub</h3>
-          <p className="text-muted-foreground text-[14px] font-medium leading-relaxed max-w-[280px] mb-3">
+          <p className="text-muted-foreground text-[14px] font-medium leading-relaxed max-w-[240px] mb-3">
             We're currently matching you with initial wave of students. New compatible roommates appear as they join!
           </p>
-          <p className="text-muted-foreground text-[13px] font-semibold leading-relaxed max-w-[280px] mb-6">
+          <p className="text-muted-foreground text-[13px] font-semibold leading-relaxed max-w-[240px] mb-5">
             Check back daily or invite friends to speed up the process.
           </p>
         </>
       ) : (
         <>
           <h3 className="text-[20px] font-black text-foreground mb-2">You're Early!</h3>
-          <p className="text-muted-foreground text-[14px] font-medium leading-relaxed max-w-[280px] mb-6">
+          <p className="text-muted-foreground text-[14px] font-medium leading-relaxed max-w-[240px] mb-5">
             We're still mapping campus DNA. Check back soon for your perfect roommate matches!
           </p>
         </>

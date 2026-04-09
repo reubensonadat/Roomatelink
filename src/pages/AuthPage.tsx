@@ -176,7 +176,7 @@ export function AuthPage() {
         <motion.div 
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="w-full flex justify-start mb-10 pl-2"
+          className="w-full flex justify-start mb-8 pl-2"
         >
            <Link 
               to="/" 
@@ -191,7 +191,7 @@ export function AuthPage() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
-          className="mb-10 flex flex-col items-center justify-center text-center"
+          className="mb-8 flex flex-col items-center justify-center text-center"
         >
           <span className="text-[14.5px] font-extrabold tracking-[0.15em] uppercase text-muted-foreground/80 mb-6 drop-shadow-sm">Roommate Link</span>
           <h1 className="text-[26px] sm:text-[32px] font-bold tracking-tight text-foreground mb-4 leading-[1.1]">
@@ -224,9 +224,9 @@ export function AuthPage() {
           initial={{ opacity: 0, y: 20, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ duration: 0.4, ease: "easeOut" }}
-          className="bg-card/60 backdrop-blur-2xl border border-border/60 rounded-[22px] p-6 sm:p-8 shadow-2xl relative overflow-hidden"
+          className="bg-card/60 backdrop-blur-2xl border border-border/60 rounded-[22px] p-5 md:p-6 shadow-2xl relative overflow-hidden"
         >
-          <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-5">
 
             {/* Error Message */}
             <AnimatePresence>
@@ -286,7 +286,7 @@ export function AuthPage() {
               <div className="h-[1px] bg-border flex-1" />
             </div>
 
-            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
               <div className="flex flex-col gap-2">
                 <label className="text-[12.5px] font-medium text-foreground">Email</label>
                 <div className="relative">

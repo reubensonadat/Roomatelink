@@ -52,9 +52,9 @@ export function FoundRoommateModal({ isOpen, onClose, onConfirm, dayNumber }: Fo
       onClose={onClose}
       title={getDayTitle()}
       subtitle={`Day ${dayNumber} Check-in`}
-      maxWidth="md:w-[500px]"
+      maxWidth="max-w-[92%] md:max-w-md"
     >
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-4">
         <p className="text-[15px] font-bold text-foreground leading-relaxed">
           {getDayMessage()}
         </p>
@@ -65,12 +65,12 @@ export function FoundRoommateModal({ isOpen, onClose, onConfirm, dayNumber }: Fo
             onClick={() => setSelectedOption('yes')}
             className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all active:scale-[0.98] ${
               selectedOption === 'yes'
-                ? 'border-emerald-500 bg-emerald-500/5 shadow-sm'
-                : 'border-border/60 bg-card hover:border-emerald-500/30'
+                ? 'border-primary bg-primary/5 shadow-sm'
+                : 'border-border/60 bg-card hover:border-primary/30'
             }`}
           >
             <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
-              selectedOption === 'yes' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-muted text-muted-foreground'
+              selectedOption === 'yes' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-muted text-muted-foreground'
             }`}>
               <Check className="w-5 h-5" strokeWidth={3} />
             </div>
@@ -84,12 +84,12 @@ export function FoundRoommateModal({ isOpen, onClose, onConfirm, dayNumber }: Fo
             onClick={() => setSelectedOption('no')}
             className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all active:scale-[0.98] ${
               selectedOption === 'no'
-                ? 'border-amber-500 bg-amber-500/5 shadow-sm'
-                : 'border-border/60 bg-card hover:border-amber-500/30'
+                ? 'border-muted bg-muted/50 shadow-sm'
+                : 'border-border/60 bg-card hover:border-foreground/20'
             }`}
           >
             <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
-              selectedOption === 'no' ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20' : 'bg-muted text-muted-foreground'
+              selectedOption === 'no' ? 'bg-muted-foreground text-background shadow-lg shadow-muted-foreground/20' : 'bg-muted text-muted-foreground'
             }`}>
               <X className="w-5 h-5" strokeWidth={3} />
             </div>

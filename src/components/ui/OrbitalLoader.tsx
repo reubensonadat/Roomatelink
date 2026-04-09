@@ -25,17 +25,17 @@ export function OrbitalLoader({
     <div className={cn("flex gap-2 items-center justify-center", placementClasses)}>
       <div className={cn("relative w-16 h-16", className)} {...props}>
         <motion.div
-          className="absolute inset-0 border-2 border-transparent border-t-foreground rounded-full"
+          className="absolute inset-0 border-2 border-transparent border-t-primary rounded-full"
           animate={{ rotate: 360 }}
           transition={{ duration: 1, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
         />
         <motion.div
-          className="absolute inset-2 border-2 border-transparent border-t-foreground rounded-full"
+          className="absolute inset-2 border-2 border-transparent border-t-primary rounded-full"
           animate={{ rotate: -360 }}
           transition={{ duration: 1.5, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
         />
         <motion.div
-          className="absolute inset-4 border-2 border-transparent border-t-foreground rounded-full"
+          className="absolute inset-4 border-2 border-transparent border-t-primary rounded-full"
           animate={{ rotate: 360 }}
           transition={{ duration: 0.8, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
         />
