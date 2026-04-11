@@ -87,7 +87,7 @@ export function ProfilePage() {
 
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
-  const [syncStep, setSyncStep] = useState(0) // 0: Handshake, 1: Verification, 2: Finalizing
+  const [, setSyncStep] = useState(0) // 0: Handshake, 1: Verification, 2: Finalizing
   const [syncProgress, setSyncProgress] = useState(0)
   const [hasQuestionnaire, setHasQuestionnaire] = useState<boolean | null>(null)
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false)

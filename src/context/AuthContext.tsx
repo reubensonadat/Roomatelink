@@ -99,7 +99,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Phase 1: Explicit session check on mount to prevent race condition
   useEffect(() => {
     let isMounted = true
-    let hasInitialized = false
 
     const initializeAuth = async () => {
       try {
@@ -148,7 +147,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         setIsSessionLoading(false)
         setIsHydrated(true)
-        hasInitialized = true
       } catch (err) {
         logAuthEvent('INITIALIZATION_ERROR', err)
         if (isMounted) {
