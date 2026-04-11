@@ -54,10 +54,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // useRef for activity tracking to prevent endless re-renders
   const lastActivityRef = useRef<number>(Date.now())
-
+  
   // Ref to prevent stale closures when mapping cached data
   const profileRef = useRef<UserProfile | null>(null)
   const lastRefreshRef = useRef<number>(0)
+  
+  // Ref to track last visibility refresh to prevent rapid-fire calls
+  const lastVisibilityRefreshRef = useRef<number>(0)
 
   // Helper to keep profile state and ref in sync
   // NEW: Helper to synchronize state and ref
@@ -308,18 +311,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!user) return
 
+    const VISIBLE_REFRESH_COOLDOWN = 5000 // 5 second cooldown
+
     const handleVisibility = async () => {
       if (document.visibilityState === 'visible') {
+        const now = Date.now()
+        const timeSinceLastRefresh = now - lastVisibilityRefreshRef.current
+        
+        // Debounce: Skip if we just refreshed recently
+        if (timeSinceLastRefresh < VISIBLE_REFRESH_COOLDOWN) {
+          logAuthEvent('VISIBILITY_CHANGE', `Skipped (cooldown: ${timeSinceLastRefresh}ms)`)
+          return
+        }
+
         logAuthEvent('VISIBILITY_CHANGE', 'Tab became visible - refreshing session')
         // Proactive Session Resurrection: Refresh session on wake
         const { data: { session: s }, error } = await supabase.auth.getSession()
+        
+        // Only sign out on actual auth errors, not lock contention or network issues
         if (error) {
-          logAuthEvent('SESSION_REFRESH_ERROR', error.message)
-          // Session expired - handle gracefully
-          toast.error('Your session has expired. Please sign in again.')
-          await signOut()
-          return
+          // Check if this is a real auth error or just a lock/network issue
+          const isAuthError = error.name === 'AuthApiError' ||
+                           error.message?.toLowerCase().includes('invalid') ||
+                           error.message?.toLowerCase().includes('expired')
+          
+          if (isAuthError) {
+            logAuthEvent('SESSION_REFRESH_ERROR', error.message)
+            // Session expired - handle gracefully
+            toast.error('Your session has expired. Please sign in again.')
+            await signOut()
+            return
+          } else {
+            // Lock contention or network issue - don't sign out, just log
+            logAuthEvent('SESSION_REFRESH_SKIPPED', `Non-auth error: ${error.message}`)
+            lastVisibilityRefreshRef.current = now
+            return
+          }
         }
+        
+        lastVisibilityRefreshRef.current = now
+        
         if (s) {
           setSession(s)
           setUser(s.user)
@@ -334,7 +365,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const handleFocus = () => {
       // Secondary handshake for PWA/Mobile resume
+      // Also debounce focus events
+      const now = Date.now()
+      const timeSinceLastRefresh = now - lastVisibilityRefreshRef.current
+      
+      if (timeSinceLastRefresh < VISIBLE_REFRESH_COOLDOWN) {
+        return
+      }
+      
       logAuthEvent('WINDOW_FOCUS', 'Window regained focus - refreshing profile')
+      lastVisibilityRefreshRef.current = now
       refreshProfile()
     }
 
