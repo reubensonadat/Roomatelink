@@ -5,7 +5,7 @@ import { OrbitalLoader } from '../ui/OrbitalLoader'
 
 interface UserFlowGateProps {
   isProfileComplete: boolean
-  hasQuestionnaire: boolean
+  hasQuestionnaire: boolean | null
   hasPaid: boolean
   isVerifyingPayment: boolean
   handlePaymentFallbackCheck: () => void
@@ -56,7 +56,8 @@ export function UserFlowGate({
   }
 
   // Questionnaire incomplete gate (Only block if we also have 0 matches)
-  if (!hasQuestionnaire && matchesCount === 0) {
+  // Only show this when hasQuestionnaire is explicitly false (null = loading)
+  if (hasQuestionnaire === false && matchesCount === 0) {
     return (
       <motion.div
         key="questionnaire-incomplete"

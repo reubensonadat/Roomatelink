@@ -131,7 +131,10 @@ export function useChatMessages(threadId: string | undefined): UseChatMessagesRe
 
         // 10 Second Fail-Safe Timeout
         syncTimeout = setTimeout(() => {
-          if (isMounted) setIsSyncing(false)
+          if (isMounted) {
+            setIsSyncing(false)
+            setIsLoading(false)
+          }
         }, 10000)
 
         // Determine Delta starting point

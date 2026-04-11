@@ -8,7 +8,7 @@ import { MatchProfile } from '../types/database'
 interface UseDashboardDataReturn {
   matches: MatchProfile[]
   isLoading: boolean
-  hasQuestionnaire: boolean
+  hasQuestionnaire: boolean | null
   isPioneerUser: boolean
   initializeDashboard: () => Promise<void>
   forceRecalculate: () => Promise<void>
@@ -42,11 +42,8 @@ export function useDashboardData(): UseDashboardDataReturn {
   const timeoutRef = useRef<number | null>(null)
   
   // hasQuestionnaire is derived from questionnaire_responses table - source of truth
-  // We use cached value as fallback, but never infer from matches
-  const [hasQuestionnaire, setHasQuestionnaire] = useState(() => {
-    const cachedQ = sessionStorage.getItem('hasQuestionnaireCache') === 'true'
-    return cachedQ
-  })
+  // Initialize as null (loading state) to avoid stale cache poisoning
+  const [hasQuestionnaire, setHasQuestionnaire] = useState<boolean | null>(null)
 
   const [isPioneerUser, setIsPioneerUser] = useState(() => !!profile?.is_pioneer)
   const [mounted, setMounted] = useState(false)
@@ -151,11 +148,7 @@ export function useDashboardData(): UseDashboardDataReturn {
           console.log('[Questionnaire Check] User has questionnaire:', hasQ)
         } else {
           console.error('[Questionnaire Check] Query failed:', qError)
-          // Keep existing cached value if query fails
-          const cachedQ = sessionStorage.getItem('hasQuestionnaireCache') === 'true'
-          if (cachedQ !== null) {
-            setHasQuestionnaire(cachedQ)
-          }
+          // On query failure, keep null (loading state) — don't poison with stale cache
         }
 
         // Step 3: Fetch Matches — query BOTH sides for bulletproof loading

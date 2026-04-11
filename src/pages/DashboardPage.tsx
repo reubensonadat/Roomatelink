@@ -264,7 +264,7 @@ export function DashboardPage() {
                   </Link>
                 </div>
               </motion.div>
-            ) : !hasQuestionnaire ? (
+            ) : hasQuestionnaire === false ? (
               <motion.div
                 key="questionnaire-incomplete"
                 initial={{ opacity: 0, y: 20 }}
