@@ -19,6 +19,8 @@ interface AuthContextType {
   signOut: () => Promise<void>
   signInWithGoogle: () => Promise<void>
   refreshProfile: (force?: boolean) => Promise<void>
+  // NEW: Expose updateProfile for optimistic updates (bypasses 10-minute throttle)
+  updateProfile: (newProfile: UserProfile | null) => void
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -264,8 +266,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => clearTimeout(timer)
   }, [isInitializing, isSessionLoading, isProfileLoading])
 
-  // Phase 1.2: Effect A - Activity Heartbeat (2-min DB update)
+  // Phase 1.2: Effect A - Activity Heartbeat (initial DB update only)
   // NEW: Split from monolithic effect, depends only on [user]
+  // FIXED: Removed 2-minute interval to prevent mobile TCP connection poisoning
   useEffect(() => {
     if (!user) return
 
@@ -281,13 +284,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    // Update immediately on mount/session start
+    // Update immediately on mount/session start only
     updateActivity()
-
-    // Update every 2 minutes while the tab is active
-    const interval = setInterval(updateActivity, 2 * 60 * 1000)
-
-    return () => clearInterval(interval)
   }, [user])
 
 
@@ -404,7 +402,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signUp,
       signOut,
       signInWithGoogle,
-      refreshProfile
+      refreshProfile,
+      // NEW: Expose updateProfile for optimistic updates (bypasses 10-minute throttle)
+      updateProfile
     }}>
       {children}
     </AuthContext.Provider>

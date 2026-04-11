@@ -34,10 +34,14 @@ const avatars = {
   ]
 }
 
+// Local timeout helper for avatar uploads (45 seconds needed for large files)
+// Database operations use the global 8-second timeout from supabase.ts
 function withTimeout<T>(promise: PromiseLike<T>, ms: number, message: string): Promise<T> {
   return Promise.race([
     promise,
-    new Promise<T>((_, reject) => setTimeout(() => reject(new Error(message)), ms))
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(message)), ms)
+    )
   ])
 }
 
@@ -58,7 +62,7 @@ async function withRetry<T>(
 }
 
 export function ProfilePage() {
-  const { user, profile, session, refreshProfile } = useAuth()
+  const { user, profile, session, updateProfile } = useAuth()
   const navigate = useNavigate()
 
   const STORAGE_KEY = 'roommate_profile_data'
@@ -189,29 +193,28 @@ export function ProfilePage() {
         setSyncProgress(25)
 
         if (profileId) {
-          const { error } = await withTimeout(
-            supabase.from('users').update(profileData).eq('id', profileId),
-            15000,
-            "Update timed out. Reconnecting..."
-          )
+          const { data, error } = await supabase.from('users').update(profileData).eq('id', profileId).select().single()
           if (error) throw error
+          
+          // OPTIMISTIC UPDATE: Bypass 10-minute throttle
+          // Pass the exact data that was just saved to update UI immediately
+          updateProfile(data)
         } else {
-          const { error } = await withTimeout(
-            supabase.from('users').insert({
-              auth_id: user.id,
-              email: user.email || `university_mail_${Date.now()}@stu.ucc.edu.gh`,
-              ...profileData
-            }),
-            10000,
-            "Insertion timed out. Reconnecting..."
-          )
+          const { data, error } = await supabase.from('users').insert({
+            auth_id: user.id,
+            email: user.email || `university_mail_${Date.now()}@stu.ucc.edu.gh`,
+            ...profileData
+          }).select().single()
           if (error) throw error
+          
+          // OPTIMISTIC UPDATE: Bypass 10-minute throttle
+          // Pass the exact data that was just saved to update UI immediately
+          updateProfile(data)
         }
 
         // Step 2: Verification
         setSyncStep(1)
         setSyncProgress(60)
-        await refreshProfile(true)
 
         // Step 3: Finalizing
         setSyncStep(2)

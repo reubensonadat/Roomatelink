@@ -52,7 +52,23 @@ function createTimeoutFetch(originalFetch: typeof fetch): typeof fetch {
       
       // Re-throw abort errors with a clearer message
       if (error instanceof Error && error.name === 'AbortError') {
-        throw new Error(`Request timeout after ${REQUEST_TIMEOUT_MS}ms. Please check your connection.`)
+        // Second chance: Retry once on a fresh connection
+        const retryController = new AbortController()
+        const retryTimeoutId = setTimeout(() => {
+          retryController.abort()
+        }, REQUEST_TIMEOUT_MS)
+
+        try {
+          const retryResponse = await originalFetch(input, {
+            ...init,
+            signal: retryController.signal
+          })
+          clearTimeout(retryTimeoutId)
+          return retryResponse
+        } catch (retryError) {
+          clearTimeout(retryTimeoutId)
+          throw new Error(`Request timeout after ${REQUEST_TIMEOUT_MS}ms. Please check your connection.`)
+        }
       }
       throw error
     }
