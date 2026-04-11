@@ -41,9 +41,6 @@ export default function AuthCallbackPage() {
           setStatus('error')
         }
       }
-
-      // Strip URL hash to prevent phantom SIGNED_IN events on remount
-      window.history.replaceState({}, document.title, window.location.pathname)
     }
 
     handleAuthExchange()
