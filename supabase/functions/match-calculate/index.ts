@@ -207,10 +207,24 @@ Deno.serve(async (req: Request) => {
           cross_category_flags: match.result.patternFlags,
           consistency_modifier: match.result.consistencyModifier,
           category_scores: match.result.categoryBreakdown,
+          tensions: match.result.patternFlags
+            ? match.result.patternFlags
+                .filter((f: any) => f.penalty > 0)
+                .map((f: any) => f.description)
+            : [],
+          commonTraits: match.result.categoryBreakdown
+            ? match.result.categoryBreakdown
+                .filter((cat: any) => cat.meanSimilarity >= 0.75)
+                .flatMap((cat: any) =>
+                  cat.questionScores
+                    .filter((qs: any) => qs.similarity === 1.0)
+                    .map((qs: any) => `Strong agreement on ${cat.categoryName}`)
+                )
+            : [],
           calculated_at: now
         });
         
-        // Reciprocal Match (Them -> You)
+        // Reciprocal Match (Them -> You) — same derivation
         matchesToInsert.push({
           user_a_id: match.userId,
           user_b_id: userId,
@@ -219,6 +233,20 @@ Deno.serve(async (req: Request) => {
           cross_category_flags: match.result.patternFlags,
           consistency_modifier: match.result.consistencyModifier,
           category_scores: match.result.categoryBreakdown,
+          tensions: match.result.patternFlags
+            ? match.result.patternFlags
+                .filter((f: any) => f.penalty > 0)
+                .map((f: any) => f.description)
+            : [],
+          commonTraits: match.result.categoryBreakdown
+            ? match.result.categoryBreakdown
+                .filter((cat: any) => cat.meanSimilarity >= 0.75)
+                .flatMap((cat: any) =>
+                  cat.questionScores
+                    .filter((qs: any) => qs.similarity === 1.0)
+                    .map((qs: any) => `Strong agreement on ${cat.categoryName}`)
+                )
+            : [],
           calculated_at: now
         });
       });

@@ -72,6 +72,11 @@ Any CSS files	Global styles
   writes, and typing indicator broadcast. The cleanup function removes the 
   channel AND event listeners AND three timeouts. Do not touch any of these. |
 
+  | `supabase/functions/match-calculate/judge.ts` | This file contains the core matching algorithm. It is the product's most valuable IP. 
+  Do NOT let any agent modify this file for any reason. If someone needs a logic change, 
+  the Principal Architect must review and approve it first. A single wrong change here 
+  silently corrupts match calculations for ALL users. |
+
 SECTION 4: THE RULE
 If your agent wants to modify a file listed in Section 1, STOP.If your agent wants to add state logic to a file listed in Section 3, STOP.If your agent says "I just need to tweak one line" in a poisoned file, STOP.
 

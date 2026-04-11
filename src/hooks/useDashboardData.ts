@@ -224,7 +224,69 @@ export function useDashboardData(): UseDashboardDataReturn {
               tags: [m.roommate.course, 'Verified'].filter(Boolean),
               sharedTraits: (m as any).common_traits || [],
               tensions: (m as any).tensions || ['None Detected'],
-              categoryScores: m.category_scores || []
+              categoryScores: Array.isArray(m.category_scores) && m.category_scores.length > 0
+                ? m.category_scores.map((cat: any) => {
+                    // Find the question with lowest similarity for the insight
+                    const worstQuestion = cat.questionScores?.reduce(
+                      (worst: any, q: any) => (!worst || q.similarity < worst.similarity) ? q : worst,
+                      null
+                    )
+                    
+                    // Question ID to readable name mapping
+                    const questionNames: Record<string, string> = {
+                      'q1': 'Door noise waking you up',
+                      'q2': 'Personal info shared with others',
+                      'q3': 'Argument aftermath behavior',
+                      'q4': 'Reacting to being upset',
+                      'q5': '1AM location',
+                      'q6': 'Studying with background noise',
+                      'q7': 'Exam season noise tolerance',
+                      'q8': 'Natural sleep time',
+                      'q9': 'Dishes in the sink',
+                      'q10': "Other person's mess tolerance",
+                      'q11': 'Laundry pile smell feedback',
+                      'q12': 'Settled-in timeline',
+                      'q13': 'Friday evening location',
+                      'q14': 'Last-minute guests',
+                      'q15': 'Guest frequency',
+                      'q16': 'Late-night noise tolerance',
+                      'q17': 'One-month relationship expectation',
+                      'q18': 'Coming back after a bad day',
+                      'q19': 'Everyday greeting style',
+                      'q20': 'Roommate relationship goal',
+                      'q21': 'First-time freedom reaction',
+                      'q22': 'Wednesday night invitation',
+                      'q23': 'Self-discipline self-assessment',
+                      'q24': "Friend's description of you",
+                      'q25': '2AM door noise follow-up',
+                      'q26': 'Academic struggle intervention',
+                      'q27': 'Persistent invitation boundaries',
+                      'q28': 'Disagreeing choices',
+                      'q29': 'Partner visit frequency',
+                      'q30': '11PM phone call tolerance',
+                      'q31': 'Partner presence tolerance',
+                      'q32': 'Midnight argument aftermath',
+                      'q33': 'Food sharing expectations',
+                      'q34': 'Cooking philosophy',
+                      'q35': 'Food/eating without asking',
+                      'q36': 'Asking for food regularly',
+                      'q37': 'Borrowing charger without asking',
+                      'q38': 'Borrowing iron while absent',
+                      'q39': 'Unreturned borrowed item',
+                      'q40': 'Honest self-assessment'
+                    }
+
+                    const insightText = worstQuestion
+                      ? `Biggest difference: ${questionNames[worstQuestion.questionId] || 'lifestyle habits'}`
+                      : null
+
+                    return {
+                      name: cat.categoryName || 'Unknown',
+                      score: Math.round((cat.meanSimilarity || 0) * 100),
+                      insight: insightText
+                    }
+                  })
+                : []
             }))
           
           setMatches(mappedMatches)
