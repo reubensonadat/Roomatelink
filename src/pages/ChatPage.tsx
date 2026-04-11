@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Flag, Lock, CheckCheck, Clock, ChevronLeft, Send, WifiOff } from 'lucide-react'
+import { Flag, Lock, CheckCheck, Clock, ChevronLeft, Send, WifiOff, RefreshCw, Wifi } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ReportModal } from '../components/dashboard/ReportModal'
 import { useChatMessages } from '../hooks/useChatMessages'
@@ -10,14 +10,14 @@ import DrawingHouseLoader from '../components/ui/DrawingHouseLoader'
 // Helper function to format relative time
 function formatLastSeen(lastActive: string | null | undefined): string {
   if (!lastActive) return 'Unknown'
-  
+
   const now = new Date()
   const lastSeen = new Date(lastActive)
   const diffMs = now.getTime() - lastSeen.getTime()
   const diffMins = Math.floor(diffMs / 60000)
   const diffHours = Math.floor(diffMs / 3600000)
   const diffDays = Math.floor(diffMs / 86400000)
-  
+
   if (diffMins < 1) return 'Just now'
   if (diffMins < 60) return `${diffMins}m ago`
   if (diffHours < 24) return `${diffHours}h ago`
@@ -43,10 +43,13 @@ export function ChatPage() {
     sendMessage,
     setTyping,
     isOtherUserTyping,
-    isRealtimeConnected,
     loadMoreMessages,
     hasMoreMessages,
-    isLoadingMore
+    isLoadingMore,
+    // NEW: WebSocket state management (replaces isRealtimeConnected)
+    wsConnectionState,
+    reconnectAvailable,
+    reconnectWebSocket
   } = useChatMessages(receiverId)
 
   const [isReportModalOpen, setIsReportModalOpen] = useState(false)
@@ -60,34 +63,34 @@ export function ChatPage() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
-  
+
   // Also scroll on initial mount when messages are loaded
   useEffect(() => {
     if (!isLoading && messages.length > 0) {
       bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
     }
   }, [isLoading, messages.length])
-  
+
   // Debounced typing indicator
   const handleInputChange = useCallback((value: string) => {
     setMessageText(value)
-    
+
     // Send typing indicator when user starts typing
     if (value.trim()) {
       setTyping(true)
-      
+
       // Clear previous timeout
       if (typingTimeoutRef.current !== null) {
         clearTimeout(typingTimeoutRef.current)
       }
-      
+
       // Stop typing indicator after 2 seconds of no input
       typingTimeoutRef.current = window.setTimeout(() => {
         setTyping(false)
       }, 2000)
     }
   }, [setTyping])
-  
+
   // Cleanup typing timeout on unmount
   useEffect(() => {
     return () => {
@@ -96,18 +99,18 @@ export function ChatPage() {
       }
     }
   }, [])
-  
+
   // Scroll handler for upward pagination
   const handleScroll = useCallback(() => {
     const container = messagesContainerRef.current
     if (!container || isLoadingMore || !hasMoreMessages) return
-    
+
     // Trigger load more when near top (within 50px)
     if (container.scrollTop < 50) {
       // Save scroll position before prepending
       const oldScrollHeight = container.scrollHeight
       scrollPositionRef.current = container.scrollTop
-      
+
       loadMoreMessages().then(() => {
         // Restore scroll position after React re-renders
         requestAnimationFrame(() => {
@@ -227,21 +230,33 @@ export function ChatPage() {
             </div>
           ) : (
             <>
-              {/* Network Status Indicator */}
+              {/* ============================================================================
+                  WALKIE-TALKIE RECONNECT UI
+                  Shows reconnect button when WebSocket is disconnected and reconnect is available
+                  ============================================================================ */}
               <AnimatePresence>
-                {!isRealtimeConnected && (
+                {wsConnectionState === 'disconnected' && reconnectAvailable && (
                   <motion.div
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
-                    className="bg-amber-500/90 backdrop-blur-sm text-white px-4 py-2 text-sm font-bold flex items-center gap-2"
+                    className="bg-amber-500/95 backdrop-blur-sm text-white px-4 py-3 flex items-center justify-between gap-3 border-b border-amber-400/30"
                   >
-                    <WifiOff className="w-4 h-4" />
-                    Waiting for network...
+                    <div className="flex items-center gap-2">
+                      <WifiOff className="w-4 h-4" />
+                      <span className="text-sm font-bold">Live updates paused</span>
+                    </div>
+                    <button
+                      onClick={reconnectWebSocket}
+                      className="px-3 py-1.5 bg-white text-amber-600 text-[11px] font-black rounded-xl uppercase tracking-tighter hover:bg-amber-50 transition-colors flex items-center gap-1.5"
+                    >
+                      <RefreshCw className="w-3 h-3" />
+                      Reconnect
+                    </button>
                   </motion.div>
                 )}
               </AnimatePresence>
-              
+
               <div className="flex items-center justify-between px-4 py-3 bg-card border-b border-border/40">
                 <div className="max-w-2xl mx-auto w-full flex items-center justify-between">
                   <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -255,6 +270,14 @@ export function ChatPage() {
                       <div className="flex items-center gap-3 min-w-0">
                         <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-[18px] bg-muted border border shadow-inner overflow-hidden relative flex-shrink-0">
                           <img src={otherUser.avatar_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + otherUser.id} alt="" className="w-full h-full object-cover" />
+                          {/* Connection Status Indicator */}
+                          <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-card flex items-center justify-center ${wsConnectionState === 'connected' ? 'bg-emerald-500' :
+                            wsConnectionState === 'disconnected' ? 'bg-amber-500' :
+                              'bg-muted-foreground'
+                            }`}>
+                            {wsConnectionState === 'connected' && <Wifi className="w-2 h-2 text-white" />}
+                            {wsConnectionState === 'disconnected' && <WifiOff className="w-2 h-2 text-white" />}
+                          </div>
                         </div>
                         <div className="flex flex-col min-w-0">
                           <span className="text-[16px] font-black text-foreground truncate tracking-tight">{otherUser.full_name}</span>

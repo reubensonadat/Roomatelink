@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
@@ -13,6 +13,24 @@ export interface ChatMessage {
   timestamp: string
   status: 'PENDING' | 'SENT' | 'DELIVERED' | 'READ'
 }
+
+// ============================================================================
+// ISSUE 2 FIX: Dead Chat WebSocket - Cold Start Handoff & Walkie-Talkie Reconnect
+// ============================================================================
+// When Cloudflare kills idle WebSocket connections, the app can recover without
+// refreshing the page. The physics:
+//
+// 1. COLD START HANDOFF: When user opens chat, fetch messages via HTTP first
+//    (always works), then open WebSocket in background for live updates.
+//
+// 2. WALKIE-TALKIE RECONNECT: When WebSocket dies, show "Tap to Reconnect" button.
+//    On tap: fetch missed messages via HTTP, destroy dead WebSocket, create new one.
+//
+// 3. HTTP FALLBACK: When sending while disconnected, use HTTP insert instead of
+//    WebSocket broadcast. Message saves to database and appears on next sync.
+// ============================================================================
+
+export type WebSocketState = 'idle' | 'connecting' | 'connected' | 'disconnected' | 'error'
 
 interface UseChatMessagesReturn {
   messages: ChatMessage[]
@@ -30,10 +48,14 @@ interface UseChatMessagesReturn {
   loadMoreMessages: () => Promise<void>
   hasMoreMessages: boolean
   isLoadingMore: boolean
+  // NEW: WebSocket state management
+  wsConnectionState: WebSocketState
+  reconnectAvailable: boolean
+  reconnectWebSocket: () => Promise<void>
 }
 
 export function useChatMessages(threadId: string | undefined): UseChatMessagesReturn {
-  const { user, profile, setIsTrafficHeavy } = useAuth()
+  const { user, profile } = useAuth()
   const navigate = useNavigate()
   
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -50,6 +72,11 @@ export function useChatMessages(threadId: string | undefined): UseChatMessagesRe
   const [isRealtimeConnected, setIsRealtimeConnected] = useState(false)
   const [hasMoreMessages, setHasMoreMessages] = useState(true)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
+  
+  // NEW: WebSocket state management
+  const [wsConnectionState, setWsConnectionState] = useState<WebSocketState>('idle')
+  const [reconnectAvailable, setReconnectAvailable] = useState(false)
+  const [lastSuccessfulSync, setLastSuccessfulSync] = useState<string>(new Date().toISOString())
   
   // Law D: useRef to prevent infinite refetch loops
   const isFetchingRef = useRef(false)
@@ -81,7 +108,9 @@ export function useChatMessages(threadId: string | undefined): UseChatMessagesRe
     }, 2000) // 2 second debounce
   }).current
 
-
+  // ============================================================================
+  // COLD START HANDOFF: Fetch via HTTP first, then open WebSocket in background
+  // ============================================================================
   useEffect(() => {
     if (!threadId) return
     
@@ -99,334 +128,348 @@ export function useChatMessages(threadId: string | undefined): UseChatMessagesRe
     }
   }, [threadId])
 
-  useEffect(() => {
-    let isMounted = true
-    let channel: any = null
-    let syncTimeout: any = null
-    let handleVisibilityChange: (() => void) | null = null
-    let handleFocus: (() => void) | null = null
+  // ============================================================================
+  // WEBSOCKET CONNECTION MANAGEMENT
+  // ============================================================================
+  const connectWebSocket = useCallback(async (isReconnect = false) => {
+    if (!user || !threadId || isFetchingRef.current) return
 
-    async function setupChat(retries = 2) {
-      if (!user || !threadId || isFetchingRef.current) return
-
-      isFetchingRef.current = true
+    isFetchingRef.current = true
+    if (!isReconnect) {
       setIsSyncing(true)
+    }
+    setWsConnectionState('connecting')
+    setReconnectAvailable(false)
 
-      try {
-        // Step 1: Establishing Link
-        setLoadingStep(0)
-        setProgress(15)
-        
-        // Critical: Fallback for profile ID if Supabase Auth sync is slow
-        const myId = profile?.id || (() => {
-          const cachedProfile = localStorage.getItem('user_profile_cache')
-          if (cachedProfile) return JSON.parse(cachedProfile).id
-          return null
-        })()
-        
-        if (!myId && !user) {
-          navigate('/auth')
-          return
-        }
+    try {
+      // Step 1: Establishing Link
+      setLoadingStep(0)
+      setProgress(15)
+      
+      // Critical: Fallback for profile ID if Supabase Auth sync is slow
+      const myId = profile?.id || (() => {
+        const cachedProfile = localStorage.getItem('user_profile_cache')
+        if (cachedProfile) return JSON.parse(cachedProfile).id
+        return null
+      })()
+      
+      if (!myId && !user) {
+        navigate('/auth')
+        return
+      }
 
-        // 10 Second Fail-Safe Timeout
-        syncTimeout = setTimeout(() => {
-          if (isMounted) {
-            setIsSyncing(false)
-            setIsLoading(false)
+      // 10 Second Fail-Safe Timeout
+      const syncTimeout = setTimeout(() => {
+        setWsConnectionState('error')
+        setReconnectAvailable(true)
+        setIsSyncing(false)
+        setIsLoading(false)
+      }, 10000)
+
+      // Determine Delta starting point
+      const cachedSlice = localStorage.getItem(`roommate_chat_${threadId}`)
+      let lastTimestamp = '1970-01-01T00:00:00Z'
+
+      if (cachedSlice) {
+        try {
+          const parsed = JSON.parse(cachedSlice)
+          const initialMessages = parsed.messages || []
+          if (initialMessages.length > 0) {
+            lastTimestamp = initialMessages[initialMessages.length - 1].timestamp || '1970-01-01T00:00:00Z'
           }
-        }, 10000)
-
-        // Determine Delta starting point
-        const cachedSlice = localStorage.getItem(`roommate_chat_${threadId}`)
-        let lastTimestamp = '1970-01-01T00:00:00Z'
-
-        if (cachedSlice) {
-          try {
-            const parsed = JSON.parse(cachedSlice)
-            const initialMessages = parsed.messages || []
-            if (initialMessages.length > 0) {
-              lastTimestamp = initialMessages[initialMessages.length - 1].timestamp || '1970-01-01T00:00:00Z'
-            }
-          } catch (e) {
-            console.error("Cache read error:", e)
-          }
-        }
-
-        // Step 2: Checking Security Protocol
-        setLoadingStep(1)
-        setProgress(40)
-
-        // Optimized Fetch: Limit to last 50 messages
-        const deltaPromise = supabase
-          .from('messages')
-          .select('*')
-          .or(`and(sender_id.eq.${myId},receiver_id.eq.${threadId}),and(sender_id.eq.${threadId},receiver_id.eq.${myId})`)
-          .gt('created_at', lastTimestamp)
-          .order('created_at', { ascending: false })
-          .limit(50)
-
-        const [themRes, deltaRes] = await Promise.all([
-          supabase.from('users').select('*').eq('id', threadId).single(),
-          deltaPromise
-        ])
-
-        if (!isMounted) return
-
-        const me = profile
-        const them = themRes.data
-
-        if (!me || !them) {
-          if (!me) {
-            console.error("Current profile missing from context")
-          } else {
-            toast.error("User not found")
-            navigate('/dashboard/messages')
-          }
-          return
-        }
-
-        // Pioneer/Payment guard
-        const hasAccess = !!(me.has_paid || me.is_pioneer)
-        if (!hasAccess) {
-          setIsLocked(true)
-          setOtherUser(them)
-          return
-        }
-        setIsLocked(false)
-        setOtherUser(them)
-
-        if (deltaRes.data && deltaRes.data.length > 0) {
-          // Flip back to chronological for UI display
-          const displayDelta = [...deltaRes.data].sort((a, b) => 
-            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-          )
-
-          const fetchedMessages = displayDelta.map((m: any) => ({
-            id: m.id,
-            text: m.content,
-            sender: (m.sender_id === me.id ? 'me' : 'them') as 'me' | 'them',
-            time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            timestamp: m.created_at,
-            status: (m.status || 'PENDING') as 'PENDING' | 'SENT' | 'DELIVERED' | 'READ'
-          }))
-
-          // Merge: Cache + Delta
-          setMessages(prev => {
-            const existingIds = new Set(fetchedMessages.map(m => m.id))
-            const filteredPrev = prev.filter(m => !existingIds.has(m.id))
-            const combined = [...filteredPrev, ...fetchedMessages]
-            const final = combined.slice(-100)
-
-            localStorage.setItem(`roommate_chat_${threadId}`, JSON.stringify({
-              messages: final,
-              otherUser: them
-            }))
-            return final
-          })
-
-          // Step 4: Finalizing
-          setLoadingStep(3)
-          setProgress(100)
-          sessionStorage.setItem(`chat_synced_${threadId}`, 'true')
-
-          // Boutique speed-up: Minimal delay
-          await new Promise(r => setTimeout(r, 300))
-        } else {
-          // Even if no new messages, we are synced
-          setLoadingStep(3)
-          setProgress(100)
-          sessionStorage.setItem(`chat_synced_${threadId}`, 'true')
-        }
-
-        // Mark incoming messages as read
-        supabase.from('messages').update({ status: 'READ' }).eq('receiver_id', me.id).eq('sender_id', them.id).neq('status', 'READ').then(() => { })
-
-        channel = supabase
-          .channel(`chat:${me.id}:${them.id}`)
-          .on('postgres_changes', {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'messages',
-            filter: `receiver_id=eq.${me.id}`
-          }, (payload: any) => {
-            if (payload.new.sender_id === them.id) {
-              const newMessage: ChatMessage = {
-                id: payload.new.id,
-                text: payload.new.content,
-                sender: 'them',
-                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                timestamp: payload.new.created_at,
-                status: (payload.new.status || 'PENDING') as 'PENDING' | 'SENT' | 'DELIVERED' | 'READ'
-              }
-              setMessages(prev => {
-                const updated = [...prev, newMessage]
-                // Use debounced localStorage write instead of immediate write
-                debouncedLocalStorageWrite(threadId, {
-                  messages: updated,
-                  otherUser: them
-                })
-                return updated
-              })
-              // Mark as read immediately if chat is open
-              supabase.from('messages').update({ status: 'READ' }).eq('id', payload.new.id).then(() => { })
-            }
-          })
-          .on('postgres_changes', {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'messages'
-          }, (payload: any) => {
-            // Update message status in real-time
-            setMessages(prev => prev.map(msg =>
-              msg.id === payload.new.id ? { ...msg, status: (payload.new.status || 'PENDING') as 'PENDING' | 'SENT' | 'DELIVERED' | 'READ' } : msg
-            ))
-          })
-          .on('broadcast', { event: 'typing' }, (payload: any) => {
-            if (payload.payload?.isTyping === true) {
-              setIsOtherUserTyping(true)
-              // Clear previous timeout
-              if (typingTimeoutRef.current) {
-                clearTimeout(typingTimeoutRef.current)
-              }
-              // Reset typing indicator after 3 seconds of no typing events
-              typingTimeoutRef.current = setTimeout(() => {
-                setIsOtherUserTyping(false)
-              }, 3000)
-            }
-          })
-          .subscribe((status) => {
-            if (status === 'SUBSCRIBED') {
-              setIsRealtimeConnected(true)
-            } else if (status === 'TIMED_OUT' || status === 'CHANNEL_ERROR') {
-              console.warn('Realtime connection limited - switching to High Traffic Mode')
-              setIsTrafficHeavy(true)
-              setIsRealtimeConnected(false)
-            } else if (status === 'CLOSED') {
-              setIsRealtimeConnected(false)
-            }
-          })
-        
-        channelRef.current = channel
-
-        // Add visibilitychange and focus listeners for foreground delta sync
-        handleVisibilityChange = () => {
-          if (document.visibilityState === 'visible' && !isAppVisibleRef.current) {
-            isAppVisibleRef.current = true
-            performForegroundDeltaSync()
-          } else if (document.visibilityState === 'hidden') {
-            isAppVisibleRef.current = false
-          }
-        }
-
-        handleFocus = () => {
-          if (!isAppVisibleRef.current) {
-            isAppVisibleRef.current = true
-            performForegroundDeltaSync()
-          }
-        }
-
-        document.addEventListener('visibilitychange', handleVisibilityChange)
-        window.addEventListener('focus', handleFocus)
-
-      } catch (err) {
-        console.error("Chat setup error:", err)
-        if (retries > 0) {
-          await new Promise(r => setTimeout(r, 1000))
-          return setupChat(retries - 1)
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoading(false)
-          setIsSyncing(false)
-          if (syncTimeout) clearTimeout(syncTimeout)
+        } catch (e) {
+          console.error("Cache read error:", e)
         }
       }
-    }
 
-    setupChat()
+      // Step 2: Checking Security Protocol
+      setLoadingStep(1)
+      setProgress(40)
 
-    return () => {
-      isMounted = false
+      // COLD START HANDOFF: Fetch via HTTP first (always works)
+      const deltaPromise = supabase
+        .from('messages')
+        .select('*')
+        .or(`and(sender_id.eq.${myId},receiver_id.eq.${threadId}),and(sender_id.eq.${threadId},receiver_id.eq.${myId})`)
+        .gt('created_at', lastTimestamp)
+        .order('created_at', { ascending: false })
+        .limit(50)
+
+      const [themRes, deltaRes] = await Promise.all([
+        supabase.from('users').select('*').eq('id', threadId).single(),
+        deltaPromise
+      ])
+
+      clearTimeout(syncTimeout)
+
+      const me = profile
+      const them = themRes.data
+
+      if (!me || !them) {
+        if (!me) {
+          console.error("Current profile missing from context")
+        } else {
+          toast.error("User not found")
+          navigate('/dashboard/messages')
+        }
+        setWsConnectionState('error')
+        setReconnectAvailable(true)
+        return
+      }
+
+      // Pioneer/Payment guard
+      const hasAccess = !!(me.has_paid || me.is_pioneer)
+      if (!hasAccess) {
+        setIsLocked(true)
+        setOtherUser(them)
+        setWsConnectionState('error')
+        setReconnectAvailable(true)
+        return
+      }
+      setIsLocked(false)
+      setOtherUser(them)
+
+      if (deltaRes.data && deltaRes.data.length > 0) {
+        // Flip back to chronological for UI display
+        const displayDelta = [...deltaRes.data].sort((a, b) => 
+          new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        )
+
+        const fetchedMessages = displayDelta.map((m: any) => ({
+          id: m.id,
+          text: m.content,
+          sender: (m.sender_id === me.id ? 'me' : 'them') as 'me' | 'them',
+          time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          timestamp: m.created_at,
+          status: (m.status || 'PENDING') as 'PENDING' | 'SENT' | 'DELIVERED' | 'READ'
+        }))
+
+        // Merge: Cache + Delta
+        setMessages(prev => {
+          const existingIds = new Set(fetchedMessages.map(m => m.id))
+          const filteredPrev = prev.filter(m => !existingIds.has(m.id))
+          const combined = [...filteredPrev, ...fetchedMessages]
+          const final = combined.slice(-100)
+
+          localStorage.setItem(`roommate_chat_${threadId}`, JSON.stringify({
+            messages: final,
+            otherUser: them
+          }))
+          return final
+        })
+
+        // Update last successful sync timestamp
+        setLastSuccessfulSync(new Date().toISOString())
+
+        // Step 4: Finalizing
+        setLoadingStep(3)
+        setProgress(100)
+        sessionStorage.setItem(`chat_synced_${threadId}`, 'true')
+
+        // Boutique speed-up: Minimal delay
+        await new Promise(r => setTimeout(r, 300))
+      } else {
+        // Even if no new messages, we are synced
+        setLoadingStep(3)
+        setProgress(100)
+        sessionStorage.setItem(`chat_synced_${threadId}`, 'true')
+        setLastSuccessfulSync(new Date().toISOString())
+      }
+
+      // Mark incoming messages as read
+      supabase.from('messages').update({ status: 'READ' }).eq('receiver_id', me.id).eq('sender_id', them.id).neq('status', 'READ').then(() => { })
+
+      // ============================================================================
+      // OPEN WEBSOCKET IN BACKGROUND (after HTTP fetch completes)
+      // ============================================================================
+      const channel = supabase
+        .channel(`chat:${me.id}:${them.id}`)
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `receiver_id=eq.${me.id}`
+        }, (payload: any) => {
+          if (payload.new.sender_id === them.id) {
+            const newMessage: ChatMessage = {
+              id: payload.new.id,
+              text: payload.new.content,
+              sender: 'them',
+              time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              timestamp: payload.new.created_at,
+              status: (payload.new.status || 'PENDING') as 'PENDING' | 'SENT' | 'DELIVERED' | 'READ'
+            }
+            setMessages(prev => {
+              const updated = [...prev, newMessage]
+              // Use debounced localStorage write instead of immediate write
+              debouncedLocalStorageWrite(threadId, {
+                messages: updated,
+                otherUser: them
+              })
+              return updated
+            })
+            // Mark as read immediately if chat is open
+            supabase.from('messages').update({ status: 'READ' }).eq('id', payload.new.id).then(() => { })
+          }
+        })
+        .on('postgres_changes', {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'messages'
+        }, (payload: any) => {
+          // Update message status in real-time
+          setMessages(prev => prev.map(msg =>
+            msg.id === payload.new.id ? { ...msg, status: (payload.new.status || 'PENDING') as 'PENDING' | 'SENT' | 'DELIVERED' | 'READ' } : msg
+          ))
+        })
+        .on('broadcast', { event: 'typing' }, (payload: any) => {
+          if (payload.payload?.isTyping === true) {
+            setIsOtherUserTyping(true)
+            // Clear previous timeout
+            if (typingTimeoutRef.current) {
+              clearTimeout(typingTimeoutRef.current)
+            }
+            // Reset typing indicator after 3 seconds of no typing events
+            typingTimeoutRef.current = setTimeout(() => {
+              setIsOtherUserTyping(false)
+            }, 3000)
+          }
+        })
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            setIsRealtimeConnected(true)
+            setWsConnectionState('connected')
+            setReconnectAvailable(true)
+          } else if (status === 'TIMED_OUT' || status === 'CHANNEL_ERROR') {
+            console.warn('Realtime connection limited - WebSocket disconnected')
+            setIsRealtimeConnected(false)
+            setWsConnectionState('disconnected')
+            setReconnectAvailable(true)
+          } else if (status === 'CLOSED') {
+            setIsRealtimeConnected(false)
+            setWsConnectionState('disconnected')
+            setReconnectAvailable(true)
+          }
+        })
+      
+      channelRef.current = channel
+
+      // Add visibilitychange and focus listeners for foreground delta sync
+      const handleVisibilityChange = () => {
+        if (document.visibilityState === 'visible' && !isAppVisibleRef.current) {
+          isAppVisibleRef.current = true
+          performForegroundDeltaSync()
+        } else if (document.visibilityState === 'hidden') {
+          isAppVisibleRef.current = false
+        }
+      }
+
+      const handleFocus = () => {
+        if (!isAppVisibleRef.current) {
+          isAppVisibleRef.current = true
+          performForegroundDeltaSync()
+        }
+      }
+
+      document.addEventListener('visibilitychange', handleVisibilityChange)
+      window.addEventListener('focus', handleFocus)
+
+    } catch (err) {
+      console.error("Chat setup error:", err)
+      setWsConnectionState('error')
+      setReconnectAvailable(true)
+    } finally {
+      setIsSyncing(false)
+      setIsLoading(false)
       isFetchingRef.current = false
-      if (syncTimeout) clearTimeout(syncTimeout)
+    }
+  }, [threadId, user, profile, navigate])
+
+  // ============================================================================
+  // WALKIE-TALKIE RECONNECT: Function to reconnect WebSocket
+  // ============================================================================
+  const reconnectWebSocket = useCallback(async () => {
+    if (!threadId || !profile) return
+    
+    // Step 1: Destroy old dead WebSocket
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current)
+      channelRef.current = null
+    }
+    
+    setIsRealtimeConnected(false)
+    setWsConnectionState('connecting')
+    setReconnectAvailable(false)
+    
+    try {
+      // Step 2: Fetch missed messages via HTTP (since last successful sync)
+      const { data: missedMessages } = await supabase
+        .from('messages')
+        .select('*')
+        .or(`and(sender_id.eq.${profile.id},receiver_id.eq.${threadId}),and(sender_id.eq.${threadId},receiver_id.eq.${profile.id})`)
+        .gt('created_at', lastSuccessfulSync)
+        .order('created_at', { ascending: true })
+        .limit(50)
+      
+      if (missedMessages && missedMessages.length > 0) {
+        const newMessages = missedMessages.map((m: any) => ({
+          id: m.id,
+          text: m.content,
+          sender: (m.sender_id === profile.id ? 'me' : 'them') as 'me' | 'them',
+          time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          timestamp: m.created_at,
+          status: (m.status || 'PENDING') as 'PENDING' | 'SENT' | 'DELIVERED' | 'READ'
+        }))
+        
+        setMessages(prev => {
+          const existingIds = new Set(prev.map(m => m.id))
+          const filteredNew = newMessages.filter(m => !existingIds.has(m.id))
+          const combined = [...prev, ...filteredNew]
+          const final = combined.slice(-100)
+          
+          localStorage.setItem(`roommate_chat_${threadId}`, JSON.stringify({
+            messages: final,
+            otherUser
+          }))
+          return final
+        })
+        
+        setLastSuccessfulSync(new Date().toISOString())
+      }
+      
+      // Step 3: Create fresh WebSocket
+      await connectWebSocket(true)
+      
+      toast.success('Reconnected to chat')
+    } catch (err) {
+      console.error('Reconnect error:', err)
+      setWsConnectionState('error')
+      setReconnectAvailable(true)
+      toast.error('Failed to reconnect. Please try again.')
+    }
+  }, [threadId, profile, otherUser, lastSuccessfulSync, connectWebSocket])
+
+  // Initial connection
+  useEffect(() => {
+    if (threadId && profile) {
+      connectWebSocket(false)
+    }
+    
+    return () => {
+      // CLEAN EXIT: Destroy WebSocket when user leaves chat
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current)
+        channelRef.current = null
+      }
+      setIsRealtimeConnected(false)
+      setWsConnectionState('idle')
+      setReconnectAvailable(false)
+      
+      // Cleanup timeouts
       if (localStorageWriteTimeoutRef.current) clearTimeout(localStorageWriteTimeoutRef.current)
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
-      if (channel) supabase.removeChannel(channel)
-      
-      // Clean up visibility/focus listeners
-      if (handleVisibilityChange) {
-        document.removeEventListener('visibilitychange', handleVisibilityChange)
-      }
-      if (handleFocus) {
-        window.removeEventListener('focus', handleFocus)
-      }
     }
-  }, [threadId, user, profile, navigate, setIsTrafficHeavy])
-
-  const sendMessage = async (text: string) => {
-    if (!text.trim() || !threadId || !profile) return
-
-    const tempId = Date.now().toString()
-
-    // 1. Optimistic Update (PENDING)
-    const now = new Date()
-    const myNewMessage: ChatMessage = {
-      id: tempId,
-      text,
-      sender: 'me',
-      time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      timestamp: now.toISOString(),
-      status: 'PENDING'
-    }
-
-    setMessages(prev => [...prev, myNewMessage])
-
-    // 2. Server Sync
-    const { data, error } = await supabase.from('messages').insert({
-      sender_id: profile.id,
-      receiver_id: threadId,
-      content: text,
-      status: 'SENT'
-    }).select().single()
-
-    if (error) {
-      console.error('Message send error:', error)
-      
-      // Remove the optimistic message so it doesn't stay as a ghost
-      setMessages(prev => prev.filter(m => m.id !== tempId))
-      
-      // Show user feedback only for actual errors (not network drops)
-      if (error.code !== 'PGRST116' && error.message !== 'Failed to fetch') {
-        toast.error("Failed to send message")
-      }
-      
-      return
-    }
-
-    // Also handle case where data is null/undefined (network drop scenario)
-    if (!data) {
-      console.error('Message send returned no data - possible network drop')
-      setMessages(prev => prev.filter(m => m.id !== tempId))
-      return
-    }
-
-    // 3. Update status to SENT and replace tempId with real ID + SERVER TIMESTAMP
-    setMessages(prev => {
-      const updated = prev.map(m => m.id === tempId ? {
-        ...m,
-        id: data.id,
-        status: 'SENT' as 'PENDING' | 'SENT' | 'DELIVERED' | 'READ',
-        timestamp: data.created_at // Enforce server timeline!
-      } : m)
-      // Use debounced localStorage write instead of immediate write
-      debouncedLocalStorageWrite(threadId, {
-        messages: updated,
-        otherUser
-      })
-      return updated
-    })
-  }
+  }, [threadId, profile?.id]) // Only re-run when threadId or profile ID changes
 
   const performForegroundDeltaSync = async () => {
     if (!threadId || !profile || isFetchingRef.current) return
@@ -487,6 +530,8 @@ export function useChatMessages(threadId: string | undefined): UseChatMessagesRe
           return final
         })
         
+        setLastSuccessfulSync(new Date().toISOString())
+        
         // Mark incoming messages as read
         supabase.from('messages').update({ status: 'READ' })
           .eq('receiver_id', profile.id)
@@ -499,6 +544,73 @@ export function useChatMessages(threadId: string | undefined): UseChatMessagesRe
     } finally {
       isFetchingRef.current = false
     }
+  }
+
+  // ============================================================================
+  // HTTP FALLBACK: Send via HTTP when WebSocket is disconnected
+  // ============================================================================
+  const sendMessage = async (text: string) => {
+    if (!text.trim() || !threadId || !profile) return
+
+    const tempId = Date.now().toString()
+
+    // 1. Optimistic Update (PENDING)
+    const now = new Date()
+    const myNewMessage: ChatMessage = {
+      id: tempId,
+      text,
+      sender: 'me',
+      time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      timestamp: now.toISOString(),
+      status: 'PENDING'
+    }
+
+    setMessages(prev => [...prev, myNewMessage])
+
+    // 2. Server Sync - ALWAYS use HTTP (works regardless of WebSocket state)
+    const { data, error } = await supabase.from('messages').insert({
+      sender_id: profile.id,
+      receiver_id: threadId,
+      content: text,
+      status: 'SENT'
+    }).select().single()
+
+    if (error) {
+      console.error('Message send error:', error)
+      
+      // Remove the optimistic message so it doesn't stay as a ghost
+      setMessages(prev => prev.filter(m => m.id !== tempId))
+      
+      // Show user feedback only for actual errors (not network drops)
+      if (error.code !== 'PGRST116' && error.message !== 'Failed to fetch') {
+        toast.error("Failed to send message")
+      }
+      
+      return
+    }
+
+    // Also handle case where data is null/undefined (network drop scenario)
+    if (!data) {
+      console.error('Message send returned no data - possible network drop')
+      setMessages(prev => prev.filter(m => m.id !== tempId))
+      return
+    }
+
+    // 3. Update status to SENT and replace tempId with real ID + SERVER TIMESTAMP
+    setMessages(prev => {
+      const updated = prev.map(m => m.id === tempId ? {
+        ...m,
+        id: data.id,
+        status: 'SENT' as 'PENDING' | 'SENT' | 'DELIVERED' | 'READ',
+        timestamp: data.created_at // Enforce server timeline!
+      } : m)
+      // Use debounced localStorage write instead of immediate write
+      debouncedLocalStorageWrite(threadId, {
+        messages: updated,
+        otherUser
+      })
+      return updated
+    })
   }
 
   const loadMoreMessages = async () => {
@@ -592,6 +704,7 @@ export function useChatMessages(threadId: string | undefined): UseChatMessagesRe
       }))
 
       setMessages(displayMessages)
+      setLastSuccessfulSync(new Date().toISOString())
       // Use debounced localStorage write instead of immediate write
       debouncedLocalStorageWrite(threadId, {
         messages: displayMessages,
@@ -612,9 +725,10 @@ export function useChatMessages(threadId: string | undefined): UseChatMessagesRe
     }
   }
 
-  // Typing indicator function
-  const setTyping = (isTyping: boolean) => {
-    if (!channelRef.current || !threadId || !profile) return
+  // Typing indicator function - only works if WebSocket is connected
+  const setTyping = useCallback((isTyping: boolean) => {
+    // HTTP FALLBACK: If WebSocket is disconnected, don't try to send typing indicator
+    if (wsConnectionState !== 'connected' || !channelRef.current || !threadId || !profile) return
     
     if (isTyping) {
       channelRef.current.send({
@@ -623,7 +737,7 @@ export function useChatMessages(threadId: string | undefined): UseChatMessagesRe
         payload: { isTyping: true }
       })
     }
-  }
+  }, [wsConnectionState, threadId, profile])
   
   return {
     messages,
@@ -640,6 +754,10 @@ export function useChatMessages(threadId: string | undefined): UseChatMessagesRe
     isRealtimeConnected,
     loadMoreMessages,
     hasMoreMessages,
-    isLoadingMore
+    isLoadingMore,
+    // NEW: WebSocket state management
+    wsConnectionState,
+    reconnectAvailable,
+    reconnectWebSocket
   }
 }

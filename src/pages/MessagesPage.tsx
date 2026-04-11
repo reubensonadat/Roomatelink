@@ -1,4 +1,4 @@
-import { Search, MessageCircle, UserCheck, ChevronRight, Lock, Cpu } from 'lucide-react'
+import { Search, MessageCircle, UserCheck, ChevronRight, Lock, Cpu, RefreshCw, WifiOff } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { TopHeader } from '../components/layout/TopHeader'
@@ -12,7 +12,7 @@ export function MessagesPage() {
   const { isTrafficHeavy } = useAuth()
   
   // Use chat threads hook
-  const { chats, isLoading } = useChatThreads()
+  const { chats, isLoading, wsConnectionState, reconnectAvailable, reconnectWebSocket } = useChatThreads()
   
   // Use user flow status hook for profile gating
   const { hasPaid, isProfileComplete } = useUserFlowStatus()
@@ -30,7 +30,30 @@ export function MessagesPage() {
       />
 
       <AnimatePresence>
-        {isTrafficHeavy && (
+        {wsConnectionState === 'disconnected' && reconnectAvailable ? (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="bg-amber-500/95 backdrop-blur-sm text-white overflow-hidden shadow-lg border-b border-amber-400/30"
+          >
+            <div className="px-4 sm:px-5 py-3 flex items-center justify-between gap-3 sm:gap-4 max-w-md mx-auto w-full">
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                <div className="p-2 bg-white/20 rounded-xl">
+                  <WifiOff className="w-5 h-5 text-white animate-pulse" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[13px] font-black tracking-tight leading-tight">Live updates paused</span>
+                  <p className="text-[10px] font-bold text-amber-100 uppercase tracking-wide sm:tracking-widest mt-0.5 truncate">Tap reconnect to refresh conversations</p>
+                </div>
+              </div>
+              <button onClick={reconnectWebSocket} className="px-3 py-1.5 bg-white text-amber-600 text-[9px] sm:text-[10px] font-black rounded-lg uppercase tracking-tighter hover:bg-amber-50 transition-colors flex items-center gap-1.5 shrink-0">
+                <RefreshCw className="w-3 h-3" />
+                Reconnect
+              </button>
+            </div>
+          </motion.div>
+        ) : isTrafficHeavy && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
