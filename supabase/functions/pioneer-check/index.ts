@@ -68,7 +68,10 @@ Deno.serve(async (req: Request) => {
     // Force sync the database so it stops reporting 'false' structurally
     if (isPioneer) {
       // Safely await the update so Deno doesn't abort it upon returning the response
-      await adminClient.from('users').update({ is_pioneer: true }).eq('auth_id', user.id);
+      await adminClient.from('users').update({
+        is_pioneer: true,
+        has_paid: true
+      }).eq('auth_id', user.id);
     }
 
     return new Response(

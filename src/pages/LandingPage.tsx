@@ -47,7 +47,7 @@ export function LandingPage() {
     }
 
     return (
-        <div className="min-h-screen bg-background text-foreground font-sans selection:bg-primary/20 overflow-x-hidden overflow-y-auto transition-colors duration-300">
+        <div className="min-h-screen bg-background text-foreground font-sans selection:bg-primary/20 overflow-y-auto transition-colors duration-300">
 
             {/* 1. ULTRA CLEAN TOP NAVIGATION */}
             <header className="fixed top-0 left-0 w-full bg-background/80 backdrop-blur-xl z-50 border-b border-border transition-colors duration-300">
@@ -127,15 +127,15 @@ export function LandingPage() {
                         variants={staggerContainer}
                         className="w-full max-w-5xl mx-auto px-6 relative z-10"
                     >
-                        <motion.h1 
-                            variants={fadeUp} 
+                        <motion.h1
+                            variants={fadeUp}
                             className="text-5xl sm:text-[6.5rem] leading-[0.98] font-black tracking-[-0.04em] mb-10 text-foreground transition-colors duration-300"
                         >
                             Don&apos;t leave your <br className="hidden sm:block" /> living situation to chance.
                         </motion.h1>
 
-                        <motion.p 
-                            variants={fadeUp} 
+                        <motion.p
+                            variants={fadeUp}
                             className="text-lg sm:text-xl font-bold text-muted-foreground max-w-2xl mx-auto mb-14 leading-tight transition-colors duration-300 opacity-70"
                         >
                             Connect with highly compatible students using a behavioral matching engine designed for university life.
@@ -145,8 +145,8 @@ export function LandingPage() {
                             <Link to="/auth" className="group w-full sm:w-auto px-12 py-6 rounded-boutique bg-foreground text-background font-black text-[16px] transition-all hover:scale-[1.02] active:scale-95 shadow-xl flex justify-center items-center gap-3 uppercase tracking-widest leading-none">
                                 Enter Portal <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                             </Link>
-                            
-                            <button 
+
+                            <button
                                 onClick={() => scrollTo('how-it-works')}
                                 className="w-full sm:w-auto px-12 py-6 rounded-boutique bg-card border border-border font-black text-[15px] transition-all hover:bg-muted active:scale-95 uppercase tracking-widest text-muted-foreground hover:text-foreground leading-none"
                             >
@@ -155,44 +155,44 @@ export function LandingPage() {
                         </motion.div>
 
                         {/* Specialized Match Simulator (Same-Gender Student Pairs) */}
-                        <motion.div 
+                        <motion.div
                             variants={fadeUp}
                             className="mt-24 flex flex-col sm:flex-row items-center justify-center gap-10 sm:gap-20"
                         >
-                             {/* Pair 1: Female-Female */}
-                             <div className="flex items-center gap-6">
+                            {/* Pair 1: Female-Female */}
+                            <div className="flex items-center gap-6">
                                 <div className="flex -space-x-4">
-                                     <div className="w-14 h-14 rounded-2xl bg-indigo-50 border-2 border-white dark:border-slate-900 shadow-lg overflow-hidden flex items-center justify-center">
+                                    <div className="w-14 h-14 rounded-2xl bg-indigo-50 border-2 border-white dark:border-slate-900 shadow-lg overflow-hidden flex items-center justify-center">
                                         <img src="/avatars/female/The Socialite_F.png" className="w-full h-full object-cover" alt="Student A" />
                                     </div>
                                     <div className="w-14 h-14 rounded-2xl bg-indigo-100 border-2 border-white dark:border-slate-900 shadow-lg overflow-hidden flex items-center justify-center">
-                                         <img src="/avatars/female/The Creative_F.png" className="w-full h-full object-cover" alt="Student B" />
+                                        <img src="/avatars/female/The Creative_F.png" className="w-full h-full object-cover" alt="Student B" />
                                     </div>
                                 </div>
                                 <div className="flex flex-col items-start">
-                                     <span className="text-[11px] font-black text-primary uppercase bg-primary/5 px-2 py-0.5 rounded-md mb-1">98% Match</span>
-                                      <div className="h-[2px] w-12 bg-primary/20 rounded-full" />
+                                    <span className="text-[11px] font-black text-primary uppercase bg-primary/5 px-2 py-0.5 rounded-md mb-1">98% Match</span>
+                                    <div className="h-[2px] w-12 bg-primary/20 rounded-full" />
                                 </div>
-                             </div>
+                            </div>
 
-                             {/* Specialized Separation */}
-                             <div className="hidden sm:block w-px h-8 bg-border/40" />
+                            {/* Specialized Separation */}
+                            <div className="hidden sm:block w-px h-8 bg-border/40" />
 
-                             {/* Pair 2: Male-Male */}
-                             <div className="flex items-center gap-6">
+                            {/* Pair 2: Male-Male */}
+                            <div className="flex items-center gap-6">
                                 <div className="flex -space-x-4">
-                                     <div className="w-14 h-14 rounded-2xl bg-slate-50 border-2 border-white dark:border-slate-900 shadow-lg overflow-hidden flex items-center justify-center">
+                                    <div className="w-14 h-14 rounded-2xl bg-slate-50 border-2 border-white dark:border-slate-900 shadow-lg overflow-hidden flex items-center justify-center">
                                         <img src="/avatars/male/The Academic_M.png" className="w-full h-full object-cover" alt="Student C" />
                                     </div>
                                     <div className="w-14 h-14 rounded-2xl bg-slate-100 border-2 border-white dark:border-slate-900 shadow-lg overflow-hidden flex items-center justify-center">
-                                         <img src="/avatars/male/The Minimalist_M.png" className="w-full h-full object-cover" alt="Student D" />
+                                        <img src="/avatars/male/The Minimalist_M.png" className="w-full h-full object-cover" alt="Student D" />
                                     </div>
                                 </div>
                                 <div className="flex flex-col items-start">
-                                     <span className="text-[11px] font-black text-slate-500 uppercase bg-slate-500/5 px-2 py-0.5 rounded-md mb-1">94% Match</span>
-                                      <div className="h-[2px] w-12 bg-slate-500/20 rounded-full" />
+                                    <span className="text-[11px] font-black text-slate-500 uppercase bg-slate-500/5 px-2 py-0.5 rounded-md mb-1">94% Match</span>
+                                    <div className="h-[2px] w-12 bg-slate-500/20 rounded-full" />
                                 </div>
-                             </div>
+                            </div>
                         </motion.div>
                     </motion.div>
                 </section>
@@ -216,11 +216,11 @@ export function LandingPage() {
                 {/* 3. THE PROBLEM SECTION */}
                 <section id="problem" className="w-full py-24 sm:py-32 relative border-t border-border/50">
                     <div className="max-w-7xl mx-auto px-6">
-                        <motion.div 
+                        <motion.div
                             initial="hidden"
                             whileInView="visible"
                             viewport={{ once: true }}
-                            variants={fadeUp} 
+                            variants={fadeUp}
                             className="text-center mb-24 max-w-3xl mx-auto"
                         >
                             <h2 className="text-4xl sm:text-[4.5rem] font-black tracking-[-0.04em] mb-8 text-foreground leading-[0.9]">You deserve <br className="hidden sm:block" /> asomdwoeɛ (peace).</h2>
@@ -239,7 +239,7 @@ export function LandingPage() {
                                     We filter fundamental lifestyle clashes so you never have to argue about quiet hours again.
                                 </p>
                             </motion.div>
-                            
+
                             {/* Card 2 */}
                             <motion.div variants={fadeUp} className="group p-12 rounded-boutique bg-card/40 backdrop-blur-md border border-border shadow-xl flex flex-col hover:-translate-y-2 transition-all duration-500 relative overflow-hidden">
                                 <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 blur-3xl -translate-y-1/2 translate-x-1/2" />
@@ -366,16 +366,16 @@ export function LandingPage() {
 
                         <motion.div variants={fadeUp} className="max-w-2xl mx-auto p-12 sm:p-16 rounded-boutique bg-card border border-border shadow-2xl relative group overflow-hidden">
                             <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 blur-[100px] -translate-y-1/2 translate-x-1/2" />
-                            
-                             <div className="flex flex-col sm:flex-row items-center justify-between gap-12 sm:gap-20 mb-16">
+
+                            <div className="flex flex-col sm:flex-row items-center justify-between gap-12 sm:gap-20 mb-16">
                                 <div className="flex items-baseline justify-center gap-2">
                                     <span className="text-[7rem] font-black text-foreground leading-none tracking-tighter">25</span>
                                     <span className="text-3xl font-black text-muted-foreground">GHS</span>
                                 </div>
                                 <div className="w-32 h-32 sm:w-40 sm:h-40 shrink-0">
-                                     <img src="/Savings.png" alt="Savings" className="w-full h-full object-contain drop-shadow-2xl" />
+                                    <img src="/Savings.png" alt="Savings" className="w-full h-full object-contain drop-shadow-2xl" />
                                 </div>
-                             </div>
+                            </div>
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-6 mb-16 text-left">
                                 <div className="flex items-center gap-3 py-3 border-b border-border/50">
@@ -472,7 +472,7 @@ export function LandingPage() {
                             <p className="text-[18px] font-bold text-muted-foreground max-w-sm leading-tight opacity-70 mb-12">
                                 Engineering university housing security through precise behavioral synchronization.
                             </p>
-                            
+
                             {/* Restored Social Channels */}
                             <div className="flex gap-6">
                                 <a href="https://instagram.com/roommatelink" target="_blank" className="w-12 h-12 rounded-2xl bg-muted/50 border border-border/50 flex items-center justify-center hover:bg-primary/10 hover:text-primary transition-all cursor-pointer">
@@ -497,8 +497,8 @@ export function LandingPage() {
                         </div>
 
                         <div className="md:col-span-2">
-                             <h4 className="text-[13px] font-black uppercase tracking-widest text-foreground mb-8">Resource</h4>
-                             <ul className="space-y-4 text-[15px] font-bold text-muted-foreground">
+                            <h4 className="text-[13px] font-black uppercase tracking-widest text-foreground mb-8">Resource</h4>
+                            <ul className="space-y-4 text-[15px] font-bold text-muted-foreground">
                                 <li><Link to="/terms" className="hover:text-primary transition-colors flex items-center gap-2">Privacy Policy <ChevronRight className="w-4 h-4 opacity-0 group-hover:opacity-100" /></Link></li>
                                 <li><Link to="/terms" className="hover:text-primary transition-colors flex items-center gap-2">Terms of Service <ChevronRight className="w-4 h-4 opacity-0 group-hover:opacity-100" /></Link></li>
                                 <li><Link to="/terms" className="hover:text-primary transition-colors flex items-center gap-2">Safety Community <ChevronRight className="w-4 h-4 opacity-0 group-hover:opacity-100" /></Link></li>
@@ -506,16 +506,16 @@ export function LandingPage() {
                         </div>
 
                         <div className="md:col-span-3">
-                             <h4 className="text-[13px] font-black uppercase tracking-widest text-foreground mb-8">Support</h4>
-                             <div className="p-8 rounded-3xl bg-muted/40 border border-border/50">
+                            <h4 className="text-[13px] font-black uppercase tracking-widest text-foreground mb-8">Support</h4>
+                            <div className="p-8 rounded-3xl bg-muted/40 border border-border/50">
                                 <p className="text-[14px] font-bold text-muted-foreground leading-tight mb-6">Need technical help or academic coordination?</p>
-                                <button 
+                                <button
                                     onClick={() => window.location.href = '/support'}
                                     className="w-full py-4 bg-foreground text-background rounded-2xl font-black text-[12px] uppercase tracking-widest hover:opacity-90 active:scale-95 transition-all shadow-lg"
                                 >
                                     Contact Us
                                 </button>
-                             </div>
+                            </div>
                         </div>
                     </div>
 

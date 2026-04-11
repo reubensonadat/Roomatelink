@@ -54,13 +54,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // useRef for activity tracking to prevent endless re-renders
   const lastActivityRef = useRef<number>(Date.now())
-  
+
   // Ref to prevent stale closures when mapping cached data
   const profileRef = useRef<UserProfile | null>(null)
   const lastRefreshRef = useRef<number>(0)
-  
-  // Ref to track last visibility refresh to prevent rapid-fire calls
-  const lastVisibilityRefreshRef = useRef<number>(0)
 
   // Helper to keep profile state and ref in sync
   // NEW: Helper to synchronize state and ref
@@ -106,10 +103,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const initializeAuth = async () => {
       try {
         logAuthEvent('INITIAL_SESSION_CHECK', 'Starting session verification...')
-        
+
         // Explicit getSession() call to verify session exists
         const { data: { session: currentSession }, error } = await supabase.auth.getSession()
-        
+
         if (!isMounted) return
 
         if (error) {
@@ -124,7 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           logAuthEvent('SESSION_FOUND', `User ID: ${currentSession.user.id}`)
           setSession(currentSession)
           setUser(currentSession.user)
-          
+
           // Load cached profile immediately
           const cached = getLocalProfile(currentSession.user.id)
           if (cached) {
@@ -172,12 +169,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!isMounted) return
 
         logAuthEvent('AUTH_STATE_CHANGE', { event, hasSession: !!currentSession })
-        
+
         setSession(currentSession)
         setUser(currentSession?.user ?? null)
         setIsSessionLoading(false)
         setIsHydrated(true)
-        
+
         // Unblock UI if getSession() is still hanging
         if (isInitializing) setIsInitializing(false)
 
@@ -192,7 +189,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (currentSession?.user) {
           if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-            setIsProfileLoading(true)
+            // Only show loading spinner if we don't already have a profile
+            if (!profileRef.current) {
+              setIsProfileLoading(true)
+            }
 
             // Handle token refresh failures
             if (event === 'TOKEN_REFRESHED') {
@@ -307,85 +307,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  // Visibility and focus handlers for PWA resume
-  useEffect(() => {
-    if (!user) return
 
-    const VISIBLE_REFRESH_COOLDOWN = 5000 // 5 second cooldown
-
-    const handleVisibility = async () => {
-      if (document.visibilityState === 'visible') {
-        const now = Date.now()
-        const timeSinceLastRefresh = now - lastVisibilityRefreshRef.current
-        
-        // Debounce: Skip if we just refreshed recently
-        if (timeSinceLastRefresh < VISIBLE_REFRESH_COOLDOWN) {
-          logAuthEvent('VISIBILITY_CHANGE', `Skipped (cooldown: ${timeSinceLastRefresh}ms)`)
-          return
-        }
-
-        logAuthEvent('VISIBILITY_CHANGE', 'Tab became visible - refreshing session')
-        // Proactive Session Resurrection: Refresh session on wake
-        const { data: { session: s }, error } = await supabase.auth.getSession()
-        
-        // Only sign out on actual auth errors, not lock contention or network issues
-        if (error) {
-          // Check if this is a real auth error or just a lock/network issue
-          const isAuthError = error.name === 'AuthApiError' ||
-                           error.message?.toLowerCase().includes('invalid') ||
-                           error.message?.toLowerCase().includes('expired')
-          
-          if (isAuthError) {
-            logAuthEvent('SESSION_REFRESH_ERROR', error.message)
-            // Session expired - handle gracefully
-            toast.error('Your session has expired. Please sign in again.')
-            await signOut()
-            return
-          } else {
-            // Lock contention or network issue - don't sign out, just log
-            logAuthEvent('SESSION_REFRESH_SKIPPED', `Non-auth error: ${error.message}`)
-            lastVisibilityRefreshRef.current = now
-            return
-          }
-        }
-        
-        lastVisibilityRefreshRef.current = now
-        
-        if (s) {
-          setSession(s)
-          setUser(s.user)
-        } else {
-          // Session was lost - sign out gracefully
-          logAuthEvent('SESSION_LOST', 'Session was lost on visibility change')
-          toast.error('Your session has expired. Please sign in again.')
-          await signOut()
-        }
-      }
-    }
-
-    const handleFocus = () => {
-      // Secondary handshake for PWA/Mobile resume
-      // Also debounce focus events
-      const now = Date.now()
-      const timeSinceLastRefresh = now - lastVisibilityRefreshRef.current
-      
-      if (timeSinceLastRefresh < VISIBLE_REFRESH_COOLDOWN) {
-        return
-      }
-      
-      logAuthEvent('WINDOW_FOCUS', 'Window regained focus - refreshing profile')
-      lastVisibilityRefreshRef.current = now
-      refreshProfile()
-    }
-
-    document.addEventListener('visibilitychange', handleVisibility)
-    window.addEventListener('focus', handleFocus)
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibility)
-      window.removeEventListener('focus', handleFocus)
-    }
-  }, [user])
 
   // KEPT INTACT: Existing auth methods
   const signIn = async (email: string, password: string) => {
@@ -450,34 +372,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  // Periodic session validation (every 5 minutes)
-  useEffect(() => {
-    if (!user || !session) return
 
-    const validateSession = async () => {
-      try {
-        logAuthEvent('PERIODIC_SESSION_VALIDATION', 'Checking session validity...')
-        const { data: { session: s }, error } = await supabase.auth.getSession()
-        
-        if (error || !s) {
-          logAuthEvent('SESSION_VALIDATION_FAILED', error?.message || 'Session is invalid')
-          toast.error('Your session has expired. Please sign in again.')
-          await signOut()
-        }
-      } catch (err) {
-        logAuthEvent('SESSION_VALIDATION_ERROR', err)
-      }
-    }
-
-    // Validate every 5 minutes
-    const interval = setInterval(validateSession, 5 * 60 * 1000)
-
-    return () => clearInterval(interval)
-  }, [user, session])
 
   const refreshProfile = async (force = false) => {
     if (!user) return
-    
+
     // Throttle: Skip if refreshed in the last 10 minutes, unless forced
     const now = Date.now()
     if (!force && now - lastRefreshRef.current < 10 * 60 * 1000) {

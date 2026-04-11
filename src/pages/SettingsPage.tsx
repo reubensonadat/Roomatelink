@@ -233,7 +233,7 @@ export function SettingsPage() {
   };
 
   return (
-    <div className="flex flex-col w-full min-h-screen bg-background selection:bg-indigo-100 dark:selection:bg-indigo-500/30">
+    <div className="flex flex-col w-full min-h-screen bg-background selection:bg-indigo-100 dark:selection:bg-indigo-500/30 overflow-x-hidden max-w-[100vw]">
       <TopHeader title="Settings" showBackButton />
 
       <div className="flex-1 overflow-y-auto w-full md:max-w-xl lg:max-w-2xl mx-auto px-4 pt-8 pb-32">
@@ -286,9 +286,9 @@ export function SettingsPage() {
                     <div className="w-10 h-10 rounded-[16px] bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
                       <FileText className="w-5 h-5 text-primary" />
                     </div>
-                    <div className="flex flex-col">
-                      <span className="font-bold text-[15px] text-foreground">How to Use Roommate Link</span>
-                      <span className="text-[12px] font-medium text-muted-foreground">App guide & documentation</span>
+                    <div className="flex flex-col min-w-0">
+                      <span className="font-bold text-[14px] sm:text-[15px] text-foreground truncate">How to Use Roommate Link</span>
+                      <span className="text-[11px] sm:text-[12px] font-medium text-muted-foreground truncate">App guide & documentation</span>
                     </div>
                     <ChevronRight className="w-4 h-4 text-muted-foreground/50 ml-auto mr-2" />
                   </div>
@@ -381,7 +381,7 @@ export function SettingsPage() {
                       value={manualEmail}
                       onChange={(e) => setManualEmail(e.target.value)}
                       placeholder="E.G. NAME@STU.UCC.EDU.GH"
-                      className="w-full px-8 py-6 rounded-[22px] bg-muted/40 border border-border focus:border-primary/50 outline-none transition-all font-black text-[15px] uppercase tracking-widest placeholder:text-muted-foreground/30 shadow-inner"
+                      className="w-full px-4 sm:px-8 py-5 sm:py-6 rounded-[22px] bg-muted/40 border border-border focus:border-primary/50 outline-none transition-all font-black text-[13px] sm:text-[15px] uppercase tracking-wider sm:tracking-widest placeholder:text-muted-foreground/30 shadow-inner"
                     />
                   </motion.div>
                 ) : (
@@ -397,7 +397,7 @@ export function SettingsPage() {
                       value={verificationCode}
                       onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, ''))}
                       placeholder="0 0 0 0 0 0"
-                      className="w-full px-8 py-6 rounded-[22px] bg-muted/40 border border-border focus:border-primary/50 outline-none transition-all font-black text-center text-2xl tracking-[0.6em] shadow-inner"
+                      className="w-full px-4 sm:px-8 py-5 sm:py-6 rounded-[22px] bg-muted/40 border border-border focus:border-primary/50 outline-none transition-all font-black text-center text-xl sm:text-2xl tracking-[0.4em] sm:tracking-[0.6em] shadow-inner"
                     />
                   </motion.div>
                 )}

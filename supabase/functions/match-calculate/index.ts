@@ -212,7 +212,7 @@ Deno.serve(async (req: Request) => {
                 .filter((f: any) => f.penalty > 0)
                 .map((f: any) => f.description)
             : [],
-          commonTraits: match.result.categoryBreakdown
+          common_traits: match.result.categoryBreakdown
             ? match.result.categoryBreakdown
                 .filter((cat: any) => cat.meanSimilarity >= 0.75)
                 .flatMap((cat: any) =>
@@ -238,7 +238,7 @@ Deno.serve(async (req: Request) => {
                 .filter((f: any) => f.penalty > 0)
                 .map((f: any) => f.description)
             : [],
-          commonTraits: match.result.categoryBreakdown
+          common_traits: match.result.categoryBreakdown
             ? match.result.categoryBreakdown
                 .filter((cat: any) => cat.meanSimilarity >= 0.75)
                 .flatMap((cat: any) =>

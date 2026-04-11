@@ -122,7 +122,7 @@ export function ChatPage() {
 
 
   return (
-    <div className="flex flex-col w-full h-[100dvh] bg-muted/10 relative selection:bg-indigo-100 dark:selection:bg-indigo-500/30">
+    <div className="flex flex-col w-full h-[100dvh] bg-muted/10 relative selection:bg-indigo-100 dark:selection:bg-indigo-500/30 overflow-x-hidden max-w-[100vw]">
       <AnimatePresence>
         {isSyncing && (
           <motion.div
@@ -297,7 +297,7 @@ export function ChatPage() {
                     >
                       <div className={`flex flex-col ${msg.sender === 'me' ? 'items-end' : 'items-start'} max-w-[80%]`}>
                         <div className={`flex gap-3 ${msg.sender === 'me' ? 'flex-row-reverse' : 'flex-row'}`}>
-                          <div className={`relative flex-shrink-0 overflow-hidden ${msg.sender === 'me' ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground'} p-3 rounded-[22px] max-w-[280px] shadow-sm`}>
+                          <div className={`relative flex-shrink-0 overflow-hidden ${msg.sender === 'me' ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground'} p-3 rounded-[22px] max-w-[260px] sm:max-w-[320px] shadow-sm flex flex-col min-w-0`}>
                             <p className={`text-sm leading-relaxed break-words overflow-wrap-anywhere ${msg.sender === 'me' ? 'text-right' : 'text-left'}`}>
                               {msg.text}
                             </p>

@@ -107,7 +107,7 @@ export function OnboardingPage() {
   if (!mounted) return null
 
   return (
-    <div className="min-h-screen bg-background flex flex-col md:flex-row transition-colors duration-300">
+    <div className="min-h-screen bg-background flex flex-col md:flex-row transition-colors duration-300 overflow-x-hidden max-w-[100vw]">
 
       {/* ─── DESKTOP LEFT / MOBILE TOP (Square Image Area) ─── */}
       <div className="w-full md:w-1/2 p-4 md:p-6 lg:p-12 flex items-center justify-center bg-muted/20">
@@ -208,7 +208,7 @@ export function OnboardingPage() {
                 </div>
 
                 <div>
-                  <h1 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tighter text-foreground leading-none mb-5 whitespace-pre-line">
+                  <h1 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tighter text-foreground leading-none mb-5 whitespace-pre-line break-words overflow-wrap-anywhere">
                     {SLIDES[currentSlide].title}
                   </h1>
                   <p className="text-lg md:text-xl font-medium text-muted-foreground leading-relaxed max-w-md">
@@ -235,7 +235,7 @@ export function OnboardingPage() {
                 </div>
 
                 <div>
-                  <h1 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tighter text-foreground leading-none mb-4">
+                  <h1 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tighter text-foreground leading-none mb-4 break-words overflow-wrap-anywhere">
                     Find Your<br />Match
                   </h1>
                   <p className="text-lg md:text-xl font-medium text-muted-foreground leading-relaxed max-w-md">

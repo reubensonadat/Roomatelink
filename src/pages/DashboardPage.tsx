@@ -8,12 +8,10 @@ import { useAuth } from '../context/AuthContext'
 import { MatchFeed } from '../components/dashboard/MatchFeed'
 import { ProfilePreviewModal } from '../components/dashboard/ProfilePreviewModal'
 import { PaymentModal } from '../components/dashboard/PaymentModal'
-import { PioneerModal } from '../components/dashboard/PioneerModal'
 import { PaymentVerificationOverlay } from '../components/dashboard/PaymentVerificationOverlay'
 import { ReportModal } from '../components/dashboard/ReportModal'
 import { FoundRoommateModal } from '../components/dashboard/FoundRoommateModal'
 import { TopHeader } from '../components/layout/TopHeader'
-import { PioneerBanner } from '../components/dashboard/PioneerBanner'
 import { EmptyState } from '../components/dashboard/EmptyState'
 import { UserFlowGate } from '../components/dashboard/UserFlowGate'
 import { useDashboardData } from '../hooks/useDashboardData'
@@ -60,12 +58,9 @@ export function DashboardPage() {
     unlockedCount,
     isPaymentModalOpen,
     setIsPaymentModalOpen,
-    isPioneerModalOpen,
-    setIsPioneerModalOpen,
     handleApplyDiscount,
     handlePaymentSuccess,
     handlePaymentFallbackCheck,
-    handlePioneerClaim,
     handleStartPayment,
     handleCancelVerification,
   } = usePaymentFlow()
@@ -164,7 +159,7 @@ export function DashboardPage() {
   }
 
   return (
-    <div className="flex flex-col w-full min-h-screen bg-background relative overflow-x-hidden">
+    <div className="flex flex-col w-full min-h-screen bg-background relative overflow-x-hidden max-w-[100vw]">
       <PaymentVerificationOverlay
         isVisible={isVerifyingPayment}
         verifyCountdown={verifyCountdown}
@@ -180,10 +175,6 @@ export function DashboardPage() {
         />
 
         <div className="flex flex-col px-4 sm:px-5 pt-6 pb-32 w-full max-w-2xl lg:max-w-3xl mx-auto">
-          {isPioneerUser && !hasPaid && (
-            <PioneerBanner handlePioneerClaim={handlePioneerClaim} />
-          )}
-
           <AnimatePresence mode="wait">
             {isLoading ? (
               <motion.div
@@ -198,14 +189,14 @@ export function DashboardPage() {
             ) : matches.length > 0 ? (
               <motion.div key="feed" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 {!hasPaid && (
-                  <div className="flex justify-center mb-8">
+                  <div className="flex justify-center mb-8 px-4 sm:px-0">
                     <button
                       onClick={handlePaymentFallbackCheck}
                       disabled={isVerifyingPayment}
-                      className="group px-8 py-4 bg-card border border-border/40 rounded-[22px] text-[11px] font-black uppercase tracking-widest text-muted-foreground transition-all flex items-center gap-2.5 active:scale-[0.98] disabled:opacity-50 hover:text-foreground hover:bg-muted/50 shadow-sm"
+                      className="group w-full sm:w-auto px-4 sm:px-8 py-3.5 sm:py-4 bg-card border border-border/40 rounded-[22px] text-[10px] sm:text-[11px] font-black uppercase tracking-wider sm:tracking-widest text-muted-foreground transition-all flex items-center justify-center gap-2 sm:gap-2.5 active:scale-[0.98] disabled:opacity-50 hover:text-foreground hover:bg-muted/50 shadow-sm"
                     >
-                      {isVerifyingPayment ? <span className="animate-spin">⟳</span> : <UserCheck className="w-4 h-4" />}
-                      {isVerifyingPayment ? "Checking Vault..." : "Already Paid? Verify Status"}
+                      {isVerifyingPayment ? <span className="animate-spin shrink-0">⟳</span> : <UserCheck className="w-4 h-4 shrink-0" />}
+                      <span className="truncate">{isVerifyingPayment ? "Checking Vault..." : "Already Paid? Verify Status"}</span>
                     </button>
                   </div>
                 )}
@@ -221,16 +212,16 @@ export function DashboardPage() {
                 </UserFlowGate>
 
                 {matches.length > displayLimit && displayLimit < 20 && (
-                  <div className="flex justify-center mt-10 mb-20 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                  <div className="flex justify-center mt-10 mb-20 animate-in fade-in slide-in-from-bottom-4 duration-700 px-4 sm:px-0">
                     <button
                       onClick={() => setDisplayLimit(prev => Math.min(prev + 10, 20))}
-                      className="group px-8 py-5 bg-muted/40 hover:bg-muted border border-border/40 rounded-[22px] flex items-center gap-4 transition-all active:scale-95 shadow-sm"
+                      className="group w-full sm:w-auto px-4 sm:px-8 py-4 sm:py-5 bg-muted/40 hover:bg-muted border border-border/40 rounded-[22px] flex items-center justify-center gap-3 sm:gap-4 transition-all active:scale-95 shadow-sm"
                     >
-                      <div className="w-10 h-10 rounded-[18px] bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform shadow-inner">
+                      <div className="w-10 h-10 shrink-0 rounded-[18px] bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform shadow-inner">
                         <Sparkles className="w-5 h-5 text-primary" />
                       </div>
-                      <div className="text-left">
-                        <span className="block text-[10px] font-bold text-muted-foreground">Revealing top 20 potential roommates</span>
+                      <div className="text-left min-w-0">
+                        <span className="block text-[10px] font-bold text-muted-foreground truncate">Revealing top 20 potential roommates</span>
                       </div>
                     </button>
                   </div>
@@ -258,9 +249,9 @@ export function DashboardPage() {
                   </div>
                   <Link
                     to="/dashboard/profile"
-                    className="w-full py-6 bg-amber-500 text-white font-black text-[15px] rounded-[22px] shadow-xl shadow-amber-500/20 hover:bg-amber-600 hover:shadow-amber-500/40 active:scale-95 transition-all flex items-center justify-center gap-2 uppercase tracking-widest"
+                    className="w-full py-5 sm:py-6 bg-amber-500 text-white font-black text-[14px] sm:text-[15px] rounded-[22px] shadow-xl shadow-amber-500/20 hover:bg-amber-600 hover:shadow-amber-500/40 active:scale-95 transition-all flex items-center justify-center gap-2 uppercase tracking-wide sm:tracking-widest"
                   >
-                    Setup Identity <Sparkles className="w-4 h-4 ml-1" />
+                    Setup Identity <Sparkles className="w-4 h-4 ml-1 shrink-0" />
                   </Link>
                 </div>
               </motion.div>
@@ -286,9 +277,9 @@ export function DashboardPage() {
                   </div>
                   <Link
                     to="/questionnaire"
-                    className="w-full py-6 bg-foreground text-background font-black text-[15px] rounded-[22px] shadow-xl hover:opacity-90 active:scale-95 transition-all flex items-center justify-center gap-2 uppercase tracking-widest"
+                    className="w-full py-5 sm:py-6 bg-foreground text-background font-black text-[14px] sm:text-[15px] rounded-[22px] shadow-xl hover:opacity-90 active:scale-95 transition-all flex items-center justify-center gap-2 uppercase tracking-wide sm:tracking-widest"
                   >
-                    Start DNA Test <Sparkles className="w-4 h-4 ml-1" />
+                    Start DNA Test <Sparkles className="w-4 h-4 ml-1 shrink-0" />
                   </Link>
                 </div>
               </motion.div>
@@ -316,7 +307,7 @@ export function DashboardPage() {
                   </div>
                   <button
                     onClick={handleRefresh}
-                    className="w-full py-6 bg-red-500 text-white font-black text-[15px] rounded-[22px] shadow-xl shadow-red-500/20 hover:bg-red-600 hover:shadow-red-500/40 active:scale-95 transition-all flex items-center justify-center gap-2 uppercase tracking-widest"
+                    className="w-full py-5 sm:py-6 bg-red-500 text-white font-black text-[14px] sm:text-[15px] rounded-[22px] shadow-xl shadow-red-500/20 hover:bg-red-600 hover:shadow-red-500/40 active:scale-95 transition-all flex items-center justify-center gap-2 uppercase tracking-wide sm:tracking-widest"
                   >
                     Retry Connection
                   </button>
@@ -324,7 +315,6 @@ export function DashboardPage() {
               </motion.div>
             ) : (
               <EmptyState
-                isPioneerUser={isPioneerUser}
                 isRecalculating={isRecalculating}
                 forceRecalculate={forceRecalculate}
               />
@@ -360,7 +350,6 @@ export function DashboardPage() {
         onRemoveDiscount={() => setDiscountApplied(false)}
       />
 
-      <PioneerModal isOpen={isPioneerModalOpen} onClose={() => setIsPioneerModalOpen(false)} onClaim={handlePioneerClaim} />
       <ReportModal isOpen={isReportModalOpen} onClose={() => setIsReportModalOpen(false)} reportedName={selectedMatch?.name || ''} reportedId={selectedMatch?.id || ''} />
       {currentDayNumber !== null && <FoundRoommateModal isOpen={isFoundRoommateModalOpen} onClose={handleFoundRoommateClose} onConfirm={handleFoundRoommateConfirm} dayNumber={currentDayNumber} />}
     </div>

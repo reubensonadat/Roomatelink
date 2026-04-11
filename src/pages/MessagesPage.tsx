@@ -23,7 +23,7 @@ export function MessagesPage() {
   }
 
   return (
-    <div className="flex flex-col w-full min-h-screen bg-muted/10 relative selection:bg-indigo-100 dark:selection:bg-indigo-500/30">
+    <div className="flex flex-col w-full min-h-screen bg-muted/10 relative selection:bg-indigo-100 dark:selection:bg-indigo-500/30 overflow-x-hidden max-w-[100vw]">
       <TopHeader 
         title="Messages" 
         subtitle={chats.length > 0 ? `You have ${chats.length} active conversations.` : 'Your private conversations will appear here.'}
@@ -37,17 +37,17 @@ export function MessagesPage() {
             exit={{ height: 0, opacity: 0 }}
             className="bg-indigo-600 text-white overflow-hidden shadow-lg border-b border-white/10"
           >
-            <div className="px-5 py-3 flex items-center justify-between gap-4 max-w-md mx-auto">
-              <div className="flex items-center gap-3">
+            <div className="px-4 sm:px-5 py-3 flex items-center justify-between gap-3 sm:gap-4 max-w-md mx-auto w-full">
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                 <div className="p-2 bg-white/20 rounded-xl">
                   <Cpu className="w-5 h-5 text-white animate-pulse" />
                 </div>
                 <div className="flex flex-col">
                   <span className="text-[13px] font-black tracking-tight leading-tight">High Performance Mode</span>
-                  <p className="text-[10px] font-bold text-indigo-100 uppercase tracking-widest mt-0.5">Live updates paused to save resources</p>
+                  <p className="text-[10px] font-bold text-indigo-100 uppercase tracking-wide sm:tracking-widest mt-0.5 truncate">Live updates paused to save resources</p>
                 </div>
               </div>
-              <button onClick={() => window.location.reload()} className="px-3 py-1.5 bg-white text-indigo-600 text-[10px] font-black rounded-lg uppercase tracking-tighter hover:bg-indigo-50 transition-colors shrink-0">Reconnect</button>
+              <button onClick={() => window.location.reload()} className="px-3 py-1.5 bg-white text-indigo-600 text-[9px] sm:text-[10px] font-black rounded-lg uppercase tracking-tighter hover:bg-indigo-50 transition-colors shrink-0">Reconnect</button>
             </div>
           </motion.div>
         )}
@@ -104,7 +104,7 @@ export function MessagesPage() {
                 <h2 className="text-2xl font-black text-foreground tracking-tight mb-2">Identity Check</h2>
                 <p className="text-muted-foreground font-bold leading-relaxed">Complete your profile setup to start connecting with roommates.</p>
               </div>
-              <Link to="/profile" className="px-8 py-4 bg-primary text-primary-foreground font-black rounded-2xl shadow-xl flex items-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all">
+              <Link to="/profile" className="px-6 sm:px-8 py-3.5 sm:py-4 bg-primary text-primary-foreground font-black rounded-2xl shadow-xl flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all w-full sm:w-auto">
                 Setup Identity <ChevronRight className="w-4 h-4" />
               </Link>
           </motion.div>
@@ -124,7 +124,7 @@ export function MessagesPage() {
                   Unlock your matches for GHS {PAYMENT_AMOUNT} to start private conversations with your top roommate matches.
                 </p>
               </div>
-              <Link to="/dashboard" className="px-8 py-4 bg-primary text-primary-foreground font-black rounded-2xl shadow-xl flex items-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all">
+              <Link to="/dashboard" className="px-6 sm:px-8 py-3.5 sm:py-4 bg-primary text-primary-foreground font-black rounded-2xl shadow-xl flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all w-full sm:w-auto">
                 Unlock Matches <ChevronRight className="w-4 h-4" />
               </Link>
           </motion.div>
@@ -143,10 +143,10 @@ export function MessagesPage() {
                 <h2 className="text-2xl font-black text-foreground tracking-tight mb-2">Quiet in Here</h2>
                 <p className="text-muted-foreground font-bold leading-relaxed">You haven't messaged anyone yet. Go check out your top matches!</p>
               </div>
-              <Link to="/dashboard" className="px-8 py-4 bg-primary text-primary-foreground font-black rounded-2xl hover:scale-[1.02] active:scale-[0.98] transition-all">Browse Matches</Link>
+              <Link to="/dashboard" className="px-6 sm:px-8 py-3.5 sm:py-4 bg-primary text-primary-foreground font-black rounded-2xl hover:scale-[1.02] active:scale-[0.98] transition-all w-full sm:w-auto justify-center flex">Browse Matches</Link>
           </motion.div>
         ) : (
-          <div className="px-5 space-y-3 max-w-md mx-auto pt-6">
+          <div className="px-4 sm:px-5 space-y-3 max-w-md mx-auto pt-6 pb-32 w-full">
               {/* Search Bar Refined: Only shows with active threads */}
               <div className="pt-2 mb-6 animate-in fade-in slide-in-from-top-4 duration-700">
                 <div className="relative group w-full max-w-md mx-auto">
@@ -154,7 +154,7 @@ export function MessagesPage() {
                   <input
                     type="text"
                     placeholder="Search conversations..."
-                    className="w-full h-[60px] pl-16 pr-8 bg-background border-2 border-border/80 rounded-[18px] focus:outline-none focus:ring-8 focus:ring-primary/5 focus:border-primary transition-all font-black text-[15px] sm:text-[17px] text-foreground placeholder:text-muted-foreground/50 shadow-md relative z-0"
+                    className="w-full h-[56px] sm:h-[60px] pl-14 sm:pl-16 pr-6 sm:pr-8 bg-background border-2 border-border/80 rounded-[18px] focus:outline-none focus:ring-8 focus:ring-primary/5 focus:border-primary transition-all font-black text-[14px] sm:text-[17px] text-foreground placeholder:text-muted-foreground/50 shadow-md relative z-0"
                   />
                 </div>
               </div>
@@ -169,7 +169,7 @@ export function MessagesPage() {
                 >
                   <Link 
                     to={`/dashboard/messages/${chat.id}`} 
-                    className="flex items-start gap-4 p-4 md:p-5 bg-card rounded-[22px] border border-border/80 shadow-premium hover:shadow-elevated hover:border-primary/20 transition-all active:scale-[0.98] group relative"
+                    className="flex items-start gap-3 sm:gap-4 p-3.5 sm:p-4 md:p-5 bg-card rounded-[22px] border border-border/80 shadow-premium hover:shadow-elevated hover:border-primary/20 transition-all active:scale-[0.98] group relative"
                   >
                     <div className="relative shrink-0">
                       <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-[22px] bg-muted border border shadow-inner overflow-hidden relative">
@@ -181,14 +181,14 @@ export function MessagesPage() {
                       </div>
                       <div className="flex-1 min-w-0 pt-1">
                         <div className="flex flex-col">
-                          <div className="flex justify-between items-center mb-1">
-                            <span className="text-[17px] font-black text-foreground truncate tracking-tight">{chat.name}</span>
-                            <span className={`text-[11px] font-black uppercase tracking-widest ${chat.unread > 0 ? 'text-primary' : 'text-muted-foreground/40'}`}>
+                          <div className="flex justify-between items-center mb-1 gap-2">
+                            <span className="text-[15px] sm:text-[17px] font-black text-foreground truncate tracking-tight min-w-0">{chat.name}</span>
+                            <span className={`text-[10px] sm:text-[11px] font-black uppercase tracking-wider sm:tracking-widest shrink-0 whitespace-nowrap ${chat.unread > 0 ? 'text-primary' : 'text-muted-foreground/40'}`}>
                               {chat.time}
                             </span>
                           </div>
-                          <div className="flex justify-between items-start gap-3">
-                            <p className={`text-[14px] leading-relaxed line-clamp-2 flex-1 break-all ${chat.unread > 0 ? 'text-foreground font-bold' : 'text-muted-foreground font-medium'}`}>
+                          <div className="flex justify-between items-start gap-2 sm:gap-3">
+                            <p className={`text-[13px] sm:text-[14px] leading-relaxed line-clamp-2 flex-1 break-words ${chat.unread > 0 ? 'text-foreground font-bold' : 'text-muted-foreground font-medium'}`}>
                               {chat.lastMessage}
                             </p>
                             {chat.unread > 0 && (

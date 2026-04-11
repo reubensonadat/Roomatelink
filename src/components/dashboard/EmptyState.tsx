@@ -4,14 +4,13 @@ import { useState, useEffect } from 'react'
 import { OrbitalLoader } from '../ui/OrbitalLoader'
 
 interface EmptyStateProps {
-  isPioneerUser: boolean
   isRecalculating: boolean
   forceRecalculate: () => void
 }
 
 const COOLDOWN_MS = 5 * 60 * 1000 // 5 Minutes
 
-export function EmptyState({ isPioneerUser, isRecalculating, forceRecalculate }: EmptyStateProps) {
+export function EmptyState({ isRecalculating, forceRecalculate }: EmptyStateProps) {
   const [timeLeft, setTimeLeft] = useState(0)
 
   useEffect(() => {
@@ -56,24 +55,10 @@ export function EmptyState({ isPioneerUser, isRecalculating, forceRecalculate }:
         <div className="absolute inset-0 bg-primary/20 animate-ping opacity-25 rounded-full" />
         <LockIcon className="w-8 h-8 text-primary animate-pulse" />
       </div>
-      {isPioneerUser ? (
-        <>
-          <h3 className="text-[20px] font-black text-foreground mb-2">Pioneer Hub</h3>
-          <p className="text-muted-foreground text-[14px] font-medium leading-relaxed max-w-[240px] mb-3">
-            We're currently matching you with initial wave of students. New compatible roommates appear as they join!
-          </p>
-          <p className="text-muted-foreground text-[13px] font-semibold leading-relaxed max-w-[240px] mb-5">
-            Check back daily or invite friends to speed up the process.
-          </p>
-        </>
-      ) : (
-        <>
-          <h3 className="text-[20px] font-black text-foreground mb-2">You're Early!</h3>
-          <p className="text-muted-foreground text-[14px] font-medium leading-relaxed max-w-[240px] mb-5">
-            We're still mapping campus DNA. Check back soon for your perfect roommate matches!
-          </p>
-        </>
-      )}
+      <h3 className="text-[20px] font-black text-foreground mb-2">You're Early!</h3>
+      <p className="text-muted-foreground text-[14px] font-medium leading-relaxed max-w-[240px] mb-5">
+        We're still mapping campus DNA. Check back soon for your perfect roommate matches!
+      </p>
       <button
         onClick={handleRecalculate}
         disabled={isRecalculating || timeLeft > 0}

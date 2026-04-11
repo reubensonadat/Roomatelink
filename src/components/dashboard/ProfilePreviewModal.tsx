@@ -56,17 +56,28 @@ export function ProfilePreviewModal({
     >
       <div className="flex flex-col md:flex-row min-h-0 -mx-5 md:-mx-8 -my-4 md:-my-6">
         {/* Left Column - Image Section (Desktop Only) */}
-        <div className="hidden md:block w-[400px] relative bg-muted group overflow-hidden shrink-0 border-r border-border/40">
+        <div className="hidden md:block w-[380px] relative bg-slate-950 group overflow-hidden shrink-0 border-r border-white/5">
+          {/* Ambient Depth Layer */}
           <img 
             src={match.avatar} 
-            alt={match.name} 
-            className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" 
+            alt="" 
+            className="absolute inset-0 w-full h-full object-cover blur-3xl opacity-20 scale-125 pointer-events-none" 
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-transparent to-transparent opacity-80" />
-          <div className="absolute bottom-8 left-8 right-8">
-            <div className={`inline-flex items-center gap-2.5 px-6 py-3 rounded-3xl ${tier.color} shadow-xl shadow-emerald-500/20 text-white bg-background/20 backdrop-blur-md border border-white/10`}>
-              <span className="text-[20px] font-black">{match.matchPercent}%</span>
-              <span className="text-[13px] font-black uppercase tracking-wider">{tier.label} Match</span>
+          
+          {/* Main Portrait - Sharp & Inset */}
+          <div className="relative z-10 w-full h-full p-12 flex flex-col items-center justify-center">
+            <img 
+              src={match.avatar} 
+              alt={match.name} 
+              className="w-full h-full object-contain transition-transform duration-1000 group-hover:scale-[1.03] drop-shadow-[0_20px_50px_rgba(0,0,0,0.6)]" 
+            />
+          </div>
+
+          {/* High-Affinity Floating Pill Badge */}
+          <div className="absolute bottom-10 inset-x-0 flex justify-center z-20">
+            <div className="px-6 py-3 rounded-2xl bg-white/10 backdrop-blur-xl border border-white/20 shadow-2xl flex items-center gap-2.5">
+              <span className={`text-[18px] font-black ${tier.textColor}`}>{match.matchPercent}%</span>
+              <span className="text-[12px] font-black text-white/90 uppercase tracking-widest">{tier.label} Match</span>
             </div>
           </div>
         </div>
@@ -79,7 +90,7 @@ export function ProfilePreviewModal({
             <div className="flex flex-col items-center gap-4 mb-10 md:hidden border-b border-border/40 pb-10">
               <div className="relative mb-4">
                 <div className="w-24 h-24 rounded-3xl border-2 border-primary/20 bg-muted overflow-hidden mx-auto shadow-elevated">
-                  <img src={match.avatar} alt="Avatar" className="w-full h-full object-cover" />
+                  <img src={match.avatar} alt="Avatar" className="w-full h-full object-cover object-top" />
                 </div>
               </div>
               <div className="text-center">

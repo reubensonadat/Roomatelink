@@ -134,21 +134,52 @@ export function useDashboardData(): UseDashboardDataReturn {
         setIsPioneerUser(pioneerStatus)
 
         // Check if user has completed questionnaire - source of truth
-        const { data: qResp, error: qError } = await supabase
-          .from('questionnaire_responses')
-          .select('id')
-          .eq('user_id', activeProfile.id)
-          .maybeSingle()
+        // Add retry logic for lock contention errors
+        const queryQuestionnaire = async (retries = 2): Promise<boolean | null> => {
+          for (let i = 0; i < retries; i++) {
+            const { data: qResp, error: qError } = await supabase
+              .from('questionnaire_responses')
+              .select('id')
+              .eq('user_id', activeProfile.id)
+              .maybeSingle()
 
+            if (!qError) {
+              return !!qResp
+            }
+
+            // Check if this is a lock contention error
+            const isLockError = qError.name === 'AbortError' ||
+                             qError.message?.toLowerCase().includes('lock broken') ||
+                             qError.message?.toLowerCase().includes('lock')
+
+            if (isLockError && i < retries - 1) {
+              // Exponential backoff: 500ms, 1000ms
+              const delay = 500 * Math.pow(2, i)
+              console.warn(`[Questionnaire Check] Lock contention, retrying in ${delay}ms (attempt ${i + 1}/${retries})`)
+              await new Promise(resolve => setTimeout(resolve, delay))
+            } else {
+              // Non-retryable error or max retries reached
+              console.error('[Questionnaire Check] Query failed:', qError)
+              return null
+            }
+          }
+          return null
+        }
+
+        const hasQ = await queryQuestionnaire()
+        
         // Only update state if query succeeds; keep cached value on error
-        if (!qError) {
-          const hasQ = !!qResp
+        if (hasQ !== null) {
           setHasQuestionnaire(hasQ)
           sessionStorage.setItem('hasQuestionnaireCache', String(hasQ))
           console.log('[Questionnaire Check] User has questionnaire:', hasQ)
         } else {
-          console.error('[Questionnaire Check] Query failed:', qError)
-          // On query failure, keep null (loading state) — don't poison with stale cache
+          // On query failure, try to use cached value
+          const cached = sessionStorage.getItem('hasQuestionnaireCache')
+          if (cached !== null) {
+            setHasQuestionnaire(cached === 'true')
+            console.log('[Questionnaire Check] Using cached value:', cached)
+          }
         }
 
         // Step 3: Fetch Matches — query BOTH sides for bulletproof loading
@@ -297,21 +328,29 @@ export function useDashboardData(): UseDashboardDataReturn {
           sessionStorage.removeItem('matchesCache')
         }
 
-        // Step 4: Verify Pioneer Status if not already marked
+        // Step 4: Verify Pioneer Status if not already checked
         // Only check once per session to avoid wasting Edge Function calls
-        if (!pioneerStatus && !sessionStorage.getItem('pioneerChecked')) {
+        // Run check to determine if user IS a pioneer (not just for non-pioneers)
+        if (!sessionStorage.getItem('pioneerChecked')) {
           try {
             const { data: pcData, error: pcError } = await supabase.functions.invoke('pioneer-check')
-            sessionStorage.setItem('pioneerChecked', 'true')
+            
             if (!pcError && pcData) {
+              // Only mark as checked AFTER successful response
+              sessionStorage.setItem('pioneerChecked', 'true')
+              
               const isPioneer = (pcData as any).isPioneer || false
               setIsPioneerUser(isPioneer)
               if (isPioneer) {
                 await refreshProfile() // Sync DB update to AuthContext
               }
+            } else if (pcError) {
+              console.error('[Pioneer Check] Error:', pcError)
+              // Don't mark as checked on error - allows retry on next session
             }
           } catch (pcErr) {
-            console.warn('Pioneer Engine sync deferred.')
+            console.warn('[Pioneer Check] Exception:', pcErr)
+            // Don't mark as checked on exception - allows retry
           }
         }
       } else {

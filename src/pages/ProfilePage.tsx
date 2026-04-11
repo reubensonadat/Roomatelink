@@ -58,7 +58,7 @@ async function withRetry<T>(
 }
 
 export function ProfilePage() {
-  const { user, profile, refreshProfile } = useAuth()
+  const { user, profile, session, refreshProfile } = useAuth()
   const navigate = useNavigate()
 
   const STORAGE_KEY = 'roommate_profile_data'
@@ -231,7 +231,6 @@ export function ProfilePage() {
       // If matching-relevant fields changed, trigger match recalculation in background
       if (matchFieldsChanged && profileId && hasQuestionnaire) {
         try {
-          const { data: { session } } = await supabase.auth.getSession()
           if (session) {
             fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/match-calculate`, {
               method: 'POST',
@@ -293,7 +292,7 @@ export function ProfilePage() {
   // Zero-Flash Mounting: Removed the !mounted return to prevent layout shift during transit
 
   return (
-    <div className="flex flex-col w-full min-h-screen bg-background relative selection:bg-indigo-100 dark:selection:bg-indigo-500/30">
+    <div className="flex flex-col w-full min-h-screen bg-background relative selection:bg-indigo-100 dark:selection:bg-indigo-500/30 overflow-x-hidden max-w-[100vw]">
       <TopHeader title="Profile Hub" showBackButton />
 
       <div className="flex-1 overflow-y-auto w-full md:max-w-2xl lg:max-w-3xl mx-auto px-4 pt-6 pb-32">
@@ -540,7 +539,7 @@ export function ProfilePage() {
             <button
               onClick={() => handleSave()}
               disabled={!isComplete || isSaving}
-              className={`w-full py-6 rounded-boutique flex items-center justify-center gap-3 shadow-md transition-all duration-500 active:scale-[0.96] relative overflow-hidden group ${!isComplete || isSaving
+              className={`w-full py-5 sm:py-6 rounded-boutique flex items-center justify-center gap-3 shadow-md transition-all duration-500 active:scale-[0.96] relative overflow-hidden group ${!isComplete || isSaving
                 ? 'bg-muted text-muted-foreground/30 cursor-not-allowed border border-border/40'
                 : 'bg-foreground text-background hover:bg-primary hover:text-primary-foreground hover:shadow-xl'
                 }`}
@@ -560,14 +559,14 @@ export function ProfilePage() {
             {hasQuestionnaire !== null && (
               <button
                 onClick={() => navigate(hasQuestionnaire ? '/questionnaire/review' : '/questionnaire')}
-                className="w-full mt-4 h-[64px] rounded-boutique flex items-center justify-center gap-3 border-2 border-slate-200 hover:border-indigo-200 hover:bg-indigo-50/50 transition-all group active:scale-[0.98]"
+                className="w-full mt-4 h-[56px] sm:h-[64px] rounded-boutique flex items-center justify-center gap-2 sm:gap-3 border-2 border-slate-200 hover:border-indigo-200 hover:bg-indigo-50/50 transition-all group active:scale-[0.98] px-4"
               >
-                <div className="flex flex-col items-center">
-                  <span className="text-[14px] font-black text-slate-800 transition-colors group-hover:text-indigo-600">
+                <div className="flex flex-col items-center min-w-0">
+                  <span className="text-[12px] sm:text-[14px] font-black text-slate-800 transition-colors group-hover:text-indigo-600 truncate">
                     {hasQuestionnaire ? 'Review My Match Responses' : 'Start Campus DNA Questionnaire'}
                   </span>
                 </div>
-                <ChevronRight size={18} className="text-slate-400 group-hover:text-indigo-500 group-hover:translate-x-1 transition-transform" />
+                <ChevronRight size={18} className="text-slate-400 group-hover:text-indigo-500 group-hover:translate-x-1 transition-transform shrink-0" />
               </button>
             )}
           </div>
@@ -614,13 +613,13 @@ export function ProfilePage() {
         <input type="file" accept="image/*" className="hidden" id="avatar-upload" onChange={handleAvatarUpload} />
       </ModalShell>
 
-      <ModalShell
-        isOpen={isConfirmModalOpen}
-        onClose={() => setIsConfirmModalOpen(false)}
-        title="Permanent Identity Lock"
-        subtitle="Read carefully — this cannot be undone"
-        maxWidth="max-w-[92%] md:max-w-md"
-      >
+        <ModalShell
+          isOpen={isConfirmModalOpen}
+          onClose={() => setIsConfirmModalOpen(false)}
+          title="Permanent Identity Lock"
+          subtitle="Read carefully — this cannot be undone"
+          maxWidth="max-w-[95%] md:max-w-md w-full"
+        >
         <div className="flex flex-col items-center p-5 text-center gap-4">
 
           {/* Icon */}

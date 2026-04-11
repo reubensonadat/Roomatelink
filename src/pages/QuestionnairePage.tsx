@@ -223,7 +223,7 @@ export function QuestionnairePage() {
 
   if (isReviewing) {
     return (
-      <div className="min-h-screen bg-background flex flex-col relative selection:bg-primary/20">
+      <div className="min-h-screen bg-background flex flex-col relative selection:bg-primary/20 overflow-x-hidden max-w-[100vw]">
         <div className="fixed top-0 left-0 w-full h-[4px] bg-muted/30 z-50">
           <motion.div className="h-full bg-primary" initial={{ width: 0 }} animate={{ width: '100%' }} />
         </div>
@@ -245,7 +245,7 @@ export function QuestionnairePage() {
                       {selectedOpt?.text || 'Unanswered'}
                     </p>
                   </div>
-                   <button
+                    <button
                     onClick={() => {
                       if (editCount >= 2) {
                         toast.error("You can only revise a maximum of 2 answers to maintain honesty.")
@@ -259,7 +259,7 @@ export function QuestionnairePage() {
                       setCurrentIndex(idx)
                       setIsReviewing(false)
                     }}
-                    className={`flex items-center justify-center gap-3 px-8 py-5 rounded-[22px] font-black text-[14px] uppercase tracking-widest group shrink-0 transition-all ${
+                    className={`flex items-center justify-center gap-2 sm:gap-3 px-5 sm:px-8 py-4 sm:py-5 rounded-[22px] font-black text-[13px] sm:text-[14px] uppercase tracking-wider sm:tracking-widest group shrink-0 transition-all ${
                       editCount >= 2 
                         ? 'bg-muted/30 text-muted-foreground/30 cursor-not-allowed' 
                         : 'bg-muted/60 text-muted-foreground hover:bg-primary/10 hover:text-primary active:scale-95'
@@ -312,7 +312,7 @@ export function QuestionnairePage() {
             <ChevronLeft className="w-6 h-6" />
           </button>
 
-          <div className="flex bg-muted/50 border border-border/50 px-8 py-3 rounded-[22px] items-center cursor-pointer hover:bg-muted transition-colors shadow-sm" onClick={() => {
+          <div className="flex bg-muted/50 border border-border/50 px-4 sm:px-8 py-3 rounded-[22px] items-center cursor-pointer hover:bg-muted transition-colors shadow-sm" onClick={() => {
              // Let them peek at the review screen early if they have answered questions
              if (Object.keys(answers).length > 0) setIsReviewing(true)
           }}>
