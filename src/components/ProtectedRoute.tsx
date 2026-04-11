@@ -6,13 +6,13 @@ import { motion } from 'framer-motion'
 import { PremiumAuthLoader } from './ui/PremiumAuthLoader'
 
 export function ProtectedRoute() {
-  const { user, profile, isSessionLoading, isProfileLoading, isHydrated, signOut } = useAuth()
+  const { user, profile, isInitializing, isSessionLoading, isProfileLoading, isHydrated, signOut } = useAuth()
   const [showFallback, setShowFallback] = useState(false)
   const [loadingTimedOut, setLoadingTimedOut] = useState(false)
 
   useEffect(() => {
     let timer: number
-    if (isSessionLoading || isProfileLoading) {
+    if (isInitializing || isSessionLoading || isProfileLoading) {
       timer = window.setTimeout(() => {
         setShowFallback(true)
       }, 8000)
@@ -20,21 +20,21 @@ export function ProtectedRoute() {
       setShowFallback(false)
     }
     return () => clearTimeout(timer)
-  }, [isSessionLoading, isProfileLoading])
+  }, [isInitializing, isSessionLoading, isProfileLoading])
 
-  // Hard cap: If still loading after 12s, force unlock the route
+  // Hard cap: If still loading after 15s, force unlock the route
   // This is a last-resort guard so users are never permanently stuck
   useEffect(() => {
-    if (!isSessionLoading && !isProfileLoading) return
+    if (!isInitializing && !isSessionLoading && !isProfileLoading) return
     const hard = window.setTimeout(() => {
       console.warn('ProtectedRoute: Loading hard cap reached — forcing render')
       setLoadingTimedOut(true)
     }, 12000)
     return () => clearTimeout(hard)
-  }, [])
+  }, [isInitializing, isSessionLoading, isProfileLoading])
 
-  // Phase 3: Zero-Flicker Handshake - Wait for Supabase to check LocalStorage
-  if (!loadingTimedOut && (!isHydrated || isSessionLoading)) {
+  // Phase 3: Zero-Flicker Handshake - Wait for initial auth check to complete
+  if (!loadingTimedOut && (isInitializing || !isHydrated || isSessionLoading)) {
     return (
       <>
         <PremiumAuthLoader
@@ -74,7 +74,7 @@ export function ProtectedRoute() {
   // We MUST wait for the profile to load to prevent 'Monolithic State Flicker'
   // (where the UI shows 'Setup Profile' for 0.5s before the DB returns data)
   // Hard cap: if loadingTimedOut or profile already exists, skip this gate and render anyway
-  if (isProfileLoading && !profile && !loadingTimedOut) {
+  if (!loadingTimedOut && isProfileLoading && !profile) {
     return (
       <PremiumAuthLoader
         topLabel="Security"

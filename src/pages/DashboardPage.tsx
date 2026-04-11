@@ -118,7 +118,7 @@ export function DashboardPage() {
   //   - AND there are no pre-cached matches to render behind the scenes
   // The moment isLoading becomes false (fetch done), the splash goes away
   // and the correct state (matches, empty state, or gate) is shown.
-  const showSplash = isLoading && matches.length === 0
+  const showSplash = isLoading && matches.length === 0 && isProfileComplete
 
   if (!mounted || showSplash) {
     return (

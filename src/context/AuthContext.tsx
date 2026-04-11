@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, useRef, ReactNode } fro
 import { supabase } from '../lib/supabase'
 import type { User, Session, AuthError } from '@supabase/supabase-js'
 import { UserProfile } from '../types/database'
+import { toast } from 'sonner'
 
 interface AuthContextType {
   user: User | null
@@ -9,6 +10,7 @@ interface AuthContextType {
   profile: UserProfile | null
   isSessionLoading: boolean
   isProfileLoading: boolean
+  isInitializing: boolean
   isHydrated: boolean
   isTrafficHeavy: boolean
   setIsTrafficHeavy: (value: boolean) => void
@@ -16,30 +18,18 @@ interface AuthContextType {
   signUp: (email: string, password: string) => Promise<{ error: AuthError | null; success?: string }>
   signOut: () => Promise<void>
   signInWithGoogle: () => Promise<void>
-  refreshProfile: () => Promise<void>
+  refreshProfile: (force?: boolean) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-// Helpers for synchronous hydration to prevent "Loading Session" flash
-// KEPT INTACT: Existing synchronous hydration logic
-const getLocalSession = (): Session | null => {
-  try {
-    const key = Object.keys(localStorage).find(k => k.startsWith('sb-') && k.endsWith('-auth-token'))
-    if (key) {
-      const data = JSON.parse(localStorage.getItem(key) || '{}')
-      // Supabase v2 stores the session object directly, not wrapped in { session: ... }
-      if (data && data.access_token) {
-        return data as Session
-      }
-      return null
-    }
-  } catch (e) {
-    return null
-  }
-  return null
+// Auth event logger for production debugging
+const logAuthEvent = (event: string, details?: any) => {
+  const timestamp = new Date().toISOString()
+  console.log(`[Auth] ${timestamp} - ${event}`, details || '')
 }
 
+// Helper to get cached profile from localStorage
 const getLocalProfile = (userId: string) => {
   try {
     const cached = localStorage.getItem(`roommate_profile_${userId}`)
@@ -50,28 +40,23 @@ const getLocalProfile = (userId: string) => {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  // KEPT INTACT: Initialize states synchronously from Local Storage to prevent any flash!
-  const initialSession = getLocalSession()
-  const initialUser = initialSession?.user ?? null
-  const initialProfile = initialUser ? getLocalProfile(initialUser.id) : null
+  // Initialize with null - let Supabase handle session restoration asynchronously
+  const [user, setUser] = useState<User | null>(null)
+  const [session, setSession] = useState<Session | null>(null)
+  const [profile, setProfile] = useState<UserProfile | null>(null)
 
-  const [user, setUser] = useState<User | null>(initialUser)
-  const [session, setSession] = useState<Session | null>(initialSession)
-  const [profile, setProfile] = useState<UserProfile | null>(initialProfile as UserProfile | null)
-
-  // Phase 3: Granular loading states
-  const [isSessionLoading, setIsSessionLoading] = useState(initialSession ? false : true)
-  // Silent Refresh: Only block the UI if we have no profile data yet (cold start)
+  // Granular loading states
+  const [isInitializing, setIsInitializing] = useState(true) // NEW: Track initial auth check
+  const [isSessionLoading, setIsSessionLoading] = useState(true)
   const [isProfileLoading, setIsProfileLoading] = useState(true)
   const [isHydrated, setIsHydrated] = useState(false)
   const [isTrafficHeavy, setIsTrafficHeavy] = useState(false)
 
-  // Phase 1.1: useRef for activity tracking to prevent endless re-renders
-  // CHANGED: Was useState, now useRef to prevent effect re-runs on every interaction
+  // useRef for activity tracking to prevent endless re-renders
   const lastActivityRef = useRef<number>(Date.now())
 
-  // Phase 1.4: Ref to prevent stale closures when mapping cached data
-  const profileRef = useRef<UserProfile | null>(initialProfile as UserProfile | null)
+  // Ref to prevent stale closures when mapping cached data
+  const profileRef = useRef<UserProfile | null>(null)
   const lastRefreshRef = useRef<number>(0)
 
   // Helper to keep profile state and ref in sync
@@ -111,28 +96,111 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  // Phase 1.3: Removed redundant getSession() call, relying purely on onAuthStateChange
-  // CHANGED: Removed initializeAuth() with getSession() call to prevent race condition
+  // Phase 1: Explicit session check on mount to prevent race condition
   useEffect(() => {
     let isMounted = true
+    let hasInitialized = false
 
+    const initializeAuth = async () => {
+      try {
+        logAuthEvent('INITIAL_SESSION_CHECK', 'Starting session verification...')
+        
+        // Explicit getSession() call to verify session exists
+        const { data: { session: currentSession }, error } = await supabase.auth.getSession()
+        
+        if (!isMounted) return
+
+        if (error) {
+          logAuthEvent('SESSION_CHECK_ERROR', error.message)
+          setIsSessionLoading(false)
+          setIsInitializing(false)
+          setIsHydrated(true)
+          return
+        }
+
+        if (currentSession) {
+          logAuthEvent('SESSION_FOUND', `User ID: ${currentSession.user.id}`)
+          setSession(currentSession)
+          setUser(currentSession.user)
+          
+          // Load cached profile immediately
+          const cached = getLocalProfile(currentSession.user.id)
+          if (cached) {
+            updateProfile(cached)
+            profileRef.current = cached
+          }
+
+          // Fetch fresh profile data
+          setIsProfileLoading(true)
+          const profileData = await fetchProfile(currentSession.user.id, 2)
+          if (isMounted) {
+            updateProfile(profileData)
+            setIsProfileLoading(false)
+            lastRefreshRef.current = Date.now()
+          }
+        } else {
+          logAuthEvent('NO_SESSION', 'No active session found')
+          setSession(null)
+          setUser(null)
+          updateProfile(null)
+          setIsProfileLoading(false)
+        }
+
+        setIsSessionLoading(false)
+        setIsHydrated(true)
+        hasInitialized = true
+      } catch (err) {
+        logAuthEvent('INITIALIZATION_ERROR', err)
+        if (isMounted) {
+          setIsSessionLoading(false)
+          setIsProfileLoading(false)
+          setIsHydrated(true)
+        }
+      } finally {
+        if (isMounted) {
+          setIsInitializing(false)
+        }
+      }
+    }
+
+    initializeAuth()
+
+    // Set up auth state change listener for ongoing events
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
         if (!isMounted) return
 
+        logAuthEvent('AUTH_STATE_CHANGE', { event, hasSession: !!currentSession })
+        
         setSession(currentSession)
         setUser(currentSession?.user ?? null)
         setIsSessionLoading(false)
         setIsHydrated(true)
+        
+        // Unblock UI if getSession() is still hanging
+        if (isInitializing) setIsInitializing(false)
+
+        // Token refresh failure — must be BEFORE the user guard
+        if (event === 'TOKEN_REFRESHED' && !currentSession) {
+          logAuthEvent('TOKEN_REFRESH_FAILED', 'Token refresh returned null session')
+          toast.error('Your session could not be refreshed. Please sign in again.')
+          updateProfile(null)
+          setIsProfileLoading(false)
+          return
+        }
 
         if (currentSession?.user) {
-          if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+          if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
             setIsProfileLoading(true)
 
-            // Phase 1.4: Fixed stale closure bug by using profileRef
+            // Handle token refresh failures
+            if (event === 'TOKEN_REFRESHED') {
+              logAuthEvent('TOKEN_REFRESHED', 'Token was successfully refreshed')
+            }
+
             const cached = getLocalProfile(currentSession.user.id)
             if (cached && !profileRef.current) {
-              updateProfile(cached as UserProfile)
+              updateProfile(cached)
             }
 
             const profileData = await fetchProfile(currentSession.user.id, 2)
@@ -143,6 +211,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
           }
         } else if (event === 'SIGNED_OUT') {
+          logAuthEvent('SIGNED_OUT', 'User signed out')
           updateProfile(null)
           setIsProfileLoading(false)
           setIsSessionLoading(false)
@@ -174,20 +243,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const timer = window.setTimeout(() => {
       let changed = false
+      if (isInitializing) {
+        logAuthEvent('INITIALIZATION_TIMEOUT', 'Forcing initialization to complete')
+        setIsInitializing(false)
+        changed = true
+      }
       if (isSessionLoading) {
-        console.warn('AuthContext: Session loading timeout')
+        logAuthEvent('SESSION_LOADING_TIMEOUT', 'Forcing session loading to complete')
         setIsSessionLoading(false)
         changed = true
       }
       if (isProfileLoading) {
-        console.warn('AuthContext: Profile loading timeout')
+        logAuthEvent('PROFILE_LOADING_TIMEOUT', 'Forcing profile loading to complete')
         setIsProfileLoading(false)
         changed = true
       }
       if (changed) setIsHydrated(true)
-    }, 6000) // 6 second hard cap for critical auth auth
+    }, 12000) // Increased to 12 seconds for slow networks
     return () => clearTimeout(timer)
-  }, [isSessionLoading, isProfileLoading])
+  }, [isInitializing, isSessionLoading, isProfileLoading])
 
   // Phase 1.2: Effect A - Activity Heartbeat (2-min DB update)
   // NEW: Split from monolithic effect, depends only on [user]
@@ -232,24 +306,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  // KEPT INTACT: Existing visibility and focus handlers (moved to separate effect)
+  // Visibility and focus handlers for PWA resume
   useEffect(() => {
     if (!user) return
 
-    const handleVisibility = () => {
+    const handleVisibility = async () => {
       if (document.visibilityState === 'visible') {
+        logAuthEvent('VISIBILITY_CHANGE', 'Tab became visible - refreshing session')
         // Proactive Session Resurrection: Refresh session on wake
-        supabase.auth.getSession().then(({ data: { session: s } }) => {
-          if (s) {
-            setSession(s)
-            setUser(s.user)
-          }
-        })
+        const { data: { session: s }, error } = await supabase.auth.getSession()
+        if (error) {
+          logAuthEvent('SESSION_REFRESH_ERROR', error.message)
+          // Session expired - handle gracefully
+          toast.error('Your session has expired. Please sign in again.')
+          await signOut()
+          return
+        }
+        if (s) {
+          setSession(s)
+          setUser(s.user)
+        } else {
+          // Session was lost - sign out gracefully
+          logAuthEvent('SESSION_LOST', 'Session was lost on visibility change')
+          toast.error('Your session has expired. Please sign in again.')
+          await signOut()
+        }
       }
     }
 
     const handleFocus = () => {
       // Secondary handshake for PWA/Mobile resume
+      logAuthEvent('WINDOW_FOCUS', 'Window regained focus - refreshing profile')
       refreshProfile()
     }
 
@@ -301,11 +388,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       updateProfile(null)
       setIsSessionLoading(false)
       setIsProfileLoading(false)
-      setIsHydrated(false)
+      setIsHydrated(true)
 
       // 3. Forcefully clear ALL relevant caches (Profile and orphaned Supabase Auth tokens)
       for (const key of Object.keys(localStorage)) {
-        if (key.startsWith('roommate_profile_') || key.startsWith('sb-')) {
+        if (key.startsWith('roommate_profile_')) {
           localStorage.removeItem(key)
         }
       }
@@ -325,6 +412,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  // Periodic session validation (every 5 minutes)
+  useEffect(() => {
+    if (!user || !session) return
+
+    const validateSession = async () => {
+      try {
+        logAuthEvent('PERIODIC_SESSION_VALIDATION', 'Checking session validity...')
+        const { data: { session: s }, error } = await supabase.auth.getSession()
+        
+        if (error || !s) {
+          logAuthEvent('SESSION_VALIDATION_FAILED', error?.message || 'Session is invalid')
+          toast.error('Your session has expired. Please sign in again.')
+          await signOut()
+        }
+      } catch (err) {
+        logAuthEvent('SESSION_VALIDATION_ERROR', err)
+      }
+    }
+
+    // Validate every 5 minutes
+    const interval = setInterval(validateSession, 5 * 60 * 1000)
+
+    return () => clearInterval(interval)
+  }, [user, session])
+
   const refreshProfile = async (force = false) => {
     if (!user) return
     
@@ -334,6 +446,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return
     }
 
+    logAuthEvent('REFRESH_PROFILE', 'Refreshing user profile')
     const profileData = await fetchProfile(user.id)
     updateProfile(profileData)
     lastRefreshRef.current = now
@@ -346,6 +459,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       profile,
       isSessionLoading,
       isProfileLoading,
+      isInitializing,
       isHydrated,
       isTrafficHeavy,
       setIsTrafficHeavy,

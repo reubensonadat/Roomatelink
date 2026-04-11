@@ -74,9 +74,9 @@ export function ProfilePage() {
   }
   const initialState = getInitial()
 
-  const [gender, setGender] = useState<'M' | 'F' | null>(null)
-  const [level, setLevel] = useState<'100' | '200' | '300' | '400' | '500' | '600' | null>(null)
-  const [matchPref, setMatchPref] = useState<'same' | 'any' | null>(null)
+  const [gender, setGender] = useState<'M' | 'F' | null>(initialState.gender || null)
+  const [level, setLevel] = useState<'100' | '200' | '300' | '400' | '500' | '600' | null>(initialState.level || null)
+  const [matchPref, setMatchPref] = useState<'same' | 'any' | null>(initialState.matchPref || null)
   const [selectedAvatar, setSelectedAvatar] = useState<string | null>(initialState.selectedAvatar || null)
   const [displayName, setDisplayName] = useState(initialState.displayName || '')
   const [course, setCourse] = useState(initialState.course || '')
@@ -211,7 +211,7 @@ export function ProfilePage() {
         // Step 2: Verification
         setSyncStep(1)
         setSyncProgress(60)
-        await refreshProfile()
+        await refreshProfile(true)
 
         // Step 3: Finalizing
         setSyncStep(2)
@@ -229,7 +229,7 @@ export function ProfilePage() {
       )
 
       // If matching-relevant fields changed, trigger match recalculation in background
-      if (matchFieldsChanged && profileId) {
+      if (matchFieldsChanged && profileId && hasQuestionnaire) {
         try {
           const { data: { session } } = await supabase.auth.getSession()
           if (session) {
@@ -294,51 +294,6 @@ export function ProfilePage() {
 
   return (
     <div className="flex flex-col w-full min-h-screen bg-background relative selection:bg-indigo-100 dark:selection:bg-indigo-500/30">
-      <AnimatePresence>
-        {isSaving && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] bg-background/80 backdrop-blur-xl flex flex-col items-center justify-center p-6 text-center"
-          >
-            <div className="w-24 h-24 bg-primary/10 rounded-[2.5rem] flex items-center justify-center mb-8 relative">
-              <div className="absolute inset-0 bg-primary/20 animate-ping opacity-25 rounded-[2.5rem]" />
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-                className="absolute inset-0 border-2 border-dashed border-primary/30 rounded-[2.5rem]"
-              />
-              <ShieldCheck className="w-10 h-10 text-primary z-10" />
-            </div>
-
-            <div className="max-w-xs w-full space-y-6">
-              <div className="space-y-2">
-                <h3 className="text-2xl font-black text-foreground tracking-tight">Identity Vault Sync</h3>
-                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary h-4">
-                  {syncStep === 0 && "Handshaking with Records"}
-                  {syncStep === 1 && "Verifying Security Sync"}
-                  {syncStep === 2 && "Finalizing Identity Lock"}
-                </p>
-              </div>
-
-              {/* Progress Bar */}
-              <div className="relative w-full h-2 bg-muted rounded-full overflow-hidden border border-border/40">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${syncProgress}%` }}
-                  transition={{ type: "spring", stiffness: 50, damping: 20 }}
-                  className="absolute inset-y-0 left-0 bg-primary shadow-[0_0_15px_rgba(79,70,229,0.4)]"
-                />
-              </div>
-
-              <p className="text-[13px] font-bold text-muted-foreground animate-pulse">
-                Please stay on this page while we secure your data...
-              </p>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
       <TopHeader title="Profile Hub" showBackButton />
 
       <div className="flex-1 overflow-y-auto w-full md:max-w-2xl lg:max-w-3xl mx-auto px-4 pt-6 pb-32">
@@ -446,12 +401,13 @@ export function ProfilePage() {
                   <label className="text-xs font-semibold text-muted-foreground">Short Bio</label>
                   <span className="text-[10px] text-muted-foreground/50 uppercase tracking-wider font-extrabold">Optional</span>
                 </div>
-                <FormInput
+                <textarea
                   id="bio"
-                  type="text"
                   value={bio}
                   onChange={(e) => setBio(e.target.value)}
                   placeholder="Tell us about yourself..."
+                  rows={3}
+                  className="w-full px-4 py-3 rounded-xl bg-transparent border border-border focus:border-primary/50 outline-none transition-all text-sm font-medium text-foreground placeholder:text-muted-foreground/40 resize-y min-h-[80px] max-h-[200px]"
                 />
               </div>
 
@@ -753,6 +709,15 @@ export function ProfilePage() {
             </div>
 
             <h3 className="mt-8 text-[18px] font-black text-slate-900 tracking-tight">Securing Identity</h3>
+
+            <div className="relative w-48 h-1.5 bg-muted rounded-full overflow-hidden border border-border/40 mt-4">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${syncProgress}%` }}
+                transition={{ type: "spring", stiffness: 50, damping: 20 }}
+                className="absolute inset-y-0 left-0 bg-primary"
+              />
+            </div>
 
             {!saveError ? (
               <p className="mt-2 text-[13px] font-medium text-slate-500 animate-pulse">Syncing with campus records...</p>
