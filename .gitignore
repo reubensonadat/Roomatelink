@@ -34,3 +34,4 @@ middleware.ts
 next.config.js
 tailwind.config.ts
 tsconfig.tsbuildinfo
+supabase/
