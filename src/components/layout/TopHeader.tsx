@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { ChevronRight, RefreshCw } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useState } from 'react';
+import { toast } from 'sonner';
 
 interface TopHeaderProps {
   title: string;
@@ -14,17 +15,25 @@ export function TopHeader({ title, subtitle, showBackButton = false }: TopHeader
   const { triggerGlobalSync, isHydrated } = useAuth();
   const [isSyncing, setIsSyncing] = useState(false);
 
-  const handleSync = () => {
-    // Safety check: Only allow sync if auth is fully loaded
+  const handleSync = async () => {
     if (!isHydrated) return;
 
     setIsSyncing(true);
-    triggerGlobalSync();
-
-    // 5-second cooldown
-    setTimeout(() => {
+    const loadingId = toast.loading('Syncing...');
+    
+    try {
+      await triggerGlobalSync();
+      
+      if (!navigator.onLine) {
+        toast.error('Sync failed. Check your internet connection.', { id: loadingId, duration: 4000 });
+      } else {
+        toast.success('Sync complete', { id: loadingId, duration: 2000 });
+      }
+    } catch (error) {
+      toast.error('Sync failed', { id: loadingId, duration: 4000 });
+    } finally {
       setIsSyncing(false);
-    }, 5000);
+    }
   };
 
   return (
