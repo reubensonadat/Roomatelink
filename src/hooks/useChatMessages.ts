@@ -55,7 +55,7 @@ interface UseChatMessagesReturn {
 }
 
 export function useChatMessages(threadId: string | undefined): UseChatMessagesReturn {
-  const { user, profile } = useAuth()
+  const { user, profile, forceSync } = useAuth()
   const navigate = useNavigate()
   
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -470,6 +470,22 @@ export function useChatMessages(threadId: string | undefined): UseChatMessagesRe
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
     }
   }, [threadId, profile?.id]) // Only re-run when threadId or profile ID changes
+
+  // NEW: Separate effect for global sync trigger
+  // This does NOT touch WebSocket - only triggers HTTP delta sync
+  useEffect(() => {
+    if (!threadId || !profile || forceSync === 0) return
+  
+    const performSync = async () => {
+      try {
+        await performForegroundDeltaSync()
+      } catch (error) {
+        console.error('[Global Sync] Failed to sync chat messages:', error)
+      }
+    }
+  
+    performSync()
+  }, [threadId, profile?.id, forceSync])
 
   const performForegroundDeltaSync = async () => {
     if (!threadId || !profile || isFetchingRef.current) return

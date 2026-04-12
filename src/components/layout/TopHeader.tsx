@@ -1,5 +1,7 @@
 import { useNavigate } from 'react-router-dom';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, RefreshCw } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
+import { useState } from 'react';
 
 interface TopHeaderProps {
   title: string;
@@ -9,6 +11,21 @@ interface TopHeaderProps {
 
 export function TopHeader({ title, subtitle, showBackButton = false }: TopHeaderProps) {
   const navigate = useNavigate();
+  const { triggerGlobalSync, isHydrated } = useAuth();
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  const handleSync = () => {
+    // Safety check: Only allow sync if auth is fully loaded
+    if (!isHydrated) return;
+
+    setIsSyncing(true);
+    triggerGlobalSync();
+
+    // 5-second cooldown
+    setTimeout(() => {
+      setIsSyncing(false);
+    }, 5000);
+  };
 
   return (
     <div className="bg-background/80 backdrop-blur-xl px-4 sm:px-6 py-4 flex flex-col sticky top-0 z-50 border-b border-border shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
@@ -24,6 +41,18 @@ export function TopHeader({ title, subtitle, showBackButton = false }: TopHeader
         <h1 className="flex-1 text-center text-lg font-black text-foreground px-12 truncate">
           {title}
         </h1>
+        {isHydrated && (
+          <button
+            onClick={handleSync}
+            disabled={isSyncing}
+            className={`p-2.5 bg-muted rounded-2xl text-foreground hover:bg-accent transition-colors active:scale-[0.98] absolute right-0 z-10 ${
+              isSyncing ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
+            title="Sync data"
+          >
+            <RefreshCw className={`w-5 h-5 ${isSyncing ? 'animate-spin' : ''}`} />
+          </button>
+        )}
       </div>
       {subtitle && (
         <p className="w-full text-center text-[12px] sm:text-[13px] font-black text-muted-foreground/60 mt-1 truncate px-4 uppercase tracking-wider">

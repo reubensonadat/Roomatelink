@@ -1,76 +1,148 @@
 # 03 - Authentication Lifecycle
 
-Authentication is the most fragile part of the SPA experience. We use a **Explicit Session Verification & Resurrection** model to ensure users never see unnecessary loading spinners or get stuck in infinite refresh loops.
+Authentication is the most fragile part of SPA experience. We use a **Single Source of Truth** model to ensure users never see unnecessary loading spinners or get stuck in infinite refresh loops.
 
-## 🤝 The "Zero-Flicker" Handshake (Updated 2026-04-11)
+## 🤝 The "Zero-Flicker" Handshake (Updated 2026-04-12)
 
 To prevent a "Loading Session" flash every time a user refreshes the page, we use **Explicit Session Verification**:
 
 1.  **Boot Phase:** On mount, `AuthContext` calls `supabase.auth.getSession()` explicitly to verify the session.
 2.  **Initialization State:** We use `isInitializing` to track whether the initial auth check is complete.
 3.  **The Handshake:** We wait for the explicit `getSession()` call to complete before setting any state.
-4.  **Verification:** If a valid session is returned, we set `user`, `session`, and load the profile. If invalid, we set `null` and redirect to login.
+4.  **Verification:** If a valid session is returned, we set `user`, `session`, and load `profile`. If invalid, we set `null` and redirect to login.
 5.  **Event Listener:** We also set up `onAuthStateChange` listener to handle ongoing auth events (sign in, sign out, token refresh).
 
-**Key Changes (2026-04-11):**
-- ❌ **Removed:** Synchronous `getLocalSession()` call (was causing race conditions)
-- ✅ **Added:** Explicit `getSession()` call on mount
-- ✅ **Added:** `isInitializing` state to prevent premature rendering
-- ✅ **Added:** Token refresh failure handling
-- ✅ **Added:** Periodic session validation (every 5 minutes)
-- ✅ **Added:** Comprehensive auth event logging for debugging
+**Key Changes (2026-04-12):**
+- ❌ **Removed:** Activity Heartbeat (2-minute interval) - was causing mobile TCP connection poisoning
+- ❌ **Removed:** Session Heartbeat (5-minute interval) - unnecessary, trust JWT until server rejects it
+- ❌ **Removed:** Visibility/focus listeners for session resurrection - caused lock contention and cascade re-renders
+- ✅ **Added:** "Auth is a Gate" principle - Single Source of Truth via `onAuthStateChange` with `[]` dependency
+- ✅ **Added:** URL Hash stripping to prevent Phantom Logins
+- ✅ **Added:** 20-second safety timeout (increased from 12s to accommodate global retry)
 
-## 🐕 The Watchdog Systems
-We maintain three independent heartbeat loops within `AuthContext` to ensure session integrity:
+## 🚪 Auth is a Gate (Single Source of Truth)
 
-### 1. Activity Heartbeat (2 mins)
-- **Goal:** Update the `last_active` timestamp in the database.
-- **Why:** This ensures the "Online Now" status remains accurate for matches.
-- **Mechanism:** A `setInterval` that fires every 2 minutes while the user has the tab open.
+The `onAuthStateChange` listener is the **single source of truth** for all auth state changes. It runs once on mount with an empty dependency array `[]`, ensuring it never re-runs.
 
-### 2. Inactivity Watchdog (15 mins)
-- **Goal:** Automatically log out inactive users.
-- **Why:** Security and session cleanup.
-- **Logic:** We listen to global UI events (click, scroll, keydown). These events update a `lastActivityRef.current` timestamp.
-- **Why useRef?** If we used `useState` for activity, every scroll would trigger a re-render of the entire app, destroying the performance. `useRef` updates silently.
+### The Gate Principle
+- **No polling:** We don't poll the server for session validity. We trust the JWT until the server rejects it.
+- **No visibility listeners:** We don't refresh auth when the tab regains focus. This causes lock contention and cascade re-renders.
+- **No intervals:** We don't use `setInterval` for session validation. Supabase handles token refresh automatically.
+- **Event-driven:** All state changes flow through `onAuthStateChange` events: `SIGNED_IN`, `SIGNED_OUT`, `TOKEN_REFRESHED`, `USER_UPDATED`.
 
-### 3. Session Heartbeat (5 mins)
-- **Goal:** Proactively verify token validity.
-- **Mechanism:** Periodically calls `supabase.auth.getSession()` to ensure the JWT hasn't been revoked server-side.
+### Phantom Login Prevention
+When Supabase processes OAuth redirects, it reads the `access_token` from the URL hash. However, if the hash isn't stripped, Supabase may re-read it 48 seconds later, triggering a phantom `SIGNED_IN` event.
 
-## 🌅 The Resurrection (PWA Resume)
-When a user re-opens the PWA after it was backgrounded (or wakes their phone), the app doesn't always perform a full reload. We handle this via:
+**The Fix:** Inside `onAuthStateChange`, we immediately strip the URL hash after Supabase has processed it:
 
-- **Visibility Listener:** When `document.visibilityState` flips to `visible`, we immediately call `getSession()` to "resurrect" the session.
-- **Focus Handshake:** When the window regains focus, we call `refreshProfile()` to ensure the UI shows the latest data (e.g., if a payment was confirmed in the background).
+```typescript
+if (window.location.hash.includes('access_token')) {
+  window.history.replaceState(null, '', window.location.pathname + window.location.search)
+}
+```
 
-## 🧪 Error Handling: The 12-Second Hard Cap
-If `isInitializing`, `isSessionLoading`, or `isProfileLoading` remains true for more than 12 seconds, a failsafe timer in `AuthContext` forces them to `false`. This prevents the "Infinite Loading Spiral" caused by unexpected network timeouts or silent Supabase failures.
+This is safe because `onAuthStateChange` only fires after Supabase has successfully parsed the hash and created the session.
 
-**Changes (2026-04-11):**
-- Increased timeout from 6 seconds to 12 seconds for slow networks
-- Added `isInitializing` to the timeout check
-- Added comprehensive logging for timeout events
+## 🛡️ Mobile TCP Half-Open Mitigation (NEW)
 
-## 🔐 Session Validation & Refresh
+When a user sits idle on mobile data for ~90 seconds, the mobile carrier kills the idle TCP connection. The browser thinks the connection is still open (half-open) and waits 60+ seconds before realizing it's dead.
 
-### Periodic Session Validation
-Every 5 minutes, the app automatically validates the current session by calling `getSession()`. If the session is invalid or expired:
-- The user is signed out gracefully
-- A toast notification explains why they were logged out
-- They are redirected to the login page
+This causes the app to freeze after 2 minutes of inactivity.
 
-### Token Refresh Handling
-When Supabase refreshes the access token:
-- The `TOKEN_REFRESHED` event is logged
-- The profile is refreshed to ensure latest data
-- If token refresh fails, the user is signed out with a notification
+### The Global Network Shield
 
-### Visibility Change Handling
-When the user switches back to the tab:
-- The session is refreshed via `getSession()`
-- If the session has expired, the user is notified and signed out
-- The profile is refreshed to show latest data
+We've implemented a global `createTimeoutFetch` wrapper in [`src/lib/supabase.ts`](../src/lib/supabase.ts) that:
+
+1.  **8-Second Timeout:** All Supabase HTTP requests timeout after 8 seconds
+2.  **AbortController:** Uses `AbortController` to physically tear down the TCP connection at the OS level
+3.  **Linked React Signals:** Links React's cancel signals to our controller, preventing ghost requests when users switch pages
+4.  **Second Chance Retry:** If a timeout occurs, automatically retries once on a fresh TCP connection
+
+### The Physics of the Fix
+
+**Before (The Problem):**
+- Mobile carrier kills idle TCP connection after ~90 seconds
+- 2-minute heartbeat wakes up the dead connection
+- Request hangs for 60+ seconds before browser realizes it's dead
+- App freezes
+
+**After (The Solution):**
+- 8-second timeout fires immediately
+- `AbortController` tears down the dead connection
+- "Second Chance" retry opens a brand new TCP connection
+- User never experiences the freeze
+
+### No Nested Retries
+
+Custom data-fetching functions (like `fetchProfile`) **must not** implement their own retry logic. This creates nested retry loops that exceed our safety timeout:
+
+- First `supabase.from()` call times out at 8 seconds
+- Supabase retries, times out again at 16 seconds
+- Custom function catches error, waits 1 second, tries again
+- Another 16 seconds for the second attempt
+- **Total: 33 seconds**, which exceeds our 20-second safety timeout
+
+**The Rule:** Let `supabase.ts` be the single source of truth for network resilience. Custom functions should return `null` on error and let the global wrapper handle retries.
+
+## 💼 Optimistic Wallet Updates (NEW)
+
+When a user saves their profile, we want the UI to update instantly without a loading spinner. We achieve this through "Optimistic Wallet Updates".
+
+### The Wallet Pattern
+
+The `updateProfile()` function is exposed from `AuthContext` and can be called directly from components to update the UI instantly:
+
+```typescript
+const { updateProfile } = useAuth()
+
+// Optimistic update - bypasses 10-minute throttle
+updateProfile({
+  ...profile,
+  full_name: newName
+})
+```
+
+This bypasses the 10-minute throttle on `refreshProfile()` and updates the UI immediately. The database is updated asynchronously, and if it fails, we show an error toast.
+
+### The Throttle
+
+The `refreshProfile()` function has a 10-minute throttle to prevent excessive database calls. However, this means that if a user saves their profile, the UI won't update until the next refresh.
+
+**The Solution:** Use `updateProfile()` for optimistic updates when the user performs an action (like saving their profile). Use `refreshProfile()` for background syncs.
+
+## 🧪 Realtime Chat: Lazy WebSocket Architecture
+
+The chat system uses a "Lazy WebSocket" architecture to handle Cloudflare killing idle WebSocket connections.
+
+### Cold Start Handoff
+
+When a user opens a chat:
+1.  **HTTP First:** Fetch messages via HTTP (always works)
+2.  **Background WebSocket:** Open WebSocket in background for live updates
+3.  **Seamless Handoff:** User sees messages immediately, WebSocket takes over for live updates
+
+### Walkie-Talkie Reconnect
+
+When the WebSocket dies:
+1.  **Show Banner:** Display "Tap to Reconnect" banner with orange dot
+2.  **HTTP Fallback:** User can still send messages via HTTP (saves to database)
+3.  **On Tap:** Fetch missed messages via HTTP, destroy dead WebSocket, create new one
+4.  **Green Dot:** WebSocket reconnected, live updates resume
+
+### Clean Exit on Unmount
+
+When the user navigates away from the chat:
+1.  **Unsubscribe:** Unsubscribe from the WebSocket channel
+2.  **Destroy:** Destroy the WebSocket connection
+3.  **No Ghosts:** Prevents ghost connections that consume resources
+
+## 🧪 Error Handling: The 20-Second Safety Timeout
+
+If `isInitializing`, `isSessionLoading`, or `isProfileLoading` remains true for more than 20 seconds, a failsafe timer in `AuthContext` forces them to `false`. This prevents "Infinite Loading Spiral" caused by unexpected network timeouts or silent Supabase failures.
+
+**Changes (2026-04-12):**
+- Increased timeout from 12 seconds to 20 seconds to accommodate the 16-second maximum for global retry
+- Removed local timeouts in `useDashboardData` and `ProtectedRoute` (they were interfering with global retry)
 
 ## 📊 Auth Event Logging
 
@@ -79,11 +151,12 @@ All authentication events are logged to the console with timestamps for producti
 - `SESSION_FOUND` - Session was found
 - `NO_SESSION` - No active session
 - `AUTH_STATE_CHANGE` - Auth state changed
-- `TOKEN_REFRESHED` - Token was refreshed
-- `SESSION_REFRESH_ERROR` - Session refresh failed
-- `SESSION_LOST` - Session was lost
-- `PERIODIC_SESSION_VALIDATION` - Periodic validation check
+- `TOKEN_REFRESHED` - Token was successfully refreshed
+- `TOKEN_REFRESH_FAILED` - Token refresh returned null session
+- `SIGNED_OUT` - User signed out
 - `INITIALIZATION_TIMEOUT` - Initialization took too long
+- `PROFILE_LOADING_TIMEOUT` - Profile loading took too long
+- `SESSION_LOADING_TIMEOUT` - Session loading took too long
 
 ## 🚨 Common Issues & Solutions
 
@@ -93,12 +166,24 @@ All authentication events are logged to the console with timestamps for producti
 
 ### Issue: User sees loading spinner forever
 **Cause:** Network timeout or Supabase failure
-**Solution:** 12-second hard cap forces loading to complete
+**Solution:** 20-second safety timeout forces loading to complete
 
-### Issue: User gets logged out unexpectedly
-**Cause:** Session expired or token refresh failed
-**Solution:** Periodic validation catches expired sessions and notifies user
+### Issue: App freezes after 2 minutes of inactivity on mobile data
+**Cause:** Mobile carrier kills idle TCP connection, 2-minute heartbeat wakes up dead connection
+**Solution:** 8-second global timeout + "Second Chance" retry on fresh TCP connection
 
-### Issue: API calls fail with 401 errors
-**Cause:** Token expired but not refreshed
-**Solution:** Token refresh handling and periodic validation (implemented 2026-04-11)
+### Issue: Phantom login after OAuth redirect
+**Cause:** Supabase re-reads `access_token` from URL hash 48 seconds later
+**Solution:** Strip URL hash inside `onAuthStateChange` after Supabase has processed it
+
+### Issue: Nested retry loops exceed timeout
+**Cause:** Custom data-fetching functions implement their own retry logic
+**Solution:** Remove retry logic from custom functions, let `supabase.ts` handle all network retries
+
+### Issue: UI doesn't update immediately after saving profile
+**Cause:** 10-minute throttle on `refreshProfile()`
+**Solution:** Use `updateProfile()` for optimistic updates, bypasses throttle
+
+### Issue: Chat WebSocket dies and can't recover
+**Cause:** Cloudflare kills idle WebSocket connections
+**Solution:** Lazy WebSocket architecture with Cold Start Handoff and Walkie-Talkie Reconnect

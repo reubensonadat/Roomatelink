@@ -21,6 +21,9 @@ interface AuthContextType {
   refreshProfile: (force?: boolean) => Promise<void>
   // NEW: Expose updateProfile for optimistic updates (bypasses 10-minute throttle)
   updateProfile: (newProfile: UserProfile | null) => void
+  // NEW: Global recovery trigger for system-wide data sync (incrementing counter to prevent "Click Twice" failure)
+  triggerGlobalSync: () => void
+  forceSync: number
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -53,6 +56,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isProfileLoading, setIsProfileLoading] = useState(true)
   const [isHydrated, setIsHydrated] = useState(false)
   const [isTrafficHeavy, setIsTrafficHeavy] = useState(false)
+  
+  // NEW: Global recovery trigger for system-wide data sync (incrementing counter to prevent "Click Twice" failure)
+  const [forceSync, setForceSync] = useState(0)
 
   // useRef for activity tracking to prevent endless re-renders
   const lastActivityRef = useRef<number>(Date.now())
@@ -66,6 +72,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const updateProfile = (newProfile: UserProfile | null) => {
     setProfile(newProfile)
     profileRef.current = newProfile
+  }
+
+  // NEW: Global recovery trigger function (increments counter to trigger sync)
+  const triggerGlobalSync = () => {
+    setForceSync(prev => prev + 1)
   }
 
   // KEPT INTACT: Existing fetchProfile function
@@ -413,7 +424,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signInWithGoogle,
       refreshProfile,
       // NEW: Expose updateProfile for optimistic updates (bypasses 10-minute throttle)
-      updateProfile
+      updateProfile,
+      triggerGlobalSync,
+      forceSync
     }}>
       {children}
     </AuthContext.Provider>

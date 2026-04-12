@@ -23,7 +23,7 @@ interface UseDashboardDataReturn {
 // ─── Hook ────────────────────────────────────────────────────────────
 
 export function useDashboardData(): UseDashboardDataReturn {
-  const { user, profile, isSessionLoading, refreshProfile } = useAuth()
+  const { user, profile, isSessionLoading, refreshProfile, forceSync } = useAuth()
   
   // Core State
   const [matches, setMatches] = useState<MatchProfile[]>(() => {
@@ -397,18 +397,25 @@ export function useDashboardData(): UseDashboardDataReturn {
       setIsRecalculating(false)
     }
   }
+// Main effect to initialize dashboard
+useEffect(() => {
+  if (!mounted || !user || isSessionLoading) return
 
-  // Main effect to initialize dashboard
-  useEffect(() => {
-    if (!mounted || !user || isSessionLoading) return
-    // Throttle: skip background re-fetch ONLY if we fetched within 30s AND have cached matches.
-    // IMPORTANT: Never skip if matches is empty — we always want to re-verify from the DB.
-    const now = Date.now()
-    if (matches.length > 0 && lastFetchRef.current > 0 && now - lastFetchRef.current < 30000) return
-    lastFetchRef.current = now
-    initializeDashboard()
-  }, [user, profile, isSessionLoading, mounted, isDevMode])
+  // NEW: Override throttle if forceSync > 0 (user clicked Sync button)
+  const shouldOverrideThrottle = forceSync > 0
 
+  // Throttle: skip background re-fetch ONLY if we fetched within 30s AND have cached matches.
+  // IMPORTANT: Never skip if matches is empty — we always want to re-verify from the DB.
+  // IMPORTANT: Override throttle if forceSync > 0 (user clicked Sync button)
+  const now = Date.now()
+  if (!shouldOverrideThrottle && matches.length > 0 && lastFetchRef.current > 0 && now - lastFetchRef.current < 30000) return
+
+  lastFetchRef.current = now
+  initializeDashboard()
+
+  // NEW: Reset forceSync after fetching (handled by AuthContext's setForceSync(prev => prev + 1))
+  // We don't call it here to avoid circular dependencies
+}, [user, profile, isSessionLoading, mounted, isDevMode, forceSync])
   return {
     matches,
     isLoading,

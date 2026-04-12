@@ -187,11 +187,14 @@ Users who do not wish to upload a photo may select from a curated grid of ten hi
 
 Avatars serve a secondary function: they signal to matches that this person values privacy and personality-first evaluation. That itself is compatibility information.
 
-3.5 — Auth Lifecycle: Handshake & Resurrection
-Authentication is handled via a **Zero-Flicker Handshake** model designed to eliminate loading flashes on PWA cold starts:
-• **Synchronous Hydration**: On mount, the Auth Provider reads the Supabase session from `localStorage` *synchronously* before the first render. This allows the app to render the private Dashboard immediately without waiting for a server round-trip.
-• **Proactive Resurrection**: We listen for the browser's `visibilitychange` event. When the user wakes their phone or switches back to the app, we immediately call `refreshProfile()` to resurrect the session.
-• **The Inactivity Watchdog**: To ensure shared-device security, a background watchdog monitors client-side activity. If no interaction (scroll, click, keydown) is detected for 15 minutes, the user is automatically logged out.
+3.5 — Auth Lifecycle: Single Source of Truth
+Authentication is handled via a **Single Source of Truth** model designed to eliminate loading flashes and network freezes on mobile data:
+• **Explicit Session Verification**: On mount, the Auth Provider calls `supabase.auth.getSession()` explicitly to verify the session. We wait for this call to complete before setting any state, preventing race conditions.
+• **Auth is a Gate**: The `onAuthStateChange` listener is the single source of truth for all auth state changes. It runs once on mount with an empty dependency array `[]`, ensuring it never re-runs. We do not use `window.addEventListener('focus')` or `visibilitychange` to refresh auth (causes lock contention and cascade re-renders).
+• **Mobile TCP Half-Open Mitigation**: We've implemented a global `createTimeoutFetch` wrapper that adds an 8-second timeout to all Supabase HTTP requests. When a timeout occurs, the `AbortController` physically tears down the TCP connection at the OS level, forcing the browser to recognize the dead connection immediately. This prevents the 2-minute app freeze on mobile data.
+• **Second Chance Auto-Retry**: If a request times out, it automatically tries the request one single time on a fresh TCP connection. The user never knows the network dropped if the retry succeeds.
+• **Phantom Login Prevention**: Inside `onAuthStateChange`, we immediately strip the URL hash if it contains `access_token` after Supabase has processed it. This prevents Supabase from re-reading the token 48 seconds later and triggering a phantom `SIGNED_IN` event.
+• **Optimistic Wallet Updates**: The `updateProfile()` function is exposed from `AuthContext` and can be called directly from components to update the UI instantly. This bypasses the 10-minute throttle on `refreshProfile()` and provides instant feedback when a user saves their profile.
  
 4. Detailed User Flows
 
