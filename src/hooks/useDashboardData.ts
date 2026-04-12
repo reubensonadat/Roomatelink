@@ -39,7 +39,6 @@ export function useDashboardData(): UseDashboardDataReturn {
   
   const [isLoading, setIsLoading] = useState(true)
   const isInitializingRef = useRef(false)
-  const timeoutRef = useRef<number | null>(null)
   
   // hasQuestionnaire is derived from questionnaire_responses table - source of truth
   // Initialize as null (loading state) to avoid stale cache poisoning
@@ -367,33 +366,6 @@ export function useDashboardData(): UseDashboardDataReturn {
   }
 
   // ─── Hard Timeout Failsafe ─────────────────────────────────────────
-  // If isLoading is still true after 8 seconds, force unlock.
-  // This prevents permanent "Starting Roommate Link" hangups.
-  // IMPORTANT: DO NOT wipe matches state on timeout - preserve cached data
-  useEffect(() => {
-    if (!isLoading) {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current)
-        timeoutRef.current = null
-      }
-      return
-    }
-    
-    timeoutRef.current = window.setTimeout(() => {
-      console.warn('useDashboardData: Initialization timeout — stopping loading spinner only (preserving cached matches)')
-      setIsLoading(false)
-      setFetchError(true)
-      timeoutRef.current = null
-    }, 8000)
-    
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current)
-        timeoutRef.current = null
-      }
-    }
-  }, [isLoading])
-
   const forceRecalculate = async () => {
     if (!profile) return
     setIsRecalculating(true)

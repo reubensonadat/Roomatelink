@@ -168,6 +168,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Set up auth state change listener for ongoing events
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
+        // STRIP URL HASH: If there's an access_token in the URL, Supabase already read it.
+        // Strip it now to prevent a phantom SIGNED_IN event 48 seconds later.
+        if (window.location.hash.includes('access_token')) {
+          window.history.replaceState(null, '', window.location.pathname + window.location.search)
+        }
+
         if (!isMounted) return
 
         logAuthEvent('AUTH_STATE_CHANGE', { event, hasSession: !!currentSession })
@@ -262,7 +268,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         changed = true
       }
       if (changed) setIsHydrated(true)
-    }, 12000) // Increased to 12 seconds for slow networks
+    }, 20000) // Increased to 20 seconds for slow networks (supabase retry can take up to 16s)
     return () => clearTimeout(timer)
   }, [isInitializing, isSessionLoading, isProfileLoading])
 
