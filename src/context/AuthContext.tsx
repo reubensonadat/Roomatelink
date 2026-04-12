@@ -69,7 +69,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   // KEPT INTACT: Existing fetchProfile function
-  const fetchProfile = async (userId: string, retries = 1): Promise<UserProfile | null> => {
+  // FIXED: Removed nested retry logic - supabase.ts now handles all network retries
+  const fetchProfile = async (userId: string): Promise<UserProfile | null> => {
     try {
       const { data, error } = await supabase
         .from('users')
@@ -78,10 +79,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .maybeSingle()
 
       if (error) {
-        if (retries > 0) {
-          await new Promise(resolve => setTimeout(resolve, 1000))
-          return fetchProfile(userId, retries - 1)
-        }
         return null
       }
 
@@ -133,7 +130,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
           // Fetch fresh profile data
           setIsProfileLoading(true)
-          const profileData = await fetchProfile(currentSession.user.id, 2)
+          const profileData = await fetchProfile(currentSession.user.id)
           if (isMounted) {
             updateProfile(profileData)
             setIsProfileLoading(false)
@@ -197,6 +194,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (currentSession?.user) {
           if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+            // FIXED: Add strict guard - skip fetch if we already have a profile
+            // This prevents unnecessary network calls on background SIGNED_IN events
+            if (event === 'SIGNED_IN' && profileRef.current) {
+              return
+            }
+
             // Only show loading spinner if we don't already have a profile
             if (!profileRef.current) {
               setIsProfileLoading(true)
@@ -212,7 +215,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               updateProfile(cached)
             }
 
-            const profileData = await fetchProfile(currentSession.user.id, 2)
+            const profileData = await fetchProfile(currentSession.user.id)
             if (isMounted) {
               updateProfile(profileData)
               setIsProfileLoading(false)
