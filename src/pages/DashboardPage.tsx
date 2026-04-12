@@ -172,6 +172,7 @@ export function DashboardPage() {
         <TopHeader
           title="Top Matches"
           subtitle={`${matches.length} highly compatible roommates found.`}
+          showSyncButton={true}
         />
 
         <div className="flex flex-col px-4 sm:px-5 pt-6 pb-32 w-full max-w-2xl lg:max-w-3xl mx-auto">

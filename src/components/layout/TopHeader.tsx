@@ -8,9 +8,10 @@ interface TopHeaderProps {
   title: string;
   subtitle?: string;
   showBackButton?: boolean;
+  showSyncButton?: boolean;
 }
 
-export function TopHeader({ title, subtitle, showBackButton = false }: TopHeaderProps) {
+export function TopHeader({ title, subtitle, showBackButton = false, showSyncButton = false }: TopHeaderProps) {
   const navigate = useNavigate();
   const { triggerGlobalSync, isHydrated } = useAuth();
   const [isSyncing, setIsSyncing] = useState(false);
@@ -50,7 +51,7 @@ export function TopHeader({ title, subtitle, showBackButton = false }: TopHeader
         <h1 className="flex-1 text-center text-lg font-black text-foreground px-12 truncate">
           {title}
         </h1>
-        {isHydrated && (
+        {isHydrated && showSyncButton && (
           <button
             onClick={handleSync}
             disabled={isSyncing}

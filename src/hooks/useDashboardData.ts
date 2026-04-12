@@ -436,6 +436,7 @@ useEffect(() => {
 
   return () => {
     isMountedRef.current = false
+    isInitializingRef.current = false
   }
 }, [user, profile, isSessionLoading, mounted, isDevMode, forceSync])
   return {
