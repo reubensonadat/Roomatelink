@@ -77,7 +77,7 @@ export function MessagesPage() {
       </AnimatePresence>
 
       <AnimatePresence mode="wait">
-        {isLoading ? (
+        {isLoading && chats.length === 0 ? (
           <motion.div
             key="vault-loading"
             initial={{ opacity: 0 }}

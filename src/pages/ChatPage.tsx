@@ -235,7 +235,7 @@ export function ChatPage() {
                   Shows reconnect button when WebSocket is disconnected and reconnect is available
                   ============================================================================ */}
               <AnimatePresence>
-                {wsConnectionState === 'disconnected' && reconnectAvailable && (
+                {(wsConnectionState === 'disconnected' || wsConnectionState === 'error') && reconnectAvailable && (
                   <motion.div
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -288,6 +288,7 @@ export function ChatPage() {
                         </div>
                       </div>
                     )}
+                    {!otherUser && wsConnectionState === 'error' && <span className="text-sm font-bold text-muted-foreground">User Unreachable</span>}
                   </div>
                   <button
                     onClick={() => setIsReportModalOpen(true)}
@@ -342,6 +343,11 @@ export function ChatPage() {
                               )}
                               {msg.sender === 'me' && msg.status === 'PENDING' && (
                                 <div className="w-4 h-4 bg-amber-500 rounded-full flex items-center justify-center">
+                                  <Clock className="w-2.5 h-2.5 text-white" />
+                                </div>
+                              )}
+                              {msg.sender === 'me' && msg.status === 'FAILED' && (
+                                <div className="w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
                                   <Clock className="w-2.5 h-2.5 text-white" />
                                 </div>
                               )}

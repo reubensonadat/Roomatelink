@@ -11,7 +11,7 @@ export interface ChatMessage {
   sender: 'me' | 'them'
   time: string
   timestamp: string
-  status: 'PENDING' | 'SENT' | 'DELIVERED' | 'READ'
+  status: 'PENDING' | 'SENT' | 'DELIVERED' | 'READ' | 'FAILED'
 }
 
 // ============================================================================
@@ -57,6 +57,7 @@ interface UseChatMessagesReturn {
 export function useChatMessages(threadId: string | undefined): UseChatMessagesReturn {
   const { user, profile, forceSync } = useAuth()
   const navigate = useNavigate()
+  const isTimeoutRef = useRef(false)
   
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [otherUser, setOtherUser] = useState<UserProfile | null>(null)
@@ -134,6 +135,7 @@ export function useChatMessages(threadId: string | undefined): UseChatMessagesRe
   const connectWebSocket = useCallback(async (isReconnect = false) => {
     if (!user || !threadId || isFetchingRef.current) return
 
+    isTimeoutRef.current = false
     isFetchingRef.current = true
     if (!isReconnect) {
       setIsSyncing(true)
@@ -158,13 +160,14 @@ export function useChatMessages(threadId: string | undefined): UseChatMessagesRe
         return
       }
 
-      // 10 Second Fail-Safe Timeout
+      // 9 Second Fail-Safe Timeout (1s grace period after global 8s timeout)
       const syncTimeout = setTimeout(() => {
+        isTimeoutRef.current = true
         setWsConnectionState('error')
         setReconnectAvailable(true)
         setIsSyncing(false)
         setIsLoading(false)
-      }, 10000)
+      }, 9000)
 
       // Determine Delta starting point
       const cachedSlice = localStorage.getItem(`roommate_chat_${threadId}`)
@@ -201,6 +204,11 @@ export function useChatMessages(threadId: string | undefined): UseChatMessagesRe
       ])
 
       clearTimeout(syncTimeout)
+
+      if (isTimeoutRef.current) {
+        console.warn('[Chat] Timeout already fired. Discarding late HTTP response.')
+        return
+      }
 
       const me = profile
       const them = themRes.data
@@ -241,7 +249,7 @@ export function useChatMessages(threadId: string | undefined): UseChatMessagesRe
           sender: (m.sender_id === me.id ? 'me' : 'them') as 'me' | 'them',
           time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           timestamp: m.created_at,
-          status: (m.status || 'PENDING') as 'PENDING' | 'SENT' | 'DELIVERED' | 'READ'
+          status: (m.status || 'PENDING') as 'PENDING' | 'SENT' | 'DELIVERED' | 'READ' | 'FAILED'
         }))
 
         // Merge: Cache + Delta
@@ -594,13 +602,8 @@ export function useChatMessages(threadId: string | undefined): UseChatMessagesRe
     if (error) {
       console.error('Message send error:', error)
       
-      // Remove the optimistic message so it doesn't stay as a ghost
-      setMessages(prev => prev.filter(m => m.id !== tempId))
-      
-      // Show user feedback only for actual errors (not network drops)
-      if (error.code !== 'PGRST116' && error.message !== 'Failed to fetch') {
-        toast.error("Failed to send message")
-      }
+      toast.error("Connection lost. Message not sent.")
+      setMessages(prev => prev.map(m => m.id === tempId ? { ...m, status: 'FAILED' } : m))
       
       return
     }
@@ -608,7 +611,8 @@ export function useChatMessages(threadId: string | undefined): UseChatMessagesRe
     // Also handle case where data is null/undefined (network drop scenario)
     if (!data) {
       console.error('Message send returned no data - possible network drop')
-      setMessages(prev => prev.filter(m => m.id !== tempId))
+      toast.error("Connection lost. Message not sent.")
+      setMessages(prev => prev.map(m => m.id === tempId ? { ...m, status: 'FAILED' } : m))
       return
     }
 
@@ -617,7 +621,7 @@ export function useChatMessages(threadId: string | undefined): UseChatMessagesRe
       const updated = prev.map(m => m.id === tempId ? {
         ...m,
         id: data.id,
-        status: 'SENT' as 'PENDING' | 'SENT' | 'DELIVERED' | 'READ',
+        status: 'SENT' as 'PENDING' | 'SENT' | 'DELIVERED' | 'READ' | 'FAILED',
         timestamp: data.created_at // Enforce server timeline!
       } : m)
       // Use debounced localStorage write instead of immediate write

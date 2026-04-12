@@ -23,7 +23,9 @@ interface UseDashboardDataReturn {
 // ─── Hook ────────────────────────────────────────────────────────────
 
 export function useDashboardData(): UseDashboardDataReturn {
-  const { user, profile, isSessionLoading, refreshProfile, forceSync } = useAuth()
+  const { user, profile, isSessionLoading, refreshProfile, forceSync, resolveGlobalSync } = useAuth()
+  
+  const isMountedRef = useRef(true)
   
   // Core State
   const [matches, setMatches] = useState<MatchProfile[]>(() => {
@@ -69,6 +71,8 @@ export function useDashboardData(): UseDashboardDataReturn {
     }
   }, [devClickCount])
 
+  const initializeDashboardRef = useRef<any>(null)
+
   // Watch profile?.has_paid changes and trigger match refetch when payment is completed
   useEffect(() => {
     const currentHasPaid = !!profile?.has_paid
@@ -76,7 +80,7 @@ export function useDashboardData(): UseDashboardDataReturn {
 
     // Only trigger if transitioning from false to true
     if (currentHasPaid && !previousHasPaid) {
-      initializeDashboard()
+      initializeDashboardRef.current()
     }
 
     // Update ref for next comparison
@@ -89,7 +93,11 @@ export function useDashboardData(): UseDashboardDataReturn {
   // ─── Core Functions ──────────────────────────────────────────────
 
   const initializeDashboard = async () => {
-    if (isInitializingRef.current) return
+    // If we are locked by an active fetch, resolve false immediately
+    if (isInitializingRef.current) {
+      resolveGlobalSync(false)
+      return
+    }
     isInitializingRef.current = true
 
     if (!user) {
@@ -214,9 +222,11 @@ export function useDashboardData(): UseDashboardDataReturn {
 
         const [matchesARes, matchesBRes] = await Promise.all([matchesAPromise, matchesBPromise])
 
-        // Diagnostic Check: RLS or Query Failures
-        if (matchesARes.error) console.error('[Matching Engine] Side A Sync Failure:', matchesARes.error)
-        if (matchesBRes.error) console.error('[Matching Engine] Side B Sync Failure:', matchesBRes.error)
+        if (matchesARes.error || matchesBRes.error) {
+          console.error('[Matching Engine] Network/Query failure prevented cache wipe:', matchesARes.error, matchesBRes.error)
+          setFetchError(true)
+          return
+        }
 
         // Merge both sides, deduplicate by roommate ID (prefer higher percentage)
         const allRaw = [...(matchesARes.data || []), ...(matchesBRes.data || [])]
@@ -320,6 +330,7 @@ export function useDashboardData(): UseDashboardDataReturn {
             }))
           
           setMatches(mappedMatches)
+          if (!isMountedRef.current) return
           sessionStorage.setItem('matchesCache', JSON.stringify(mappedMatches))
           successOnceRef.current = true
         } else {
@@ -355,15 +366,21 @@ export function useDashboardData(): UseDashboardDataReturn {
       } else {
         setMatches([])
       }
+      resolveGlobalSync(true)
     } catch (err) {
       console.error('Error initializing dashboard:', err)
       // DO NOT wipe matches on error - preserve cached data
       setFetchError(true)
+      resolveGlobalSync(false)
     } finally {
+      resolveGlobalSync(false)
       setIsLoading(false)
+      if (!isMountedRef.current) return
       isInitializingRef.current = false
     }
   }
+
+  initializeDashboardRef.current = initializeDashboard
 
   // ─── Hard Timeout Failsafe ─────────────────────────────────────────
   const forceRecalculate = async () => {
@@ -399,6 +416,7 @@ export function useDashboardData(): UseDashboardDataReturn {
   }
 // Main effect to initialize dashboard
 useEffect(() => {
+  isMountedRef.current = true
   if (!mounted || !user || isSessionLoading) return
 
   // NEW: Override throttle if forceSync > 0 (user clicked Sync button)
@@ -415,6 +433,10 @@ useEffect(() => {
 
   // NEW: Reset forceSync after fetching (handled by AuthContext's setForceSync(prev => prev + 1))
   // We don't call it here to avoid circular dependencies
+
+  return () => {
+    isMountedRef.current = false
+  }
 }, [user, profile, isSessionLoading, mounted, isDevMode, forceSync])
   return {
     matches,

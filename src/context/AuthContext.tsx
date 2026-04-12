@@ -12,6 +12,7 @@ interface AuthContextType {
   isProfileLoading: boolean
   isInitializing: boolean
   isHydrated: boolean
+  isNetworkTimeout: boolean
   isTrafficHeavy: boolean
   setIsTrafficHeavy: (value: boolean) => void
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>
@@ -21,9 +22,11 @@ interface AuthContextType {
   refreshProfile: (force?: boolean) => Promise<void>
   // NEW: Expose updateProfile for optimistic updates (bypasses 10-minute throttle)
   updateProfile: (newProfile: UserProfile | null) => void
-  // NEW: Global recovery trigger for system-wide data sync (incrementing counter to prevent "Click Twice" failure)
-  triggerGlobalSync: () => void
+  // NEW: Global recovery trigger for system-wide data sync (returns Promise that resolves when sync completes)
+  triggerGlobalSync: () => Promise<boolean>
   forceSync: number
+  // NEW: Resolve the sync Promise - called by useDashboardData to report success/failure
+  resolveGlobalSync: (success: boolean) => void
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -55,10 +58,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isSessionLoading, setIsSessionLoading] = useState(true)
   const [isProfileLoading, setIsProfileLoading] = useState(true)
   const [isHydrated, setIsHydrated] = useState(false)
+  const [isNetworkTimeout, setIsNetworkTimeout] = useState(false)
   const [isTrafficHeavy, setIsTrafficHeavy] = useState(false)
   
   // NEW: Global recovery trigger for system-wide data sync (incrementing counter to prevent "Click Twice" failure)
   const [forceSync, setForceSync] = useState(0)
+
+  // NEW: Promise resolver ref for Force Refresh button - guarantees Promise always resolves
+  const syncResolverRef = useRef<((success: boolean) => void) | null>(null)
 
   // useRef for activity tracking to prevent endless re-renders
   const lastActivityRef = useRef<number>(Date.now())
@@ -74,9 +81,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     profileRef.current = newProfile
   }
 
-  // NEW: Global recovery trigger function (increments counter to trigger sync)
+  // NEW: Global recovery trigger function (returns Promise that resolves when sync completes)
   const triggerGlobalSync = () => {
-    setForceSync(prev => prev + 1)
+    return new Promise<boolean>((resolve) => {
+      syncResolverRef.current = resolve
+      setForceSync(prev => prev + 1)
+    })
+  }
+
+  // NEW: Resolve the sync Promise - called by useDashboardData to report success/failure
+  const resolveGlobalSync = (success: boolean) => {
+    if (syncResolverRef.current) {
+      syncResolverRef.current(success)
+      syncResolverRef.current = null // Set to null so finally block knows it was already handled
+    }
   }
 
   // KEPT INTACT: Existing fetchProfile function
@@ -281,7 +299,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsProfileLoading(false)
         changed = true
       }
-      if (changed) setIsHydrated(true)
+      if (changed) {
+        setIsNetworkTimeout(true)
+        setIsHydrated(true)
+      }
     }, 20000) // Increased to 20 seconds for slow networks (supabase retry can take up to 16s)
     return () => clearTimeout(timer)
   }, [isInitializing, isSessionLoading, isProfileLoading])
@@ -416,6 +437,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isProfileLoading,
       isInitializing,
       isHydrated,
+      isNetworkTimeout,
       isTrafficHeavy,
       setIsTrafficHeavy,
       signIn,
@@ -426,7 +448,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // NEW: Expose updateProfile for optimistic updates (bypasses 10-minute throttle)
       updateProfile,
       triggerGlobalSync,
-      forceSync
+      forceSync,
+      resolveGlobalSync
     }}>
       {children}
     </AuthContext.Provider>

@@ -6,7 +6,7 @@ import { motion } from 'framer-motion'
 import { PremiumAuthLoader } from './ui/PremiumAuthLoader'
 
 export function ProtectedRoute() {
-  const { user, profile, isInitializing, isSessionLoading, isProfileLoading, isHydrated, signOut } = useAuth()
+  const { user, profile, isInitializing, isSessionLoading, isProfileLoading, isHydrated, isNetworkTimeout, signOut } = useAuth()
   const [showFallback, setShowFallback] = useState(false)
 
   useEffect(() => {
@@ -50,6 +50,21 @@ export function ProtectedRoute() {
           </motion.div>
         )}
       </>
+    )
+  }
+
+  if (!user && isNetworkTimeout) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-background p-6 selection:bg-indigo-100 uppercase tracking-tight">
+        <div className="w-20 h-20 bg-red-500/10 rounded-[24px] flex items-center justify-center mb-10 shadow-sm border border-red-500/20">
+          <span className="text-[12px] font-black tracking-widest text-red-500 text-center">Offline</span>
+        </div>
+        <div className="flex flex-col items-center text-center max-w-sm">
+          <h2 className="text-[12px] font-black text-red-500 uppercase tracking-[0.4em] mb-4">Connection Interrupted</h2>
+          <span className="text-[32px] font-black tracking-tighter text-foreground leading-tight mb-4">Network Unreachable</span>
+          <p className="text-[15px] font-bold text-muted-foreground leading-relaxed mb-10 text-pretty">Cannot load account data. Please check your connection and refresh.</p>
+        </div>
+      </div>
     )
   }
 

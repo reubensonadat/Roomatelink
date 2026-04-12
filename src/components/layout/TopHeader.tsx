@@ -22,12 +22,12 @@ export function TopHeader({ title, subtitle, showBackButton = false }: TopHeader
     const loadingId = toast.loading('Syncing...');
     
     try {
-      await triggerGlobalSync();
+      const isSuccess = await triggerGlobalSync();
       
-      if (!navigator.onLine) {
-        toast.error('Sync failed. Check your internet connection.', { id: loadingId, duration: 4000 });
-      } else {
+      if (isSuccess) {
         toast.success('Sync complete', { id: loadingId, duration: 2000 });
+      } else {
+        toast.error('Sync failed. Check your connection.', { id: loadingId, duration: 4000 });
       }
     } catch (error) {
       toast.error('Sync failed', { id: loadingId, duration: 4000 });

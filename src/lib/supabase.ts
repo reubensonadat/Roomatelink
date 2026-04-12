@@ -71,6 +71,10 @@ function createTimeoutFetch(originalFetch: typeof fetch): typeof fetch {
           return retryResponse
         } catch (retryError) {
           clearTimeout(retryTimeoutId)
+          // If React cancelled it during the retry, throw AbortError to silently die
+          if (init?.signal?.aborted) {
+            throw new DOMException('The user aborted a request.', 'AbortError')
+          }
           throw new Error(`Request timeout after ${REQUEST_TIMEOUT_MS}ms. Please check your connection.`)
         }
       }
