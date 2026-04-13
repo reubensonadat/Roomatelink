@@ -60,7 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isHydrated, setIsHydrated] = useState(false)
   const [isNetworkTimeout, setIsNetworkTimeout] = useState(false)
   const [isTrafficHeavy, setIsTrafficHeavy] = useState(false)
-  
+
   // NEW: Global recovery trigger for system-wide data sync (incrementing counter to prevent "Click Twice" failure)
   const [forceSync, setForceSync] = useState(0)
 
@@ -72,6 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Ref to prevent stale closures when mapping cached data
   const profileRef = useRef<UserProfile | null>(null)
+  const sessionRef = useRef<Session | null>(null)
   const lastRefreshRef = useRef<number>(0)
 
   // Helper to keep profile state and ref in sync
@@ -79,6 +80,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const updateProfile = (newProfile: UserProfile | null) => {
     setProfile(newProfile)
     profileRef.current = newProfile
+  }
+
+  // Keep session ref in sync for visibility handler (avoids stale closures + excessive re-registrations)
+  const updateSession = (newSession: Session | null) => {
+    setSession(newSession)
+    sessionRef.current = newSession
   }
 
   // NEW: Global recovery trigger function (returns Promise that resolves when sync completes)
@@ -147,7 +154,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (currentSession) {
           logAuthEvent('SESSION_FOUND', `User ID: ${currentSession.user.id}`)
-          setSession(currentSession)
+          updateSession(currentSession)
           setUser(currentSession.user)
 
           // Load cached profile immediately
@@ -167,7 +174,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         } else {
           logAuthEvent('NO_SESSION', 'No active session found')
-          setSession(null)
+          updateSession(null)
           setUser(null)
           updateProfile(null)
           setIsProfileLoading(false)
@@ -204,7 +211,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         logAuthEvent('AUTH_STATE_CHANGE', { event, hasSession: !!currentSession })
 
-        setSession(currentSession)
+        updateSession(currentSession)
         setUser(currentSession?.user ?? null)
         setIsSessionLoading(false)
         setIsHydrated(true)
@@ -214,9 +221,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         // Token refresh failure — must be BEFORE the user guard
         if (event === 'TOKEN_REFRESHED' && !currentSession) {
-          logAuthEvent('TOKEN_REFRESH_FAILED', 'Token refresh returned null session')
-          toast.error('Your session could not be refreshed. Please sign in again.')
-          updateProfile(null)
+          logAuthEvent('TOKEN_REFRESH_FAILED', 'Token refresh returned null session — preserving cached profile')
+          if (!profileRef.current) {
+            toast.error('Your session could not be refreshed. Please sign in again.')
+          }
+          setIsNetworkTimeout(true)
           setIsProfileLoading(false)
           return
         }
@@ -237,6 +246,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             // Handle token refresh failures
             if (event === 'TOKEN_REFRESHED') {
               logAuthEvent('TOKEN_REFRESHED', 'Token was successfully refreshed')
+              // Reset network timeout flag on successful recovery
+              setIsNetworkTimeout(false)
             }
 
             const cached = getLocalProfile(currentSession.user.id)
@@ -346,6 +357,58 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  // Mobile PWA wake-up fix for 1-hour JWT expiration
+  // Mobile OS suspends JS execution, killing background auto-refresh timer.
+  // When user opens app, visibilityState === 'visible' fires.
+  // We must call refreshSession() ONLY if token is expired/expiring,
+  // because Supabase's internal handler already handles non-expired tokens on refocus.
+  // Without this guard, both handlers race to use same single-use refresh token,
+  // causing second request to fail and potentially wipe user's profile.
+  useEffect(() => {
+    // Helper: Check if JWT is expired or about to expire (60s buffer)
+    const isTokenExpiredOrExpiring = (token: string, bufferSeconds = 60): boolean => {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]))
+        const expiresAt = payload.exp * 1000
+        return Date.now() > expiresAt - bufferSeconds * 1000
+      } catch {
+        return true // If we can't parse it, assume expired — safe to refresh
+      }
+    }
+
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible' && user) {
+        const currentSession = sessionRef.current
+
+        // GUARD: Only explicitly refresh if token is expired/expiring.
+        // If token is still valid, Supabase's internal visibility handler already covers it.
+        if (currentSession?.access_token && !isTokenExpiredOrExpiring(currentSession.access_token)) {
+          logAuthEvent('WAKEUP_SKIP', 'Token still valid, letting Supabase internal handler manage refresh')
+          return
+        }
+
+        logAuthEvent('WAKEUP_REFRESH', 'Token expired/expiring, forcing explicit refreshSession()')
+        try {
+          const { error } = await supabase.auth.refreshSession()
+          if (error) {
+            console.warn('[Auth] Wake-up refresh failed. Network may be dead.', error)
+          } else {
+            // Reset network timeout flag on successful recovery
+            setIsNetworkTimeout(false)
+          }
+        } catch (err) {
+          console.error('[Auth] Wake-up refresh exception:', err)
+        }
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [user])
+
 
 
   // KEPT INTACT: Existing auth methods
@@ -382,7 +445,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.warn('Signout logic timeout/error:', error)
     } finally {
       // 2. Wipe memory states immediately
-      setSession(null)
+      updateSession(null)
       setUser(null)
       updateProfile(null)
       setIsSessionLoading(false)
