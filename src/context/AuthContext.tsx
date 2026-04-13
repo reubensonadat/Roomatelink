@@ -84,6 +84,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const userRef = useRef<User | null>(null)
   const lastRefreshRef = useRef<number>(0)
 
+  // Ref to track live value of isNetworkTimeout for event listener access
+  const isNetworkTimeoutRef = useRef<boolean>(false)
+
   // Helper to keep profile state and ref in sync
   // NEW: Helper to synchronize state and ref
   const updateProfile = (newProfile: UserProfile | null) => {
@@ -112,7 +115,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   // NEW: Resolve the sync Promise - called by useDashboardData to report success/failure
-  const clearNetworkTimeout = () => setIsNetworkTimeout(false)
+  const clearNetworkTimeout = () => {
+    setIsNetworkTimeout(false)
+    isNetworkTimeoutRef.current = false
+  }
 
   const resolveGlobalSync = (success: boolean) => {
     if (syncResolverRef.current) {
@@ -191,6 +197,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               // fetchProfile failed (network/timeout) but we have cached data — preserve it
               logAuthEvent('PROFILE_FETCH_FAILED', 'Preserving cached profile after fetch failure')
               setIsNetworkTimeout(true)
+              isNetworkTimeoutRef.current = true
             } else {
               // No cache AND no fresh data — genuine absence
               updateProfile(null)
@@ -252,6 +259,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             toast.error('Your session could not be refreshed. Please sign in again.')
           }
           setIsNetworkTimeout(true)
+          isNetworkTimeoutRef.current = true
           setIsProfileLoading(false)
           return
         }
@@ -274,6 +282,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               logAuthEvent('TOKEN_REFRESHED', 'Token was successfully refreshed')
               // Reset network timeout flag on successful recovery
               setIsNetworkTimeout(false)
+              isNetworkTimeoutRef.current = false
             }
 
             const cached = getLocalProfile(currentSession.user.id)
@@ -289,6 +298,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 // fetchProfile failed but we have cached data — preserve it
                 logAuthEvent('PROFILE_FETCH_FAILED', 'Preserving cached profile after fetch failure in auth state change')
                 setIsNetworkTimeout(true)
+                isNetworkTimeoutRef.current = true
               } else {
                 updateProfile(null)
               }
@@ -356,6 +366,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       if (changed) {
         setIsNetworkTimeout(true)
+        isNetworkTimeoutRef.current = true
         setIsHydrated(true)
       }
     }, 20000) // Increased to 20 seconds for slow networks (supabase retry can take up to 16s)
@@ -370,10 +381,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (prevNetworkStatusRef.current === 'offline' && status === 'online') {
       // Clear the trapdoor - network is restored
       setIsNetworkTimeout(false)
-      
+      isNetworkTimeoutRef.current = false
+
       // Fire flare to tell rest of app to refetch data
       setForceSync(prev => prev + 1)
-      
+
       logAuthEvent('NETWORK_RESTORED', 'Network connection restored, clearing timeout flag and triggering sync')
     }
     prevNetworkStatusRef.current = status
@@ -439,6 +451,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const handleVisibilityChange = async () => {
       if (document.visibilityState === 'visible' && user) {
+        // Focus Heartbeat: If network timeout is active, ping Supabase to test TCP connectivity
+        // This bypasses the liar navigator.onLine state on mobile networks
+        if (isNetworkTimeoutRef.current) {
+          logAuthEvent('WAKEUP_PING', 'Network timeout active, testing connection...')
+          try {
+            const { error } = await supabase.auth.getSession()
+            if (!error) {
+              logAuthEvent('WAKEUP_PING_SUCCESS', 'Connection restored via ping')
+              setIsNetworkTimeout(false)
+              isNetworkTimeoutRef.current = false
+              setForceSync(prev => prev + 1)
+              return
+            }
+          } catch (err) {
+            logAuthEvent('WAKEUP_PING_FAILED', 'Ping failed, network still dead')
+          }
+        }
+
         const currentSession = sessionRef.current
 
         // GUARD: Only explicitly refresh if token is expired/expiring.
@@ -454,13 +484,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (error) {
             console.warn('[Auth] Wake-up refresh failed. Network may be dead.', error)
             setIsNetworkTimeout(true)
+            isNetworkTimeoutRef.current = true
           } else {
             // Reset network timeout flag on successful recovery
             setIsNetworkTimeout(false)
+            isNetworkTimeoutRef.current = false
           }
         } catch (err) {
           console.error('[Auth] Wake-up refresh exception:', err)
           setIsNetworkTimeout(true)
+          isNetworkTimeoutRef.current = true
         }
       }
     }
@@ -556,6 +589,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // fetchProfile failed but we have cached data — preserve it
       logAuthEvent('PROFILE_FETCH_FAILED', 'Preserving cached profile after manual refresh failure')
       setIsNetworkTimeout(true)
+      isNetworkTimeoutRef.current = true
     }
     // Don't wipe profile on network error
     lastRefreshRef.current = now
