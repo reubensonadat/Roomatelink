@@ -22,8 +22,14 @@ export function TopHeader({ title, subtitle, showBackButton = false, showSyncBut
     setIsSyncing(true);
     const loadingId = toast.loading('Syncing...');
     
+    // Race the sync against a 16-second timeout (matches timeoutFetch behavior)
+    // This ensures the button never spins forever when network is dead
+    const timeoutPromise = new Promise<boolean>((_, reject) =>
+      setTimeout(() => reject(new Error('Network timeout')), 16000)
+    );
+    
     try {
-      const isSuccess = await triggerGlobalSync();
+      const isSuccess = await Promise.race([triggerGlobalSync(), timeoutPromise]);
       
       if (isSuccess) {
         toast.success('Sync complete', { id: loadingId, duration: 2000 });
@@ -31,9 +37,9 @@ export function TopHeader({ title, subtitle, showBackButton = false, showSyncBut
         toast.error('Sync failed. Check your connection.', { id: loadingId, duration: 4000 });
       }
     } catch (error) {
-      toast.error('Sync failed', { id: loadingId, duration: 4000 });
+      toast.error('Network is unreachable. Please try again when connection is restored.', { id: loadingId, duration: 4000 });
     } finally {
-      setIsSyncing(false);
+      setIsSyncing(false); // CRITICAL FIX: ensures loading state always clears
     }
   };
 

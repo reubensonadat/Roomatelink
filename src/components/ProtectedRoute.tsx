@@ -53,7 +53,9 @@ export function ProtectedRoute() {
     )
   }
 
-  if (!user && isNetworkTimeout) {
+  // Network is down but user has cached data — show app with offline banner
+  // Only show full-page error if we have NO user AND NO cached profile
+  if (!user && isNetworkTimeout && !profile) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-background p-6 selection:bg-indigo-100 uppercase tracking-tight">
         <div className="w-20 h-20 bg-red-500/10 rounded-[24px] flex items-center justify-center mb-10 shadow-sm border border-red-500/20">
@@ -87,5 +89,14 @@ export function ProtectedRoute() {
   }
 
   // Fully authenticated and loaded
-  return <Outlet />
+  return (
+    <>
+      {isNetworkTimeout && (
+        <div className="fixed top-0 left-0 right-0 z-[100] bg-amber-500 text-black text-center py-2 px-4 text-[12px] font-black uppercase tracking-widest">
+          You're offline — showing cached data
+        </div>
+      )}
+      <Outlet />
+    </>
+  )
 }

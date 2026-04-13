@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import type { User, Session, AuthError } from '@supabase/supabase-js'
 import { UserProfile } from '../types/database'
 import { toast } from 'sonner'
+import { useNetworkStatus } from '../hooks/useNetworkStatus'
 
 interface AuthContextType {
   user: User | null
@@ -64,6 +65,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // NEW: Global recovery trigger for system-wide data sync (incrementing counter to prevent "Click Twice" failure)
   const [forceSync, setForceSync] = useState(0)
 
+  // Track network connectivity status
+  const { status } = useNetworkStatus()
+
+  // Ref to track previous network state for transition detection
+  const prevNetworkStatusRef = useRef<string>(status)
+
   // NEW: Promise resolver ref for Force Refresh button - guarantees Promise always resolves
   const syncResolverRef = useRef<((success: boolean) => void) | null>(null)
 
@@ -73,6 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Ref to prevent stale closures when mapping cached data
   const profileRef = useRef<UserProfile | null>(null)
   const sessionRef = useRef<Session | null>(null)
+  const userRef = useRef<User | null>(null)
   const lastRefreshRef = useRef<number>(0)
 
   // Helper to keep profile state and ref in sync
@@ -86,6 +94,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const updateSession = (newSession: Session | null) => {
     setSession(newSession)
     sessionRef.current = newSession
+  }
+
+  // Keep user ref in sync for SIGNED_OUT toast (avoids stale closure)
+  const updateUser = (newUser: User | null) => {
+    setUser(newUser)
+    userRef.current = newUser
   }
 
   // NEW: Global recovery trigger function (returns Promise that resolves when sync completes)
@@ -155,7 +169,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (currentSession) {
           logAuthEvent('SESSION_FOUND', `User ID: ${currentSession.user.id}`)
           updateSession(currentSession)
-          setUser(currentSession.user)
+          updateUser(currentSession.user)
 
           // Load cached profile immediately
           const cached = getLocalProfile(currentSession.user.id)
@@ -168,14 +182,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setIsProfileLoading(true)
           const profileData = await fetchProfile(currentSession.user.id)
           if (isMounted) {
-            updateProfile(profileData)
+            if (profileData) {
+              updateProfile(profileData)
+            } else if (profileRef.current) {
+              // fetchProfile failed (network/timeout) but we have cached data — preserve it
+              logAuthEvent('PROFILE_FETCH_FAILED', 'Preserving cached profile after fetch failure')
+              setIsNetworkTimeout(true)
+            } else {
+              // No cache AND no fresh data — genuine absence
+              updateProfile(null)
+            }
             setIsProfileLoading(false)
             lastRefreshRef.current = Date.now()
           }
         } else {
           logAuthEvent('NO_SESSION', 'No active session found')
           updateSession(null)
-          setUser(null)
+          updateUser(null)
           updateProfile(null)
           setIsProfileLoading(false)
         }
@@ -212,7 +235,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         logAuthEvent('AUTH_STATE_CHANGE', { event, hasSession: !!currentSession })
 
         updateSession(currentSession)
-        setUser(currentSession?.user ?? null)
+        updateUser(currentSession?.user ?? null)
         setIsSessionLoading(false)
         setIsHydrated(true)
 
@@ -257,13 +280,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
             const profileData = await fetchProfile(currentSession.user.id)
             if (isMounted) {
-              updateProfile(profileData)
+              if (profileData) {
+                updateProfile(profileData)
+              } else if (profileRef.current) {
+                // fetchProfile failed but we have cached data — preserve it
+                logAuthEvent('PROFILE_FETCH_FAILED', 'Preserving cached profile after fetch failure in auth state change')
+                setIsNetworkTimeout(true)
+              } else {
+                updateProfile(null)
+              }
               setIsProfileLoading(false)
               lastRefreshRef.current = Date.now()
             }
           }
         } else if (event === 'SIGNED_OUT') {
           logAuthEvent('SIGNED_OUT', 'User signed out')
+          // Use userRef (not user state) to avoid stale closure — callback captures initial values
+          if (userRef.current) {
+            toast.error('Your session has expired. Please sign in again.')
+          }
           updateProfile(null)
           setIsProfileLoading(false)
           setIsSessionLoading(false)
@@ -276,7 +311,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (currentSession?.user) {
             const profileData = await fetchProfile(currentSession.user.id)
             if (isMounted) {
-              updateProfile(profileData)
+              if (profileData) {
+                updateProfile(profileData)
+              } else if (profileRef.current) {
+                // fetchProfile failed but we have cached data — preserve it
+                logAuthEvent('PROFILE_FETCH_FAILED', 'Preserving cached profile after USER_UPDATED fetch failure')
+              }
+              // Don't wipe profile on network error during USER_UPDATED
             }
           }
         }
@@ -317,6 +358,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, 20000) // Increased to 20 seconds for slow networks (supabase retry can take up to 16s)
     return () => clearTimeout(timer)
   }, [isInitializing, isSessionLoading, isProfileLoading])
+
+  // ─── Network Recovery Trapdoor Fix ─────────────────────────────────────────
+  // ONLY trigger sync on transition FROM offline TO online.
+  // Prevents "Mount Bomb" race condition where app initializes on a good connection
+  // and fires forceSync simultaneously with initializeAuth().
+  useEffect(() => {
+    if (prevNetworkStatusRef.current === 'offline' && status === 'online') {
+      // Clear the trapdoor - network is restored
+      setIsNetworkTimeout(false)
+      
+      // Fire flare to tell rest of app to refetch data
+      setForceSync(prev => prev + 1)
+      
+      logAuthEvent('NETWORK_RESTORED', 'Network connection restored, clearing timeout flag and triggering sync')
+    }
+    prevNetworkStatusRef.current = status
+  }, [status])
 
   // Phase 1.2: Effect A - Activity Heartbeat (initial DB update only)
   // NEW: Split from monolithic effect, depends only on [user]
@@ -392,12 +450,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const { error } = await supabase.auth.refreshSession()
           if (error) {
             console.warn('[Auth] Wake-up refresh failed. Network may be dead.', error)
+            setIsNetworkTimeout(true)
           } else {
             // Reset network timeout flag on successful recovery
             setIsNetworkTimeout(false)
           }
         } catch (err) {
           console.error('[Auth] Wake-up refresh exception:', err)
+          setIsNetworkTimeout(true)
         }
       }
     }
@@ -446,7 +506,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       // 2. Wipe memory states immediately
       updateSession(null)
-      setUser(null)
+      updateUser(null)
       updateProfile(null)
       setIsSessionLoading(false)
       setIsProfileLoading(false)
@@ -487,7 +547,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     logAuthEvent('REFRESH_PROFILE', 'Refreshing user profile')
     const profileData = await fetchProfile(user.id)
-    updateProfile(profileData)
+    if (profileData) {
+      updateProfile(profileData)
+    } else if (profileRef.current) {
+      // fetchProfile failed but we have cached data — preserve it
+      logAuthEvent('PROFILE_FETCH_FAILED', 'Preserving cached profile after manual refresh failure')
+      setIsNetworkTimeout(true)
+    }
+    // Don't wipe profile on network error
     lastRefreshRef.current = now
   }
 
