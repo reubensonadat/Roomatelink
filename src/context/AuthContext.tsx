@@ -16,6 +16,7 @@ interface AuthContextType {
   isNetworkTimeout: boolean
   isTrafficHeavy: boolean
   setIsTrafficHeavy: (value: boolean) => void
+  clearNetworkTimeout: () => void
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>
   signUp: (email: string, password: string) => Promise<{ error: AuthError | null; success?: string }>
   signOut: () => Promise<void>
@@ -111,6 +112,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   // NEW: Resolve the sync Promise - called by useDashboardData to report success/failure
+  const clearNetworkTimeout = () => setIsNetworkTimeout(false)
+
   const resolveGlobalSync = (success: boolean) => {
     if (syncResolverRef.current) {
       syncResolverRef.current(success)
@@ -570,6 +573,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isNetworkTimeout,
       isTrafficHeavy,
       setIsTrafficHeavy,
+      clearNetworkTimeout,
       signIn,
       signUp,
       signOut,

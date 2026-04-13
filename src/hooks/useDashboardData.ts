@@ -23,7 +23,7 @@ interface UseDashboardDataReturn {
 // ─── Hook ────────────────────────────────────────────────────────────
 
 export function useDashboardData(): UseDashboardDataReturn {
-  const { user, profile, isSessionLoading, refreshProfile, forceSync, resolveGlobalSync } = useAuth()
+  const { user, profile, isSessionLoading, refreshProfile, forceSync, resolveGlobalSync, clearNetworkTimeout } = useAuth()
   
   const isMountedRef = useRef(true)
   
@@ -332,6 +332,8 @@ export function useDashboardData(): UseDashboardDataReturn {
           setMatches(mappedMatches)
           if (!isMountedRef.current) return
           sessionStorage.setItem('matchesCache', JSON.stringify(mappedMatches))
+          resolveGlobalSync(true)
+          clearNetworkTimeout()
           successOnceRef.current = true
         } else {
           setMatches([])
@@ -366,12 +368,10 @@ export function useDashboardData(): UseDashboardDataReturn {
       } else {
         setMatches([])
       }
-      resolveGlobalSync(true)
     } catch (err) {
       console.error('Error initializing dashboard:', err)
       // DO NOT wipe matches on error - preserve cached data
       setFetchError(true)
-      resolveGlobalSync(false)
     } finally {
       resolveGlobalSync(false)
       setIsLoading(false)
