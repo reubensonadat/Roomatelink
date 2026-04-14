@@ -373,23 +373,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => clearTimeout(timer)
   }, [isInitializing, isSessionLoading, isProfileLoading])
 
-  // ─── Network Recovery Trapdoor Fix ─────────────────────────────────────────
+  // ─── Network Recovery 1: Standard Transition ──────────────────────────
   // ONLY trigger sync on transition FROM offline TO online.
-  // Prevents "Mount Bomb" race condition where app initializes on a good connection
-  // and fires forceSync simultaneously with initializeAuth().
   useEffect(() => {
     if (prevNetworkStatusRef.current === 'offline' && status === 'online') {
-      // Clear the trapdoor - network is restored
       setIsNetworkTimeout(false)
       isNetworkTimeoutRef.current = false
-
-      // Fire flare to tell rest of app to refetch data
       setForceSync(prev => prev + 1)
-
-      logAuthEvent('NETWORK_RESTORED', 'Network connection restored, clearing timeout flag and triggering sync')
+      logAuthEvent('NETWORK_RESTORED', 'Triggered by: offline->online transition')
     }
     prevNetworkStatusRef.current = status
   }, [status])
+
+  // ─── Network Recovery 2: Cold Boot Delayed Ping ────────────────────────
+  // When a cold boot times out, the phone's radio might actually be waking up.
+  // Wait 3 seconds, then silently ping exactly ONCE. If it works, force recovery.
+  // If it fails, do nothing (prevents infinite loop).
+  useEffect(() => {
+    if (!isNetworkTimeout) return
+
+    const retryTimer = setTimeout(async () => {
+      // Only retry if we are still marked as timed out
+      if (!isNetworkTimeoutRef.current) return
+      
+      try {
+        const { error } = await supabase.auth.getSession()
+        if (!error) {
+          logAuthEvent('COLD_BOOT_PING_SUCCESS', 'Connection established after delayed retry')
+          setIsNetworkTimeout(false)
+          isNetworkTimeoutRef.current = false
+          setForceSync(prev => prev + 1)
+        }
+      } catch (err) {
+        logAuthEvent('COLD_BOOT_PING_FAILED', 'Retry failed, waiting for user interaction')
+      }
+    }, 3000) // Wait 3 seconds for the radio to fully wake up
+
+    return () => clearTimeout(retryTimer)
+  }, [isNetworkTimeout])
 
   // Phase 1.2: Effect A - Activity Heartbeat (initial DB update only)
   // NEW: Split from monolithic effect, depends only on [user]

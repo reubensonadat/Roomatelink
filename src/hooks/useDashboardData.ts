@@ -419,14 +419,20 @@ useEffect(() => {
   isMountedRef.current = true
   if (!mounted || !user || isSessionLoading) return
 
-  // NEW: Override throttle if forceSync > 0 (user clicked Sync button)
+  // NEW: Override throttle if forceSync > 0 (user clicked Sync button OR auto-recovery)
   const shouldOverrideThrottle = forceSync > 0
 
   // Throttle: skip background re-fetch ONLY if we fetched within 30s AND have cached matches.
   // IMPORTANT: Never skip if matches is empty — we always want to re-verify from the DB.
-  // IMPORTANT: Override throttle if forceSync > 0 (user clicked Sync button)
+  // IMPORTANT: Override throttle if forceSync > 0 (user clicked Sync button OR auto-recovery)
   const now = Date.now()
   if (!shouldOverrideThrottle && matches.length > 0 && lastFetchRef.current > 0 && now - lastFetchRef.current < 30000) return
+
+  // ZOMBIE KILLER: If this is a forced recovery, kill any hanging requests from the initial mount
+  // so the new recovery request can actually execute without being blocked by the old one.
+  if (shouldOverrideThrottle) {
+    isInitializingRef.current = false
+  }
 
   lastFetchRef.current = now
   initializeDashboard()
