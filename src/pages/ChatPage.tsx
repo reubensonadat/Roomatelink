@@ -253,7 +253,8 @@ export function ChatPage() {
                   >
                     <div className="flex items-center gap-2">
                       <WifiOff className="w-4 h-4" />
-                      <span className="text-sm font-bold">Live updates paused</span>
+                      <span className="text-sm font-bold">Real-time updates paused</span>
+                      <span className="text-[10px] font-normal text-amber-100">(You can still send messages)</span>
                     </div>
                     <button
                       onClick={reconnectWebSocket}
@@ -328,10 +329,10 @@ export function ChatPage() {
                       transition={{ delay: i * 0.05, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
                       className={`flex ${msg.sender === 'me' ? 'justify-end' : 'justify-start'}`}
                     >
-                      <div className={`flex flex-col ${msg.sender === 'me' ? 'items-end' : 'items-start'} max-w-[85%] sm:max-w-[75%]`}>
+                      <div className={`flex flex-col ${msg.sender === 'me' ? 'items-end' : 'items-start'} max-w-[400px] sm:max-w-[350px]`}>
                         <div className={`flex gap-3 w-full ${msg.sender === 'me' ? 'justify-end' : 'justify-start'}`}>
                           <div className={`relative flex-shrink-0 ${msg.sender === 'me' ? 'bg-primary text-primary-foreground rounded-[24px] rounded-br-[6px]' : 'bg-white border border-border/50 text-foreground rounded-[24px] rounded-bl-[6px]'} px-4 py-3 shadow-sm flex flex-col min-w-0`}>
-                            <p className={`text-[15px] leading-relaxed whitespace-pre-wrap break-words ${msg.sender === 'me' ? 'text-right' : 'text-left'}`} style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+                            <p className={`text-[15px] leading-relaxed whitespace-pre-wrap ${msg.sender === 'me' ? 'text-right' : 'text-left'}`} style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                               {msg.text}
                             </p>
                             <div className={`flex items-center gap-1.5 mt-2 ${msg.sender === 'me' ? 'justify-end' : 'justify-start'}`}>
