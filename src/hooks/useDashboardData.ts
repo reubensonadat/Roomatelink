@@ -55,6 +55,7 @@ export function useDashboardData(): UseDashboardDataReturn {
   const lastFetchRef = useRef<number>(0)
   const previousHasPaidRef = useRef<boolean>(false)
   const successOnceRef = useRef<boolean>(false)
+  const fetchGenerationRef = useRef<number>(0)
 
   // Mounted effect
   useEffect(() => {
@@ -93,6 +94,7 @@ export function useDashboardData(): UseDashboardDataReturn {
   // ─── Core Functions ──────────────────────────────────────────────
 
   const initializeDashboard = async () => {
+    const currentGeneration = fetchGenerationRef.current
     // If we are locked by an active fetch, resolve false immediately
     if (isInitializingRef.current) {
       resolveGlobalSync(false)
@@ -160,10 +162,7 @@ export function useDashboardData(): UseDashboardDataReturn {
                              qError.message?.toLowerCase().includes('lock')
 
             if (isLockError && i < retries - 1) {
-              // Exponential backoff: 500ms, 1000ms
-              const delay = 500 * Math.pow(2, i)
-              console.warn(`[Questionnaire Check] Lock contention, retrying in ${delay}ms (attempt ${i + 1}/${retries})`)
-              await new Promise(resolve => setTimeout(resolve, delay))
+              // Instant retry - no artificial delays
             } else {
               // Non-retryable error or max retries reached
               console.error('[Questionnaire Check] Query failed:', qError)
@@ -329,6 +328,9 @@ export function useDashboardData(): UseDashboardDataReturn {
                 : []
             }))
           
+          // GUARD: Only update state if this is still the active generation
+          if (currentGeneration !== fetchGenerationRef.current) return
+          
           setMatches(mappedMatches)
           if (!isMountedRef.current) return
           sessionStorage.setItem('matchesCache', JSON.stringify(mappedMatches))
@@ -373,6 +375,10 @@ export function useDashboardData(): UseDashboardDataReturn {
       // DO NOT wipe matches on error - preserve cached data
       setFetchError(true)
     } finally {
+      // SILENT EVAPORATION: If a newer recovery was triggered while this was running,
+      // do absolutely nothing. Let the newer generation handle the UI state.
+      if (currentGeneration !== fetchGenerationRef.current) return
+
       resolveGlobalSync(false)
       setIsLoading(false)
       if (!isMountedRef.current) return
@@ -428,9 +434,10 @@ useEffect(() => {
   const now = Date.now()
   if (!shouldOverrideThrottle && matches.length > 0 && lastFetchRef.current > 0 && now - lastFetchRef.current < 30000) return
 
-  // ZOMBIE KILLER: If this is a forced recovery, kill any hanging requests from the initial mount
-  // so the new recovery request can actually execute without being blocked by the old one.
+  // ZOMBIE ASSASSIN: Increment generation to invalidate any currently hanging requests,
+  // then unlock the initialization gate so the new request can start.
   if (shouldOverrideThrottle) {
+    fetchGenerationRef.current++
     isInitializingRef.current = false
   }
 
