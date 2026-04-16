@@ -93,7 +93,7 @@ export function ProtectedRoute() {
     <>
       {isNetworkTimeout && (
         <div className="fixed top-0 left-0 right-0 z-[100] bg-amber-500 text-black text-center py-2 px-4 text-[12px] font-black uppercase tracking-widest">
-          You're offline — showing cached data
+          Connection dropped — waiting for reestablishment...
         </div>
       )}
       <Outlet />

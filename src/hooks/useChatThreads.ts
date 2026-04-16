@@ -94,6 +94,8 @@ export function useChatThreads(): UseChatThreadsReturn {
              if (m.receiver_id !== currentProfile.id) idsToFetch.add(m.receiver_id)
           })
 
+          if (idsToFetch.size === 0) return
+          
           const { data: chatUsers } = await supabase
             .from('users')
             .select('id, full_name, avatar_url, last_active')
@@ -240,6 +242,8 @@ export function useChatThreads(): UseChatThreadsReturn {
            if (m.receiver_id !== profile.id) idsToFetch.add(m.receiver_id)
         })
 
+        if (idsToFetch.size === 0) return
+        
         const { data: chatUsers } = await supabase
           .from('users')
           .select('id, full_name, avatar_url, last_active')
@@ -367,6 +371,8 @@ export function useChatThreads(): UseChatThreadsReturn {
            if (m.receiver_id !== currentProfile.id) idsToFetch.add(m.receiver_id)
         })
 
+        if (idsToFetch.size === 0) return
+        
         const { data: chatUsers } = await supabase
           .from('users')
           .select('id, full_name, avatar_url, last_active')

@@ -144,7 +144,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (data) {
         localStorage.setItem(`roommate_profile_${userId}`, JSON.stringify(data))
       } else {
-        // DB row is gone — evict the stale cache so isGenderLocked doesn't fire incorrectly
+        // DB row is gone — evict stale cache so isGenderLocked doesn't fire incorrectly
         localStorage.removeItem(`roommate_profile_${userId}`)
       }
 
@@ -210,7 +210,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           updateSession(null)
           updateUser(null)
           updateProfile(null)
+          setIsSessionLoading(false)
           setIsProfileLoading(false)
+          setIsHydrated(true)
         }
 
         setIsSessionLoading(false)
@@ -252,7 +254,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Unblock UI if getSession() is still hanging
         if (isInitializing) setIsInitializing(false)
 
-        // Token refresh failure — must be BEFORE the user guard
+        // Token refresh failure — must be BEFORE user guard
         if (event === 'TOKEN_REFRESHED' && !currentSession) {
           logAuthEvent('TOKEN_REFRESH_FAILED', 'Token refresh returned null session — preserving cached profile')
           if (!profileRef.current) {
@@ -316,9 +318,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setIsProfileLoading(false)
           setIsSessionLoading(false)
           setIsHydrated(true)
+
           // Clean profiles cache
           for (const key of Object.keys(localStorage)) {
-            if (key.startsWith('roommate_profile_')) localStorage.removeItem(key)
+            if (key.startsWith('roommate_profile_')) {
+              localStorage.removeItem(key)
+            }
           }
         } else if (event === 'USER_UPDATED') {
           if (currentSession?.user) {
@@ -373,43 +378,94 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => clearTimeout(timer)
   }, [isInitializing, isSessionLoading, isProfileLoading])
 
-  // ─── Network Recovery 1: Standard Transition ──────────────────────────
-  // ONLY trigger sync on transition FROM offline TO online.
+  // ─── Network Recovery 1: Standard Transition + Liar Radio Fallback ─────────
+  // 1. Standard Transition: offline -> online (Phone radio fully cycled through offline)
+  // 2. Liar Radio Fallback: If we are marked offline but phone sensor says 'online'
+  //    (because mobile radios stay 'online' even when TCP drops), verify via ping.
   useEffect(() => {
-    if (prevNetworkStatusRef.current === 'offline' && status === 'online') {
+    const isTransition = prevNetworkStatusRef.current === 'offline' && status === 'online'
+    const isLiarRadio = !isTransition && status === 'online' && isNetworkTimeoutRef.current
+
+    if (isTransition || isLiarRadio) {
       setIsNetworkTimeout(false)
       isNetworkTimeoutRef.current = false
       setForceSync(prev => prev + 1)
-      logAuthEvent('NETWORK_RESTORED', 'Triggered by: offline->online transition')
+      logAuthEvent('NETWORK_RESTORED', `Triggered by: ${isTransition ? 'offline->online transition' : 'Liar Radio fallback'}`)
+
+      // ─── Offline Queue: Retry Pending Match Calculation ─────────
+      // If questionnaire was saved but match-calculate failed, retry now
+      const needsMatchCalculation = localStorage.getItem('needsMatchCalculation')
+      if (needsMatchCalculation === 'true' && user && session) {
+        logAuthEvent('MATCH_CALCULATION_RETRY', 'Retrying match calculation after network recovery')
+        
+        // Retry match-calculate with exponential backoff
+        const retryMatchCalculate = async (retries = 2): Promise<boolean> => {
+          for (let i = 0; i < retries; i++) {
+            try {
+              const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/match-calculate`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${session.access_token}`
+                },
+                body: JSON.stringify({ userId: user.id })
+              })
+
+              if (response.ok) {
+                logAuthEvent('MATCH_CALCULATION_SUCCESS', 'Match calculation completed on retry')
+                localStorage.removeItem('needsMatchCalculation')
+                // Force dashboard refresh to show new matches
+                setForceSync(prev => prev + 1)
+                return true
+              }
+            } catch (err) {
+              logAuthEvent('MATCH_CALCULATION_RETRY_FAILED', `Attempt ${i + 1} failed`)
+            }
+
+            // Exponential backoff: 2s, 4s
+            if (i < retries - 1) {
+              await new Promise(resolve => setTimeout(resolve, 2000 * Math.pow(2, i)))
+            }
+          }
+          return false
+        }
+
+        retryMatchCalculate().catch(err => {
+          logAuthEvent('MATCH_CALCULATION_RETRY_ERROR', err)
+        })
+      }
     }
     prevNetworkStatusRef.current = status
-  }, [status])
+  }, [status, isNetworkTimeout, user, session])
 
-  // ─── Network Recovery 2: Cold Boot Delayed Ping ────────────────────────
-  // When a cold boot times out, the phone's radio might actually be waking up.
-  // Wait 3 seconds, then silently ping exactly ONCE. If it works, force recovery.
-  // If it fails, do nothing (prevents infinite loop).
+  // ─── Network Recovery 2: Cold Boot Repeating Ping ──────────────────────
+  // Instead of a one-shot setTimeout, use setInterval to keep pinging every 5 seconds.
+  // Stops automatically if ping succeeds or if another recovery mechanism clears the timeout.
   useEffect(() => {
     if (!isNetworkTimeout) return
 
-    const retryTimer = setTimeout(async () => {
-      // Only retry if we are still marked as timed out
-      if (!isNetworkTimeoutRef.current) return
-      
+    const intervalId = setInterval(async () => {
+      // Safety check: If trapdoor was closed by another mechanism, stop pinging
+      if (!isNetworkTimeoutRef.current) {
+        clearInterval(intervalId)
+        return
+      }
+
       try {
         const { error } = await supabase.auth.getSession()
         if (!error) {
-          logAuthEvent('COLD_BOOT_PING_SUCCESS', 'Connection established after delayed retry')
+          logAuthEvent('COLD_BOOT_PING_SUCCESS', 'Connection established via repeating ping')
           setIsNetworkTimeout(false)
           isNetworkTimeoutRef.current = false
           setForceSync(prev => prev + 1)
+          clearInterval(intervalId) // SUCCESS: Stop loop
         }
       } catch (err) {
-        logAuthEvent('COLD_BOOT_PING_FAILED', 'Retry failed, waiting for user interaction')
+        logAuthEvent('COLD_BOOT_PING_FAILED', 'Ping failed, will try again in 5s')
       }
-    }, 3000) // Wait 3 seconds for the radio to fully wake up
+    }, 5000) // Try every 5 seconds
 
-    return () => clearTimeout(retryTimer)
+    return () => clearInterval(intervalId)
   }, [isNetworkTimeout])
 
   // Phase 1.2: Effect A - Activity Heartbeat (initial DB update only)
@@ -426,7 +482,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .update({ last_active: new Date().toISOString() })
           .eq('auth_id', user.id)
       } catch (err) {
-        // Heartbeat errors should not interrupt the user experience
+        // Heartbeat errors should not interrupt user experience
       }
     }
 
@@ -434,9 +490,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     updateActivity()
   }, [user])
 
-
-
-  // NEW: Global activity listener to update the ref silently
+  // NEW: Global activity listener to update ref silently
   // CHANGED: Was part of monolithic effect, now independent
   useEffect(() => {
     const handleActivity = () => {
@@ -473,7 +527,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const handleVisibilityChange = async () => {
       if (document.visibilityState === 'visible' && user) {
         // Focus Heartbeat: If network timeout is active, ping Supabase to test TCP connectivity
-        // This bypasses the liar navigator.onLine state on mobile networks
+        // This bypasses liar navigator.onLine state on mobile networks
         if (isNetworkTimeoutRef.current) {
           logAuthEvent('WAKEUP_PING', 'Network timeout active, testing connection...')
           try {
@@ -526,8 +580,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [user])
 
-
-
   // KEPT INTACT: Existing auth methods
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({
@@ -555,7 +607,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     try {
-      // 1. Let Supabase properly invalidate the token on server, with a 2s timeout to prevent locks
+      // 1. Let Supabase properly invalidate token on server, with a 2s timeout to prevent locks
       const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 2000));
       await Promise.race([supabase.auth.signOut(), timeout]);
     } catch (error) {
@@ -590,8 +642,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error('Google sign in error:', error)
     }
   }
-
-
 
   const refreshProfile = async (force = false) => {
     if (!user) return

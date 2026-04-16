@@ -180,14 +180,20 @@ export function useDashboardData(): UseDashboardDataReturn {
         // Only update state if query succeeds; keep cached value on error
         if (hasQ !== null) {
           setHasQuestionnaire(hasQ)
-          sessionStorage.setItem('hasQuestionnaireCache', String(hasQ))
+          localStorage.setItem('hasQuestionnaireCache', JSON.stringify({ data: hasQ, timestamp: Date.now() }))
           console.log('[Questionnaire Check] User has questionnaire:', hasQ)
         } else {
-          // On query failure, try to use cached value
-          const cached = sessionStorage.getItem('hasQuestionnaireCache')
+          // On query failure, try to use cached value from persistent storage
+          const cached = localStorage.getItem('hasQuestionnaireCache')
           if (cached !== null) {
-            setHasQuestionnaire(cached === 'true')
-            console.log('[Questionnaire Check] Using cached value:', cached)
+            try {
+              const { data, timestamp } = JSON.parse(cached)
+              const isExpired = !timestamp || (Date.now() - timestamp > 86400000) // 24 hour TTL for questionnaire status
+              if (!isExpired) {
+                setHasQuestionnaire(data)
+                console.log('[Questionnaire Check] Using persistent cached value:', data)
+              }
+            } catch (e) { /* ignore parse errors */ }
           }
         }
 

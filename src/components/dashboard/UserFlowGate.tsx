@@ -57,7 +57,10 @@ export function UserFlowGate({
 
   // Questionnaire incomplete gate (Only block if we also have 0 matches)
   // Only show this when hasQuestionnaire is explicitly false (null = loading)
-  if (hasQuestionnaire === false && matchesCount === 0) {
+  // Don't show if match calculation is pending - app will retry automatically
+  const needsMatchCalculation = typeof window !== 'undefined' && localStorage.getItem('needsMatchCalculation') === 'true'
+  
+  if (hasQuestionnaire === false && matchesCount === 0 && !needsMatchCalculation) {
     return (
       <motion.div
         key="questionnaire-incomplete"

@@ -30,7 +30,7 @@ const STORAGE_KEY = 'roommate_answers'
 const ORDER_KEY = 'roommate_question_order'
 
 export function QuestionnairePage() {
-  const { user, profile, session } = useAuth()
+  const { user, profile, session, triggerGlobalSync } = useAuth()
   const [questions, setQuestions] = useState<Question[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [answers, setAnswers] = useState<Record<string, string>>({})
@@ -108,6 +108,7 @@ export function QuestionnairePage() {
     setSubmitError(null)
     
     try {
+      // Step 1: Save questionnaire responses to database
       const { error: upsertError } = await withTimeout(
         supabase.from('questionnaire_responses').upsert({
           user_id: profile.id,
@@ -119,24 +120,58 @@ export function QuestionnairePage() {
       )
       if (upsertError) throw upsertError
 
-      const response = await withTimeout(
-        fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/match-calculate`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`
-          },
-          body: JSON.stringify({ userId: profile.id })
-        }),
-        45000,
-        "Calculation engine timeout."
-      )
+      // Step 2: Call match-calculate Edge Function with retry mechanism
+      const callMatchCalculate = async (retries = 3): Promise<boolean> => {
+        for (let i = 0; i < retries; i++) {
+          try {
+            const response = await withTimeout(
+              fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/match-calculate`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${session.access_token}`
+                },
+                body: JSON.stringify({ userId: profile.id })
+              }),
+              45000,
+              "Calculation engine timeout."
+            )
 
-      if (!response.ok) {
-        console.warn('Edge Function offline.')
+            if (response.ok) {
+              console.log('[Match Calculate] Success on attempt', i + 1)
+              return true
+            } else {
+              console.warn('[Match Calculate] Failed on attempt', i + 1, 'Status:', response.status)
+              // Don't retry on 4xx errors (client errors)
+              if (response.status >= 400 && response.status < 500) {
+                return false
+              }
+            }
+          } catch (err) {
+            console.warn('[Match Calculate] Error on attempt', i + 1, err)
+          }
+
+          // Exponential backoff: 2s, 4s, 8s
+          if (i < retries - 1) {
+            await new Promise(resolve => setTimeout(resolve, 2000 * Math.pow(2, i)))
+          }
+        }
+        return false
       }
 
-      toast.success('DNA Sync Complete!')
+      const matchCalculateSuccess = await callMatchCalculate()
+
+      if (!matchCalculateSuccess) {
+        // Edge Function failed, but questionnaire data is saved
+        // Store a flag to retry matching later
+        localStorage.setItem('needsMatchCalculation', 'true')
+        toast.warning('DNA saved! Matching will complete when connection is stable.')
+      } else {
+        toast.success('DNA Sync Complete!')
+        // Trigger dashboard refresh to fetch new matches
+        triggerGlobalSync()
+      }
+
       localStorage.removeItem(STORAGE_KEY)
       localStorage.removeItem(ORDER_KEY)
       localStorage.removeItem('roommate_edit_count')
