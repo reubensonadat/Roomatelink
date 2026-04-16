@@ -28,6 +28,8 @@ function withTimeout<T>(promise: PromiseLike<T>, ms: number, message: string): P
 
 const STORAGE_KEY = 'roommate_answers'
 const ORDER_KEY = 'roommate_question_order'
+const SUBMISSION_IN_PROGRESS_KEY = 'roommate_submission_in_progress'
+const SUBMISSION_TIMESTAMP_KEY = 'roommate_submission_timestamp'
 
 export function QuestionnairePage() {
   const { user, profile, session, triggerGlobalSync } = useAuth()
@@ -51,6 +53,40 @@ export function QuestionnairePage() {
     const savedAnswers = localStorage.getItem(STORAGE_KEY)
     const savedOrder = localStorage.getItem(ORDER_KEY)
     const savedEditCount = localStorage.getItem('roommate_edit_count')
+    
+    // Check for interrupted submission on app mount (PWA scenario)
+    const submissionInProgress = localStorage.getItem(SUBMISSION_IN_PROGRESS_KEY)
+    const submissionTimestamp = localStorage.getItem(SUBMISSION_TIMESTAMP_KEY)
+    
+    if (submissionInProgress === 'true' && submissionTimestamp) {
+      const timestamp = parseInt(submissionTimestamp)
+      const timeSinceSubmission = Date.now() - timestamp
+      
+      // If submission was interrupted less than 5 minutes ago, auto-resubmit
+      if (timeSinceSubmission < 300000 && user && profile && session) {
+        console.log('[Questionnaire] Detected interrupted submission, auto-resubmiting...')
+        toast.info('Resuming DNA sync...')
+        
+        // Parse saved answers
+        try {
+          const parsedAnswers = JSON.parse(savedAnswers || '{}')
+          if (Object.keys(parsedAnswers).length > 0) {
+            // Trigger submission with saved answers
+            performSubmission(parsedAnswers)
+          }
+        } catch (err) {
+          console.error('[Questionnaire] Failed to parse saved answers for resubmission:', err)
+          // Clear the interrupted submission flags
+          localStorage.removeItem(SUBMISSION_IN_PROGRESS_KEY)
+          localStorage.removeItem(SUBMISSION_TIMESTAMP_KEY)
+        }
+      } else {
+        // Submission was too old or user not authenticated, clear flags
+        console.log('[Questionnaire] Clearing stale interrupted submission flags')
+        localStorage.removeItem(SUBMISSION_IN_PROGRESS_KEY)
+        localStorage.removeItem(SUBMISSION_TIMESTAMP_KEY)
+      }
+    }
 
     if (savedEditCount) {
       setEditCount(parseInt(savedEditCount) || 0)
@@ -93,7 +129,7 @@ export function QuestionnairePage() {
     }
 
     setReady(true)
-  }, [])
+  }, [user, profile, session])
 
   const currentQ = questions[currentIndex]
   const progressPercent = ((currentIndex) / questions.length) * 100
@@ -106,6 +142,10 @@ export function QuestionnairePage() {
 
     setIsSubmitting(true)
     setSubmitError(null)
+    
+    // Mark submission as in progress BEFORE starting (PWA protection)
+    localStorage.setItem(SUBMISSION_IN_PROGRESS_KEY, 'true')
+    localStorage.setItem(SUBMISSION_TIMESTAMP_KEY, Date.now().toString())
     
     try {
       // Step 1: Save questionnaire responses to database
@@ -175,10 +215,18 @@ export function QuestionnairePage() {
       localStorage.removeItem(STORAGE_KEY)
       localStorage.removeItem(ORDER_KEY)
       localStorage.removeItem('roommate_edit_count')
+      // Clear submission in progress flag ONLY after successful completion
+      localStorage.removeItem(SUBMISSION_IN_PROGRESS_KEY)
+      localStorage.removeItem(SUBMISSION_TIMESTAMP_KEY)
       navigate('/questionnaire/calculation')
     } catch (error: any) {
       setSubmitError(error.message || 'Network unresponsive.')
       toast.error('Sync Interrupted')
+      // Keep submission in progress flag on error so we can retry
+      // Don't clear answers - they're preserved in localStorage
+    } finally {
+      // Always reset submitting state
+      setIsSubmitting(false)
     }
   }
 

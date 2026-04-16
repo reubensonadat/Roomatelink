@@ -59,17 +59,26 @@ export function ChatPage() {
   const scrollPositionRef = useRef<number>(0)
   const typingTimeoutRef = useRef<number | null>(null)
 
-  // Scroll to bottom on messages change and on initial mount
+  // Scroll to bottom when new messages arrive
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
-
-  // Also scroll on initial mount when messages are loaded
-  useEffect(() => {
-    if (!isLoading && messages.length > 0) {
-      bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (!isLoading && !isSyncing) {
+      // Small timeout to allow DOM to finish rendering
+      const timer = setTimeout(() => {
+        bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+      }, 100)
+      return () => clearTimeout(timer)
     }
-  }, [isLoading, messages.length])
+  }, [messages.length, isLoading, isSyncing])
+
+  // Instant scroll on initial load completion
+  useEffect(() => {
+    if (!isLoading && !isSyncing && messages.length > 0) {
+      const timer = setTimeout(() => {
+        bottomRef.current?.scrollIntoView({ behavior: 'auto' })
+      }, 50)
+      return () => clearTimeout(timer)
+    }
+  }, [isLoading, isSyncing])
 
   // Debounced typing indicator
   const handleInputChange = useCallback((value: string) => {
@@ -302,7 +311,7 @@ export function ChatPage() {
               <div
                 ref={messagesContainerRef}
                 onScroll={handleScroll}
-                className="flex-1 overflow-y-auto px-4 pb-4"
+                className="flex-1 overflow-y-auto px-4 pt-6 pb-4"
               >
                 <div className="max-w-2xl mx-auto space-y-4">
                   {/* Load more indicator at top */}
@@ -319,10 +328,10 @@ export function ChatPage() {
                       transition={{ delay: i * 0.05, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
                       className={`flex ${msg.sender === 'me' ? 'justify-end' : 'justify-start'}`}
                     >
-                      <div className={`flex flex-col ${msg.sender === 'me' ? 'items-end' : 'items-start'} max-w-[80%]`}>
-                        <div className={`flex gap-3 ${msg.sender === 'me' ? 'flex-row-reverse' : 'flex-row'}`}>
-                          <div className={`relative flex-shrink-0 overflow-hidden ${msg.sender === 'me' ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground'} p-3 rounded-[22px] max-w-[260px] sm:max-w-[320px] shadow-sm flex flex-col min-w-0`}>
-                            <p className={`text-sm leading-relaxed break-words overflow-wrap-anywhere ${msg.sender === 'me' ? 'text-right' : 'text-left'}`}>
+                      <div className={`flex flex-col ${msg.sender === 'me' ? 'items-end' : 'items-start'} max-w-[85%] sm:max-w-[75%]`}>
+                        <div className={`flex gap-3 w-full ${msg.sender === 'me' ? 'justify-end' : 'justify-start'}`}>
+                          <div className={`relative flex-shrink-0 ${msg.sender === 'me' ? 'bg-primary text-primary-foreground rounded-[24px] rounded-br-[6px]' : 'bg-white border border-border/50 text-foreground rounded-[24px] rounded-bl-[6px]'} px-4 py-3 shadow-sm flex flex-col min-w-0`}>
+                            <p className={`text-[15px] leading-relaxed whitespace-pre-wrap break-words ${msg.sender === 'me' ? 'text-right' : 'text-left'}`} style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                               {msg.text}
                             </p>
                             <div className={`flex items-center gap-1.5 mt-2 ${msg.sender === 'me' ? 'justify-end' : 'justify-start'}`}>
