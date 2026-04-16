@@ -29,11 +29,14 @@ export function useDashboardData(): UseDashboardDataReturn {
   
   // Core State
   const [matches, setMatches] = useState<MatchProfile[]>(() => {
-    const cached = sessionStorage.getItem('matchesCache')
-    if (!cached) return []
     try {
-      const parsed = JSON.parse(cached)
-      return Array.isArray(parsed) && parsed.length > 0 ? parsed : []
+      const cached = localStorage.getItem('matchesCache')
+      if (!cached) return []
+      const { data, timestamp } = JSON.parse(cached)
+      // 1-hour Time-To-Live (TTL) to prevent showing severely stale data
+      const isExpired = !timestamp || (Date.now() - timestamp > 3600000)
+      if (isExpired) return []
+      return Array.isArray(data) && data.length > 0 ? data : []
     } catch {
       return []
     }
@@ -333,13 +336,13 @@ export function useDashboardData(): UseDashboardDataReturn {
           
           setMatches(mappedMatches)
           if (!isMountedRef.current) return
-          sessionStorage.setItem('matchesCache', JSON.stringify(mappedMatches))
+          localStorage.setItem('matchesCache', JSON.stringify({ data: mappedMatches, timestamp: Date.now() }))
           resolveGlobalSync(true)
           clearNetworkTimeout()
           successOnceRef.current = true
         } else {
           setMatches([])
-          sessionStorage.removeItem('matchesCache')
+          localStorage.removeItem('matchesCache')
         }
 
         // Step 4: Verify Pioneer Status if not already checked
