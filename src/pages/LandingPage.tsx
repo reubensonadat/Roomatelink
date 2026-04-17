@@ -1,6 +1,6 @@
 
 import { Link } from 'react-router-dom'
-import { ChevronRight, ChevronDown, Menu, X, Shield, Calendar, BarChart2, Star, CheckCircle2, MessageSquare, MapPin } from 'lucide-react'
+import { ChevronRight, ChevronDown, Menu, X, Shield, Calendar, BarChart2, Star, CheckCircle2, MessageSquare, MapPin, Users, Home, UserPlus, Search } from 'lucide-react'
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -89,12 +89,12 @@ export function LandingPage() {
 
                     <nav className="hidden lg:flex items-center gap-8">
                         {navLinks.map((link) => (
-                            <button key={link.id} onClick={() => scrollTo(link.id)} className="text-[15px] font-bold text-[#0F172A] hover:text-[#F97316] transition-colors">{link.label}</button>
+                            <button key={link.id} onClick={() => scrollTo(link.id)} className="text-[15px] font-medium text-[#0F172A] hover:text-[#F97316] transition-colors">{link.label}</button>
                         ))}
                     </nav>
 
                     <div className="hidden lg:flex items-center gap-6">
-                        <Link to="/auth" className="text-[15px] font-bold text-[#0F172A] hover:text-[#F97316] transition-colors">
+                        <Link to="/auth" className="text-[15px] font-medium text-[#0F172A] hover:text-[#F97316] transition-colors">
                             Log In
                         </Link>
                         <Link to="/auth" className="px-6 py-3 rounded-full bg-[#F97316] text-[#FFFFFF] font-bold text-[15px] hover:bg-[#EA580C] transition-all shadow-md hover:shadow-lg active:scale-95">
@@ -112,10 +112,10 @@ export function LandingPage() {
                         <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="lg:hidden bg-white border-b border-slate-100 overflow-hidden mt-[80px]">
                             <div className="flex flex-col px-6 py-6 gap-4">
                                 {navLinks.map((link) => (
-                                    <button key={link.id} onClick={() => { scrollTo(link.id); setIsMenuOpen(false); }} className="text-left text-[16px] font-bold text-[#0F172A] py-2">{link.label}</button>
+                                    <button key={link.id} onClick={() => { scrollTo(link.id); setIsMenuOpen(false); }} className="text-left text-[16px] font-medium text-[#0F172A] py-2">{link.label}</button>
                                 ))}
                                 <div className="h-px w-full bg-slate-100 my-2" />
-                                <Link to="/auth" onClick={() => setIsMenuOpen(false)} className="text-[16px] font-bold text-[#0F172A] py-2">Log In</Link>
+                                <Link to="/auth" onClick={() => setIsMenuOpen(false)} className="text-[16px] font-medium text-[#0F172A] py-2">Log In</Link>
                                 <Link to="/auth" onClick={() => setIsMenuOpen(false)} className="w-full text-center py-3 rounded-xl bg-[#F97316] text-[#FFFFFF] font-bold text-[16px] mt-2">Sign Up</Link>
                             </div>
                         </motion.div>
@@ -123,113 +123,132 @@ export function LandingPage() {
                 </AnimatePresence>
             </header>
 
-            <main className="overflow-x-hidden pt-32 pb-20 w-full overflow-hidden">
+            <main className="overflow-x-hidden pt-20 w-full">
                 {/* 2. HERO */}
-                <section id="hero" className="w-full max-w-7xl mx-auto px-6 pt-10 pb-24 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+                <section id="hero" className="w-full max-w-7xl mx-auto px-6 pt-2 pb-12 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
                     <motion.div initial="hidden" animate="visible" variants={staggerContainer} className="flex flex-col items-start text-left">
-                        <motion.h1 variants={fadeUp} className="text-[3.5rem] sm:text-[4.5rem] leading-[1.05] font-black tracking-tight text-[#0F172A] mb-8">
-                            Find roommates who <br className="hidden sm:block"/><span className="text-[#F97316]">actually match</span> your lifestyle
+                        <motion.h1 variants={fadeUp} className="text-[38px] sm:text-[46px] lg:text-[54px] leading-[1.15] font-bold tracking-tight text-[#0F172A] mb-6">
+                            Find roommates who <br className="hidden sm:block"/>
+                            <span className="text-[#F97316]">actually match</span> your <br className="hidden sm:block"/>
+                            lifestyle
                         </motion.h1>
-                        <motion.p variants={fadeUp} className="text-[18px] text-slate-500 max-w-lg mb-10 font-bold leading-relaxed opacity-90">
-                            Stop rolling the dice on random roommates. Pinpoint compatible living partners using behavior mapping and precise compatibility criteria.
+                        <motion.p variants={fadeUp} className="text-[15px] sm:text-[16px] text-[#6B7280] max-w-[480px] mb-8 font-normal leading-relaxed">
+                            Stop settling for random roommates. Match with people who share your habits, schedule, and living preferences. Your perfect living situation starts here.
                         </motion.p>
                         
-                        <motion.div variants={fadeUp} className="flex flex-col sm:flex-row gap-4 mb-10 w-full sm:w-auto">
-                            <Link to="/auth" className="w-full sm:w-auto px-8 py-4 rounded-full bg-[#F97316] text-white font-bold text-[16px] hover:bg-[#EA580C] shadow-lg hover:shadow-xl transition-all text-center">
-                                Get Started Today
+                        <motion.div variants={fadeUp} className="flex flex-col sm:flex-row gap-4 mb-10 w-full sm:w-[80%] lg:w-auto">
+                            <Link to="/auth" className="flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl bg-[#F97316] text-white font-medium text-[15px] hover:bg-[#EA580C] shadow-sm transition-all text-center">
+                                Get Started Free <span className="text-lg font-bold leading-none">→</span>
                             </Link>
-                            <button onClick={() => scrollTo('how-it-works')} className="w-full sm:w-auto px-8 py-4 rounded-full bg-white text-[#0F172A] border-2 border-slate-200 font-bold text-[16px] hover:border-slate-300 transition-all text-center">
+                            <button onClick={() => scrollTo('how-it-works')} className="px-8 py-3.5 rounded-xl bg-white text-[#0F172A] border border-slate-200 font-medium text-[15px] hover:border-slate-300 shadow-sm transition-all text-center">
                                 See How It Works
                             </button>
                         </motion.div>
 
-                        <motion.div variants={fadeUp} className="flex flex-col sm:flex-row items-start gap-4">
-                            <div className="flex gap-1.5 py-1">
-                                {[1,2,3,4,5].map(i => <Star key={`s-${i}`} className="w-6 h-6 fill-[#F97316] text-[#F97316]" />)}
+                        <motion.div variants={fadeUp} className="flex flex-col sm:flex-row items-center sm:items-start gap-4">
+                            <div className="flex -space-x-3">
+                                <div className="w-10 h-10 rounded-full border-2 border-white bg-gradient-to-br from-[#f3ead1] to-[#e7ebdb]"></div>
+                                <div className="w-10 h-10 rounded-full border-2 border-white bg-gradient-to-br from-[#f1edd1] to-[#e9f1e1]"></div>
+                                <div className="w-10 h-10 rounded-full border-2 border-white bg-gradient-to-br from-[#eef2cf] to-[#e4f3de]"></div>
+                                <div className="w-10 h-10 rounded-full border-2 border-white bg-gradient-to-br from-[#e8f3cc] to-[#dbf3e1]"></div>
                             </div>
-                            <div className="flex flex-col border-l-2 border-slate-200 pl-4">
-                                <span className="text-[14px] font-black text-[#0F172A] tracking-tight">99% Match Success Rate</span>
-                                <span className="text-[12px] font-bold text-slate-400">Based on 10,000+ student matches</span>
+                            <div className="flex flex-col justify-center">
+                                <span className="text-[13px] font-bold text-[#0F172A]">Join early access</span>
+                                <span className="text-[12px] font-normal text-slate-500">Be among the first to find better matches</span>
                             </div>
                         </motion.div>
                     </motion.div>
 
-                    <motion.div initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.8 }} className="relative flex justify-center items-center h-full">
-                        <img src="/Group discussion-bro.png" alt="Students Talking" className="w-[110%] max-w-[600px] object-contain h-[400px] lg:h-[500px] right-0 relative" />
+                    <motion.div initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.8 }} className="relative flex justify-center lg:justify-end items-center h-full">
+                        <img src="/Group discussion-bro.png" alt="Students Talking" className="w-full lg:w-[120%] max-w-[750px] object-contain h-auto lg:h-[600px] relative select-none pointer-events-none" />
                     </motion.div>
                 </section>
 
                 {/* 3. BENTO FEATURES */}
-                <section id="features" className="w-full bg-slate-50 py-24 border-t border-slate-100">
+                <section id="features" className="w-full bg-slate-50 pt-16 pb-24 border-t border-slate-100">
                     <div className="max-w-7xl mx-auto px-6">
                         <div className="text-center mb-16 max-w-2xl mx-auto">
-                            <h2 className="text-4xl md:text-5xl font-black text-[#0F172A] mb-4 tracking-tight">Everything you need to find the <br className="hidden sm:block"/><span className="text-[#F97316]">right roommate</span></h2>
-                            <p className="text-[18px] font-bold text-slate-400 opacity-90">Powerful features designed to make roommate matching simple, safe, and effective.</p>
+                            <h2 className="text-[32px] md:text-[42px] font-bold text-[#0F172A] mb-4 tracking-tight leading-tight">
+                                Everything you need to find the <br />
+                                <span className="text-[#F97316]">right roommate</span>
+                            </h2>
+                            <p className="text-[15px] sm:text-[16px] font-normal text-slate-500 leading-relaxed">
+                                Powerful features designed to make roommate matching simple, safe, and effective.
+                            </p>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-10 gap-6">
                             {/* Top row */}
-                            <div className="col-span-1 md:col-span-2 lg:col-span-2 bg-[#F97316] rounded-3xl p-10 flex flex-col justify-between text-white relative overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300">
+                            <div className="col-span-1 lg:col-span-6 bg-[#F97316] rounded-3xl p-10 flex flex-col justify-between text-white relative overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300">
                                 <div className="absolute top-0 right-0 w-64 h-64 bg-white/20 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/2"></div>
-                                <div className="z-10 bg-white/20 w-16 h-16 rounded-2xl flex items-center justify-center mb-24 border border-white/20 backdrop-blur-md">
-                                    <Star className="w-8 h-8 text-white fill-white" />
+                                <div className="z-10 bg-white/20 w-16 h-16 rounded-2xl flex items-center justify-center mb-8 border border-white/20 backdrop-blur-md">
+                                    <Users className="w-8 h-8 text-white" />
                                 </div>
                                 <div className="z-10">
-                                    <h3 className="text-3xl font-black mb-4 tracking-tight">Smart Matching</h3>
-                                    <p className="text-white/90 text-[16px] font-bold max-w-sm mb-10 leading-relaxed">Our algorithm computes over 40 unique behavioral metrics to ensure you live with someone who perfectly aligns with your lifestyle.</p>
-                                    <div className="flex gap-12">
+                                    <h3 className="text-[28px] font-bold mb-4 tracking-tight">Smart Matching</h3>
+                                    <p className="text-white/90 text-[15px] font-normal max-w-lg mb-10 leading-relaxed">Our algorithm pairs you with compatible roommates based on lifestyle, habits, and preferences. We analyze dozens of factors to ensure you connect with people who truly match your living style.</p>
+                                    <div className="flex gap-16">
                                         <div>
-                                            <div className="text-[2.5rem] font-black leading-none mb-1">99%</div>
-                                            <div className="text-[13px] font-bold text-white/80 uppercase tracking-widest">Match Success</div>
+                                            <div className="text-[36px] font-bold leading-none mb-2">95%</div>
+                                            <div className="text-[12px] font-normal text-white/70 uppercase tracking-wider">Match Accuracy</div>
                                         </div>
                                         <div>
-                                            <div className="text-[2.5rem] font-black leading-none mb-1">10K+</div>
-                                            <div className="text-[13px] font-bold text-white/80 uppercase tracking-widest">Active Users</div>
+                                            <div className="text-[36px] font-bold leading-none mb-2">10k+</div>
+                                            <div className="text-[12px] font-normal text-white/70 uppercase tracking-wider">Matches Made</div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="col-span-1 md:col-span-1 lg:col-span-2 bg-white rounded-3xl p-8 flex flex-col justify-between border border-slate-200 shadow-sm relative overflow-hidden group min-h-[400px]">
-                                <div className="relative z-10 flex flex-col items-start pt-4">
-                                    <div className="bg-white/90 backdrop-blur-md rounded-2xl p-5 shadow-sm border border-slate-100">
-                                        <h3 className="text-[22px] font-black text-[#0F172A] mb-2 tracking-tight">Location Based</h3>
-                                        <p className="text-slate-500 font-bold text-[15px] max-w-[200px] leading-snug">Filter connections by neighborhood proximity and campus routing.</p>
+                            <div className="col-span-1 lg:col-span-4 bg-white rounded-3xl flex flex-col justify-end border border-slate-200 shadow-sm relative overflow-hidden group min-h-[400px]">
+                                <div className="absolute inset-0 z-0">
+                                    <img src="/Location review.png" alt="Location Map" className="w-full h-full object-cover object-center group-hover:scale-[1.05] transition-transform duration-1000" />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent pointer-events-none"></div>
+                                </div>
+                                
+                                <div className="relative z-10 p-8 flex flex-col items-start text-white">
+                                    <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center mb-4 border border-white/20">
+                                        <Home className="w-6 h-6 text-white" />
                                     </div>
+                                    <h3 className="text-[22px] font-bold mb-2 tracking-tight">Location-Based</h3>
+                                    <p className="text-white/80 font-normal text-[15px] max-w-sm leading-snug">
+                                        Find roommates near your campus or in your preferred neighborhoods.
+                                    </p>
                                 </div>
-                                <div className="absolute inset-0 z-0 flex justify-end items-end p-4">
-                                    <img src="/Location review.png" alt="Location Map" className="w-[85%] max-w-[400px] object-contain object-bottom group-hover:scale-[1.02] transition-transform duration-700 origin-bottom-right" />
-                                    <div className="absolute inset-0 bg-gradient-to-l from-transparent via-transparent to-white/40 pointer-events-none"></div>
-                                </div>
+                            </div>
+
+                            {/* Mini Header for features */}
+                            <div className="col-span-1 lg:col-span-10 text-center mt-12 mb-8">
+                                <h3 className="text-[24px] md:text-[28px] font-bold text-[#0F172A]">Why Roommate Link?</h3>
                             </div>
 
                             {/* Middle Row */}
-                            <div className="col-span-1 bg-white rounded-3xl p-8 border border-slate-200 shadow-sm flex flex-col items-start group hover:border-emerald-200 transition-colors">
-                                <div className="bg-emerald-50 w-14 h-14 rounded-2xl flex items-center justify-center mb-6 border border-emerald-100 group-hover:bg-emerald-100 transition-colors">
-                                    <Shield className="w-7 h-7 text-emerald-600" />
+                            <div className="col-span-1 lg:col-span-3 bg-[#F97316]/5 rounded-3xl p-8 border border-orange-100/50 flex flex-col items-start group hover:bg-[#F97316]/10 transition-colors">
+                                <div className="mb-6">
+                                    <Shield className="w-8 h-8 text-[#F97316]" />
                                 </div>
-                                <h3 className="text-[22px] font-black text-[#0F172A] mb-3">Verified Profiles</h3>
-                                <p className="text-slate-500 text-[15px] font-bold leading-relaxed">We verify identity utilizing academic email structures to maintain trust.</p>
+                                <h4 className="text-[20px] font-bold text-[#0F172A] mb-3">Verified Profiles</h4>
+                                <p className="text-slate-500 text-[15px] font-normal leading-relaxed">We verify identity utilizing academic email structures to maintain trust.</p>
                             </div>
 
-                            <div className="col-span-1 bg-white rounded-3xl p-8 border border-slate-200 shadow-sm flex flex-col items-start group hover:border-orange-200 transition-colors">
-                                <div className="bg-[#F97316]/5 w-14 h-14 rounded-2xl flex items-center justify-center mb-6 border border-[#F97316]/10 group-hover:bg-[#F97316]/10 transition-colors">
-                                    <MessageSquare className="w-7 h-7 text-[#F97316]" />
+                            <div className="col-span-1 lg:col-span-3 bg-[#F97316]/5 rounded-3xl p-8 border border-orange-100/50 flex flex-col items-start group hover:bg-[#F97316]/10 transition-colors">
+                                <div className="mb-6">
+                                    <MessageSquare className="w-8 h-8 text-[#F97316]" />
                                 </div>
-                                <h3 className="text-[22px] font-black text-[#0F172A] mb-3">Safe Messaging</h3>
-                                <p className="text-slate-500 text-[15px] font-bold leading-relaxed">Chat securely within our platform without sharing personal contact info.</p>
+                                <h4 className="text-[20px] font-bold text-[#0F172A] mb-3">Safe Messaging</h4>
+                                <p className="text-slate-500 text-[15px] font-normal leading-relaxed">Chat securely within our platform without sharing personal contact info.</p>
                             </div>
 
-                            <div className="col-span-1 md:col-span-1 lg:col-span-2 bg-white rounded-3xl p-8 border border-slate-200 shadow-sm flex flex-col items-start group hover:border-[#F97316]/20 transition-colors">
-                                <div className="bg-[#F97316]/5 w-14 h-14 rounded-2xl flex items-center justify-center mb-6 border border-[#F97316]/10 group-hover:bg-[#F97316]/10 transition-colors">
-                                    <Calendar className="w-7 h-7 text-[#F97316]" />
+                            <div className="col-span-1 lg:col-span-4 bg-[#F97316]/5 rounded-3xl p-8 border border-orange-100/50 flex flex-col items-start group hover:bg-[#F97316]/10 transition-colors">
+                                <div className="mb-6">
+                                    <Calendar className="w-8 h-8 text-[#F97316]" />
                                 </div>
-                                <h3 className="text-[22px] font-black text-[#0F172A] mb-3">Schedule Meeting</h3>
-                                <p className="text-slate-500 text-[15px] font-bold leading-relaxed max-w-sm">Seamlessly coordinate face-to-face meetups offline through our integrated intuitive scheduler system.</p>
+                                <h4 className="text-[20px] font-bold text-[#0F172A] mb-3">Schedule Meeting</h4>
+                                <p className="text-slate-500 text-[15px] font-normal leading-relaxed max-w-sm">Seamlessly coordinate face-to-face meetups offline through our integrated intuitive scheduler system.</p>
                             </div>
 
                             {/* Bottom Row */}
-                            <div className="col-span-1 md:col-span-3 lg:col-span-4 bg-[#0F172A] rounded-3xl p-8 md:p-12 flex flex-col md:flex-row items-center justify-between shadow-xl text-white relative overflow-hidden group">
+                            <div className="col-span-1 md:col-span-2 lg:col-span-10 bg-[#0F172A] rounded-3xl p-8 md:p-12 flex flex-col md:flex-row items-center justify-between shadow-xl text-white relative overflow-hidden group">
                                 <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#F97316]/10 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/4 mix-blend-screen pointer-events-none group-hover:bg-[#F97316]/20 transition-colors duration-1000"></div>
                                 <div className="flex flex-col md:flex-row items-center md:items-center gap-8 mb-8 md:mb-0 relative z-10 w-full text-center md:text-left">
                                     <div className="bg-white/10 w-16 h-16 md:w-20 md:h-20 rounded-2xl flex items-center justify-center shrink-0 border border-white/10 relative overflow-hidden z-10">
@@ -249,27 +268,30 @@ export function LandingPage() {
                 </section>
 
                 {/* 4. HOW IT WORKS */}
-                <section id="how-it-works" className="w-full py-24 md:py-32 bg-white">
+                <section id="how-it-works" className="w-full py-24 bg-[#F9FAFB]/30">
                     <div className="max-w-7xl mx-auto px-6 text-center">
-                        <h2 className="text-4xl md:text-5xl font-black text-[#0F172A] mb-6 tracking-tight">How it works</h2>
-                        <p className="text-[18px] font-bold text-slate-400 mb-20">Four simple steps to finding your ideal roommate.</p>
+                        <h2 className="text-[36px] md:text-[42px] font-bold text-[#0F172A] mb-4 tracking-tight">How it works</h2>
+                        <p className="text-[15px] sm:text-[16px] font-normal text-slate-500 mb-20 leading-relaxed">Finding your perfect roommate is just four simple steps away.</p>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-6 relative">
-                            <div className="hidden lg:block absolute top-[40px] left-[15%] right-[15%] h-[2px] bg-slate-100 z-0"></div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 relative">
+                            {/* Connector Line */}
+                            <div className="hidden lg:block absolute top-0 left-[12%] right-[12%] h-px bg-slate-200 z-0 mt-8"></div>
 
                             {[
-                                { step: "01", icon: <Shield className="w-6 h-6 text-[#F97316]" />, title: 'Create Your Profile', desc: 'Detail your living requirements and fundamental behavioral preferences.' },
-                                { step: "02", icon: <CheckCircle2 className="w-6 h-6 text-[#F97316]" />, title: 'Get Matched', desc: 'Review curated profiles of vetted students carrying high compatibility scores.' },
-                                { step: "03", icon: <MessageSquare className="w-6 h-6 text-[#F97316]" />, title: 'Connect & Chat', desc: 'Break the ice utilizing our internal secure robust communication channel.' },
-                                { step: "04", icon: <MapPin className="w-6 h-6 text-[#F97316]" />, title: 'Meet & Register', desc: 'Formalize agreement and secure ideal on-campus or off-campus housing.' }
+                                { step: "01", icon: <UserPlus className="w-6 h-6 text-[#F97316]" />, title: 'Create Your Profile', desc: "Tell us about your lifestyle, habits, and what you're looking for in a roommate." },
+                                { step: "02", icon: <Search className="w-6 h-6 text-[#F97316]" />, title: 'Get Matched', desc: 'Our smart algorithm finds compatible matches based on your preferences and personality.' },
+                                { step: "03", icon: <MessageSquare className="w-6 h-6 text-[#F97316]" />, title: 'Connect & Chat', desc: 'Message potential roommates, ask questions, and get to know each other safely.' },
+                                { step: "04", icon: <CheckCircle2 className="w-6 h-6 text-[#F97316]" />, title: 'Move In Together', desc: 'Found your match? Coordinate move-in details and start your new living arrangement.' }
                             ].map((s, i) => (
-                                <div key={i} className="relative z-10 flex flex-col bg-white border border-slate-100 p-8 rounded-[2rem] shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 items-center text-center">
-                                    <div className="w-16 h-16 rounded-full bg-orange-50 border-4 border-white flex items-center justify-center mb-6 shadow-sm relative">
-                                        <div className="absolute -top-3 -right-2 w-8 h-8 rounded-full bg-[#0F172A] text-white flex items-center justify-center text-[12px] font-black border-2 border-white">{s.step}</div>
+                                <div key={i} className="relative z-10 flex flex-col bg-white p-8 rounded-2xl shadow-sm border border-slate-100 items-start text-left group hover:shadow-md transition-all duration-300">
+                                    <div className="absolute -top-4 -left-4 w-10 h-10 rounded-full bg-[#F97316] text-white flex items-center justify-center text-[13px] font-bold shadow-lg shadow-[#F97316]/20 border-4 border-[#F9FBFB]">
+                                        {s.step}
+                                    </div>
+                                    <div className="w-14 h-14 rounded-2xl bg-[#F97316]/10 flex items-center justify-center mb-6 group-hover:bg-[#F97316]/20 transition-colors">
                                         {s.icon}
                                     </div>
-                                    <h4 className="text-[20px] font-black text-[#0F172A] mb-4">{s.title}</h4>
-                                    <p className="text-[15px] text-slate-500 font-bold leading-relaxed">{s.desc}</p>
+                                    <h4 className="text-[18px] font-bold text-[#0F172A] mb-4">{s.title}</h4>
+                                    <p className="text-[14px] text-slate-500 font-normal leading-relaxed">{s.desc}</p>
                                 </div>
                             ))}
                         </div>
@@ -277,10 +299,10 @@ export function LandingPage() {
                 </section>
 
                 {/* 5. TAGS SECTION */}
-                <section className="w-full py-24 md:py-32 bg-slate-50 border-t border-slate-100">
+                <section className="w-full py-16 md:py-24 bg-slate-50 border-t border-slate-100">
                     <div className="max-w-5xl mx-auto px-6 text-center">
-                        <h2 className="text-4xl md:text-5xl font-black text-[#0F172A] mb-8 tracking-tight">We match on what <span className="text-[#F97316]">really matters</span></h2>
-                        <p className="text-[18px] font-bold text-slate-400 mb-16">Our algorithm considers dozens of distinct compatibility factors to find your ideal match.</p>
+                        <h2 className="text-[32px] md:text-[42px] font-bold text-[#0F172A] mb-4 tracking-tight">We match on what <span className="text-[#F97316]">really matters</span></h2>
+                        <p className="text-[15px] sm:text-[16px] font-normal text-slate-500 mb-12 max-w-2xl mx-auto leading-relaxed">Our algorithm considers dozens of distinct compatibility factors to find your ideal match.</p>
 
                         <div className="flex flex-wrap justify-center gap-3 md:gap-4 max-w-4xl mx-auto">
                             {harmonyTags.map((tag, i) => (
@@ -290,31 +312,29 @@ export function LandingPage() {
                             ))}
                         </div>
                         <div className="mt-12 flex items-center justify-center gap-4">
-                           <div className="h-px bg-slate-200 w-12"></div>
-                           <p className="text-[14px] font-bold text-slate-400 tracking-widest uppercase">...and 20+ specific behavioral factors.</p>
-                           <div className="h-px bg-slate-200 w-12"></div>
+                           <div className="h-px bg-slate-200 w-8 md:w-12"></div>
+                           <p className="text-[13px] font-medium text-slate-400 tracking-widest uppercase">and 20+ specific behavioral factors</p>
+                           <div className="h-px bg-slate-200 w-8 md:w-12"></div>
                         </div>
                     </div>
                 </section>
 
                 {/* 6. TESTIMONIAL */}
-                <section className="w-full py-24 md:py-32 bg-white">
-                    <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
-                        <div className="relative flex justify-center items-center order-2 md:order-1 h-[400px] md:h-[500px]">
-                            <img src="/Texting-amico.png" alt="Student texting" className="w-[100%] max-w-[500px] object-contain" />
+                <section className="w-full py-16 md:py-24 bg-slate-50/40">
+                    <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+                        <div className="relative flex justify-center items-center h-[350px] md:h-[450px]">
+                            <img src="/Texting-amico.png" alt="Student texting illustration" className="w-[100%] max-w-[450px] object-contain select-none pointer-events-none" />
                         </div>
-                        <div className="flex flex-col items-start bg-slate-50 p-10 md:p-16 rounded-[3rem] rounded-bl-xl relative order-1 md:order-2 border border-slate-100 shadow-sm">
-                            <div className="inline-flex px-4 py-1.5 bg-[#10B981]/10 text-[#10B981] font-black text-[12px] rounded-lg uppercase tracking-wider mb-8 z-10 border border-[#10B981]/20">Real User Experience</div>
-                            <p className="text-2xl md:text-[30px] font-black text-[#0F172A] leading-[1.3] mb-12 z-10 relative">
+                        <div className="flex flex-col items-start max-w-xl">
+                            <div className="inline-flex px-4 py-1.5 bg-[#10B981]/10 text-[#10B981] font-semibold text-[13px] rounded-full mb-8">Beta Tester</div>
+                            <p className="text-[24px] md:text-[28px] font-medium text-[#0F172A] leading-[1.5] mb-10">
                                 "I was dreading the random roommate lottery. This platform helped me find someone who actually shares my lifestyle and values. It's exactly what student housing needs."
                             </p>
-                            <div className="flex items-center gap-5 z-10">
-                                <div className="w-14 h-14 rounded-full bg-[#10B981]/10 border border-[#10B981]/20 flex items-center justify-center shrink-0">
-                                     <span className="text-[#10B981] font-black text-xl">SC</span>
-                                </div>
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#E2E8F0] to-[#DCFCE7] shadow-sm"></div>
                                 <div className="flex flex-col">
-                                    <span className="text-[18px] font-black text-[#0F172A]">Sarah Chen</span>
-                                    <span className="text-[14px] font-bold text-slate-400">Matched in August · UCLA Student</span>
+                                    <span className="text-[17px] font-bold text-[#0F172A]">Sarah Chen</span>
+                                    <span className="text-[14px] font-normal text-slate-500">Early Beta Tester • UC Berkeley</span>
                                 </div>
                             </div>
                         </div>
@@ -322,25 +342,25 @@ export function LandingPage() {
                 </section>
 
                 {/* 7. FAQ */}
-                <section id="faq" className="w-full py-24 md:py-32 bg-[#F8FAFC] border-t border-slate-200">
-                    <div className="max-w-3xl mx-auto px-6">
+                <section id="faq" className="w-full py-16 md:py-24 bg-slate-50 border-t border-slate-100">
+                    <div className="max-w-5xl mx-auto px-6">
                         <div className="text-center mb-16">
-                            <h2 className="text-4xl md:text-5xl font-black text-[#0F172A] mb-6 tracking-tight">Frequently asked questions</h2>
-                            <p className="text-[18px] font-bold text-slate-500">Everything you need to know about finding your perfect roommate.</p>
+                            <h2 className="text-[32px] md:text-[42px] font-bold text-[#0F172A] mb-4 tracking-tight leading-tight">Frequently asked questions</h2>
+                            <p className="text-[15px] sm:text-[16px] font-normal text-slate-500 leading-relaxed">Everything you need to know about finding your perfect roommate.</p>
                         </div>
 
-                        <div className="space-y-4 mb-20">
+                        <div className="space-y-3 mb-20 max-w-4xl mx-auto">
                             {faqs.map((faq, i) => (
-                                <div key={i} className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] transition-all hover:border-slate-300">
-                                    <button onClick={() => toggleFaq(i)} className="w-full px-8 py-6 flex items-center justify-between text-left focus:outline-none">
-                                        <span className="text-[17px] font-bold text-[#0F172A] pr-4 tracking-tight">{faq.q}</span>
-                                        <ChevronDown className={`w-5 h-5 text-slate-400 transition-transform duration-300 flex-shrink-0 ${faqOpen === i ? 'rotate-180 text-[#F97316]' : ''}`} />
+                                <div key={i} className="bg-white rounded-xl overflow-hidden shadow-sm transition-all duration-300 border border-slate-100/50">
+                                    <button onClick={() => toggleFaq(i)} className="w-full px-8 py-5 flex items-center justify-between text-left focus:outline-none">
+                                        <span className="text-[16px] font-bold text-[#0F172A] pr-4 tracking-tight">{faq.q}</span>
+                                        <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-300 ${faqOpen === i ? 'rotate-180 text-[#F97316]' : ''}`} />
                                     </button>
                                     <AnimatePresence>
                                         {faqOpen === i && (
                                             <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-                                                <div className="px-8 pb-8 pt-0 text-[16px] font-medium text-slate-500 leading-relaxed border-t border-slate-100 mx-8 mt-2">
-                                                    <div className="pt-6">{faq.a}</div>
+                                                <div className="px-8 pb-6 pt-0 text-[15px] font-normal text-slate-500 leading-relaxed">
+                                                    {faq.a}
                                                 </div>
                                             </motion.div>
                                         )}
@@ -349,9 +369,9 @@ export function LandingPage() {
                             ))}
                         </div>
 
-                        <div className="bg-white rounded-3xl p-12 text-center border border-slate-200 shadow-sm flex flex-col items-center max-w-xl mx-auto">
-                            <h3 className="text-2xl font-black text-[#0F172A] mb-6">Still have questions?</h3>
-                            <button className="px-10 py-5 rounded-full bg-[#F97316] text-white font-bold text-[16px] hover:bg-[#EA580C] shadow-lg transition-all hover:scale-105 active:scale-95">
+                        <div className="bg-white rounded-2xl p-10 md:p-14 text-center flex flex-col items-center max-w-4xl mx-auto shadow-sm border border-slate-100/50">
+                            <h3 className="text-[20px] md:text-[22px] font-bold text-[#0F172A] mb-8">Still have questions?</h3>
+                            <button className="px-10 py-4 rounded-[12px] bg-[#F97316] text-white font-bold text-[16px] hover:bg-[#EA580C] shadow-sm hover:shadow-md transition-all active:scale-95">
                                 Contact Support
                             </button>
                         </div>
@@ -359,24 +379,27 @@ export function LandingPage() {
                 </section>
 
                 {/* 8. CTA */}
-                <section className="w-full py-24 md:py-32 relative overflow-hidden bg-white">
-                    <div className="absolute inset-0 bg-gradient-to-tr from-orange-50/50 via-white to-emerald-50/50 opacity-100"></div>
-                    <div className="max-w-5xl mx-auto px-6 relative z-10">
-                        <div className="bg-white rounded-[3rem] p-12 md:p-24 text-center shadow-[0_30px_60px_-15px_rgba(0,0,0,0.1)] border border-slate-100">
-                            <h2 className="text-4xl md:text-[3.5rem] leading-[1.1] font-black text-[#0F172A] mb-8 tracking-tight">
-                                Ready to find your <br className="hidden md:block"/> <span className="text-[#F97316]">perfect roommate?</span>
+                <section className="w-full py-20 md:py-28 relative overflow-hidden bg-white">
+                    <div className="absolute inset-0 bg-gradient-to-tr from-orange-100/60 via-white to-emerald-100/60 opacity-100"></div>
+                    <div className="max-w-6xl mx-auto px-6 relative z-10">
+                        <div className="bg-white rounded-[2.5rem] p-12 md:p-20 text-center shadow-[0_40px_80px_-15px_rgba(0,0,0,0.15)] border border-slate-100/50">
+                            <h2 className="text-[32px] md:text-[48px] leading-[1.2] font-bold text-[#0F172A] mb-6 tracking-tight">
+                                Ready to find your <span className="text-[#F97316]">perfect roommate?</span>
                             </h2>
-                            <p className="text-[18px] md:text-[20px] font-bold text-slate-500 mb-12 max-w-2xl mx-auto leading-relaxed">
-                                Join thousands of students who have found compatible roommates and zero-friction living situations across campus.
+                            <p className="text-[15px] md:text-[16px] font-normal text-slate-500 mb-10 max-w-2xl mx-auto leading-relaxed">
+                                Join thousands of students who've found compatible roommates and better living situations. It's free to get started.
                             </p>
-                            <div className="flex flex-col sm:flex-row justify-center gap-6">
-                                <Link to="/auth" className="px-12 py-6 rounded-full bg-[#F97316] text-white font-black text-[17px] hover:bg-[#EA580C] shadow-xl hover:shadow-2xl transition-all text-center hover:-translate-y-1">
-                                    Create Free Profile
+                            <div className="flex flex-col sm:flex-row justify-center items-center gap-4 mb-10">
+                                <Link to="/auth" className="w-full sm:w-auto px-8 py-4 rounded-xl bg-[#F97316] text-white font-bold text-[16px] hover:bg-[#EA580C] transition-all flex items-center justify-center gap-2 group shadow-sm hover:shadow-md">
+                                    Create Your Profile <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                                 </Link>
-                                <button onClick={() => scrollTo('how-it-works')} className="px-12 py-6 rounded-full bg-white text-[#0F172A] border-2 border-slate-200 font-black text-[17px] hover:border-slate-300 transition-all text-center hover:-translate-y-1">
+                                <button onClick={() => scrollTo('how-it-works')} className="w-full sm:w-auto px-8 py-4 rounded-xl bg-white text-[#0F172A] border border-slate-200 font-bold text-[16px] hover:border-slate-300 transition-all shadow-sm hover:shadow-md">
                                     Learn More
                                 </button>
                             </div>
+                            <p className="text-[13px] font-medium text-slate-400">
+                                No credit card required • Free forever • Join in 2 minutes
+                            </p>
                         </div>
                     </div>
                 </section>
