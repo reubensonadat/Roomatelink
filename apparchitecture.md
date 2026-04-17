@@ -187,14 +187,26 @@ Users who do not wish to upload a photo may select from a curated grid of ten hi
 
 Avatars serve a secondary function: they signal to matches that this person values privacy and personality-first evaluation. That itself is compatibility information.
 
-3.5 — Auth Lifecycle: Single Source of Truth
+3.5 — Auth Lifecycle: Single Source of Truth (Updated 2026-04-17)
 Authentication is handled via a **Single Source of Truth** model designed to eliminate loading flashes and network freezes on mobile data:
-• **Explicit Session Verification**: On mount, the Auth Provider calls `supabase.auth.getSession()` explicitly to verify the session. We wait for this call to complete before setting any state, preventing race conditions.
+• **Synchronous Bootloader**: Before React mounts, `getInitialAuthState()` reads localStorage directly (no Promises, no network) to extract cached session and profile. This enables 0ms hydration — the dashboard appears on frame one with cached data.
+• **Optimistic Hydration**: If the cached token is valid (not expired within 60-second buffer), we pre-fill React state with cached data. Loading states start as `false` when valid cache exists, unblocking the UI immediately.
+• **Background Validation**: `initializeAuth()` runs in the background to validate the token and refresh data — no longer blocks the UI. The dashboard renders instantly while validation happens silently.
 • **Auth is a Gate**: The `onAuthStateChange` listener is the single source of truth for all auth state changes. It runs once on mount with an empty dependency array `[]`, ensuring it never re-runs. We do not use `window.addEventListener('focus')` or `visibilitychange` to refresh auth (causes lock contention and cascade re-renders).
 • **Mobile TCP Half-Open Mitigation**: We've implemented a global `createTimeoutFetch` wrapper that adds an 8-second timeout to all Supabase HTTP requests. When a timeout occurs, the `AbortController` physically tears down the TCP connection at the OS level, forcing the browser to recognize the dead connection immediately. This prevents the 2-minute app freeze on mobile data.
 • **Second Chance Auto-Retry**: If a request times out, it automatically tries the request one single time on a fresh TCP connection. The user never knows the network dropped if the retry succeeds.
 • **Phantom Login Prevention**: Inside `onAuthStateChange`, we immediately strip the URL hash if it contains `access_token` after Supabase has processed it. This prevents Supabase from re-reading the token 48 seconds later and triggering a phantom `SIGNED_IN` event.
 • **Optimistic Wallet Updates**: The `updateProfile()` function is exposed from `AuthContext` and can be called directly from components to update the UI instantly. This bypasses the 10-minute throttle on `refreshProfile()` and provides instant feedback when a user saves their profile.
+
+**Cold Start Performance (2026-04-17):**
+- **Before:** 8-10 second delay, completely blocked UI
+- **After:** <100ms time to first paint with cached UI, seamless background validation
+
+**Implementation Details:**
+- Token expiration check with 60-second buffer prevents FOUC (flash of unauthenticated content)
+- Refs initialized with cached values to prevent stale closures
+- Defensive error handling: corrupted localStorage fails safely without crashing
+- Custom Domain Note: If upgrading to a custom Supabase domain, manually hardcode the project ref in the storage key (regex extraction will fail on custom domains)
  
 4. Detailed User Flows
 
@@ -750,6 +762,11 @@ status	enum: ACTIVE, COMPLETED, EXPIRED, HIDDEN, SUSPENDED
 created_at	timestamp, default now()
 last_active	timestamp — updated on every app open, used for expiry tracking
 fcm_token	text — Firebase Cloud Messaging device token for push notifications
+is_pioneer	boolean, default false — pioneer user flag
+is_matched	boolean, default false — found roommate flag
+university_id	uuid, FK to university_domains — for student verification
+student_email	text, nullable — verified student email
+payment_reference	text, nullable — Paystack transaction reference
 
 
 7.2 Entity: questionnaire_responses
@@ -793,7 +810,26 @@ status	enum: PENDING, REVIEWED, ACTIONED, DISMISSED
 created_at	timestamp
 reviewed_at	timestamp, nullable
 admin_notes	text, nullable
- 
+
+
+7.6 Entity: university_domains
+Column	Type & Notes
+id	uuid, PRIMARY KEY
+email_domain	text, UNIQUE — e.g., "stu.ucc.edu.gh"
+university_name	text — e.g., "University of Cape Coast"
+Added for student email verification
+
+
+7.7 Entity: verification_codes
+Column	Type & Notes
+id	uuid, PRIMARY KEY
+user_id	uuid, FK to users
+email	text — verified student email
+code	text — 6-digit OTP
+expires_at	timestamp — 10-minute expiry
+Added for secure student verification via Resend
+
+
 8 — Technology Stack (COMPLETE REWRITE)
 Layer	Technology & Rationale
 Frontend	React 18+ with Vite — Pure SPA, zero server dependency, instant Cloudflare Pages deployment

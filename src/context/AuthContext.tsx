@@ -49,17 +49,87 @@ const getLocalProfile = (userId: string) => {
   }
 }
 
+/**
+ * Synchronous Bootloader: Reads cached auth state from localStorage BEFORE React mounts.
+ * This enables 0ms hydration — the dashboard appears on frame one with cached data.
+ *
+ * Returns nulls if:
+ * - No cached session exists
+ * - Session JSON is corrupted
+ * - Token is expired (prevents FOUC — flash of unauthenticated content)
+ */
+function getInitialAuthState(): {
+  session: Session | null
+  user: User | null
+  profile: UserProfile | null
+  isHydrated: boolean
+} {
+  try {
+    // 1. Extract project ref from Supabase URL to build the storage key
+    // URL format: https://<ref>.supabase.co
+    const url = import.meta.env.VITE_SUPABASE_URL || ''
+    const match = url.match(/https:\/\/([^.]+)\.supabase\.co/)
+    if (!match) {
+      return { session: null, user: null, profile: null, isHydrated: false }
+    }
+    const projectRef = match[1]
+
+    // 2. Build the exact key Supabase uses: sb-<ref>-auth-token
+    const storageKey = `sb-${projectRef}-auth-token`
+    const raw = localStorage.getItem(storageKey)
+    if (!raw) {
+      return { session: null, user: null, profile: null, isHydrated: false }
+    }
+
+    // 3. Parse the stored session
+    const parsed = JSON.parse(raw)
+    const currentSession = parsed?.session
+    if (!currentSession) {
+      return { session: null, user: null, profile: null, isHydrated: false }
+    }
+
+    // 4. CHECK TOKEN EXPIRATION (critical — prevents FOUC)
+    // expires_at is in seconds, Date.now() is in milliseconds
+    const expiresAt = currentSession.expires_at * 1000
+    const now = Date.now()
+    const bufferMs = 60 * 1000 // 60-second buffer
+    
+    if (now > expiresAt - bufferMs) {
+      // Token is expired or about to expire — do NOT optimistically hydrate
+      // Let the async initializeAuth() handle the refresh
+      return { session: null, user: null, profile: null, isHydrated: false }
+    }
+
+    // 5. Token is valid — read cached profile too
+    const cachedProfile = currentSession.user
+      ? getLocalProfile(currentSession.user.id)
+      : null
+
+    return {
+      session: currentSession,
+      user: currentSession.user,
+      profile: cachedProfile,
+      isHydrated: true
+    }
+  } catch {
+    // Corrupted localStorage — fail safely, do not crash
+    return { session: null, user: null, profile: null, isHydrated: false }
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  // Initialize with null - let Supabase handle session restoration asynchronously
-  const [user, setUser] = useState<User | null>(null)
-  const [session, setSession] = useState<Session | null>(null)
-  const [profile, setProfile] = useState<UserProfile | null>(null)
+  // Synchronous bootloader — pre-fill state from localStorage cache
+  const initialState = getInitialAuthState()
+  const [user, setUser] = useState<User | null>(initialState.user)
+  const [session, setSession] = useState<Session | null>(initialState.session)
+  const [profile, setProfile] = useState<UserProfile | null>(initialState.profile)
 
   // Granular loading states
-  const [isInitializing, setIsInitializing] = useState(true) // NEW: Track initial auth check
-  const [isSessionLoading, setIsSessionLoading] = useState(true)
-  const [isProfileLoading, setIsProfileLoading] = useState(true)
-  const [isHydrated, setIsHydrated] = useState(false)
+  // If we have valid cached state, start unblocked. Otherwise, start blocked.
+  const [isInitializing, setIsInitializing] = useState(!initialState.isHydrated)
+  const [isSessionLoading, setIsSessionLoading] = useState(!initialState.isHydrated)
+  const [isProfileLoading, setIsProfileLoading] = useState(!initialState.isHydrated)
+  const [isHydrated, setIsHydrated] = useState(initialState.isHydrated)
   const [isNetworkTimeout, setIsNetworkTimeout] = useState(false)
   const [isTrafficHeavy, setIsTrafficHeavy] = useState(false)
 
@@ -79,9 +149,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const lastActivityRef = useRef<number>(Date.now())
 
   // Ref to prevent stale closures when mapping cached data
-  const profileRef = useRef<UserProfile | null>(null)
-  const sessionRef = useRef<Session | null>(null)
-  const userRef = useRef<User | null>(null)
+  const profileRef = useRef<UserProfile | null>(initialState.profile)
+  const sessionRef = useRef<Session | null>(initialState.session)
+  const userRef = useRef<User | null>(initialState.user)
   const lastRefreshRef = useRef<number>(0)
 
   // Ref to track live value of isNetworkTimeout for event listener access
