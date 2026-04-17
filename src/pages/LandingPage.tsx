@@ -1,6 +1,6 @@
 
 import { Link } from 'react-router-dom'
-import { ChevronRight, ChevronDown, Menu, X, Shield, Calendar, BarChart2, Star, CheckCircle2, MessageSquare, MapPin, Users, Home, UserPlus, Search } from 'lucide-react'
+import { ChevronRight, ChevronDown, Menu, X, Shield, Calendar, BarChart2, CheckCircle2, MessageSquare, Users, Home, UserPlus, Search } from 'lucide-react'
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -138,7 +138,7 @@ export function LandingPage() {
                         
                         <motion.div variants={fadeUp} className="flex flex-col sm:flex-row gap-4 mb-10 w-full sm:w-[80%] lg:w-auto">
                             <Link to="/auth" className="flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl bg-[#F97316] text-white font-medium text-[15px] hover:bg-[#EA580C] shadow-sm transition-all text-center">
-                                Get Started Free <span className="text-lg font-bold leading-none">→</span>
+                                Get Started Free <span className="text-lg font-bold leading-none"> <ChevronRight></ChevronRight></span>
                             </Link>
                             <button onClick={() => scrollTo('how-it-works')} className="px-8 py-3.5 rounded-xl bg-white text-[#0F172A] border border-slate-200 font-medium text-[15px] hover:border-slate-300 shadow-sm transition-all text-center">
                                 See How It Works
