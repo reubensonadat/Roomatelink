@@ -55,7 +55,8 @@ export function LandingPage() {
     const navLinks = [
         { label: "How it works", id: "how-it-works" },
         { label: "Features", id: "features" },
-        { label: "Safety Guidelines", id: "faq" },
+        { label: "Methodology", id: "methodology" },
+        { label: "Testimonials", id: "testimonials" },
         { label: "FAQ", id: "faq" },
     ]
 
@@ -109,7 +110,7 @@ export function LandingPage() {
 
                 <AnimatePresence>
                     {isMenuOpen && (
-                        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="lg:hidden bg-white border-b border-slate-100 overflow-hidden mt-[80px]">
+                        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="lg:hidden bg-white border-b border-slate-100 overflow-hidden">
                             <div className="flex flex-col px-6 py-6 gap-4">
                                 {navLinks.map((link) => (
                                     <button key={link.id} onClick={() => { scrollTo(link.id); setIsMenuOpen(false); }} className="text-left text-[16px] font-medium text-[#0F172A] py-2">{link.label}</button>
@@ -125,43 +126,51 @@ export function LandingPage() {
 
             <main className="overflow-x-hidden pt-20 w-full">
                 {/* 2. HERO */}
-                <section id="hero" className="w-full max-w-7xl mx-auto px-6 pt-2 pb-12 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-                    <motion.div initial="hidden" animate="visible" variants={staggerContainer} className="flex flex-col items-start text-left">
-                        <motion.h1 variants={fadeUp} className="text-[38px] sm:text-[46px] lg:text-[54px] leading-[1.15] font-bold tracking-tight text-[#0F172A] mb-6">
-                            Find roommates who <br className="hidden sm:block"/>
-                            <span className="text-[#F97316]">actually match</span> your <br className="hidden sm:block"/>
-                            lifestyle
-                        </motion.h1>
-                        <motion.p variants={fadeUp} className="text-[15px] sm:text-[16px] text-[#6B7280] max-w-[480px] mb-8 font-normal leading-relaxed">
-                            Stop settling for random roommates. Match with people who share your habits, schedule, and living preferences. Your perfect living situation starts here.
-                        </motion.p>
-                        
-                        <motion.div variants={fadeUp} className="flex flex-col sm:flex-row gap-4 mb-10 w-full sm:w-[80%] lg:w-auto">
-                            <Link to="/auth" className="flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl bg-[#F97316] text-white font-medium text-[15px] hover:bg-[#EA580C] shadow-sm transition-all text-center">
-                                Get Started Free <span className="text-lg font-bold leading-none"> <ChevronRight></ChevronRight></span>
-                            </Link>
-                            <button onClick={() => scrollTo('how-it-works')} className="px-8 py-3.5 rounded-xl bg-white text-[#0F172A] border border-slate-200 font-medium text-[15px] hover:border-slate-300 shadow-sm transition-all text-center">
-                                See How It Works
-                            </button>
-                        </motion.div>
+                <section id="hero" className="relative w-full overflow-hidden">
+                    {/* Background for mobile */}
+                    <div className="absolute inset-0 z-0 lg:hidden group">
+                        <img src="public\reference images\friends.jpg" alt="Background" className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-black/50"></div>
+                    </div>
 
-                        <motion.div variants={fadeUp} className="flex flex-col sm:flex-row items-center sm:items-start gap-4">
-                            <div className="flex -space-x-3">
-                                <div className="w-10 h-10 rounded-full border-2 border-white bg-gradient-to-br from-[#f3ead1] to-[#e7ebdb]"></div>
-                                <div className="w-10 h-10 rounded-full border-2 border-white bg-gradient-to-br from-[#f1edd1] to-[#e9f1e1]"></div>
-                                <div className="w-10 h-10 rounded-full border-2 border-white bg-gradient-to-br from-[#eef2cf] to-[#e4f3de]"></div>
-                                <div className="w-10 h-10 rounded-full border-2 border-white bg-gradient-to-br from-[#e8f3cc] to-[#dbf3e1]"></div>
-                            </div>
-                            <div className="flex flex-col justify-center">
-                                <span className="text-[13px] font-bold text-[#0F172A]">Join early access</span>
-                                <span className="text-[12px] font-normal text-slate-500">Be among the first to find better matches</span>
-                            </div>
+                    <div className="max-w-7xl mx-auto px-6 pt-20 pb-20 lg:pt-2 lg:pb-12 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center relative z-10">
+                        <motion.div initial="hidden" animate="visible" variants={staggerContainer} className="flex flex-col items-start text-left">
+                            <motion.h1 variants={fadeUp} className="text-[38px] sm:text-[46px] lg:text-[54px] leading-[1.15] font-bold tracking-tight text-white lg:text-[#0F172A] mb-6">
+                                Find roommates who <br className="hidden sm:block"/>
+                                <span className="text-[#F97316]">actually match</span> your <br className="hidden sm:block"/>
+                                lifestyle
+                            </motion.h1>
+                            <motion.p variants={fadeUp} className="text-[15px] sm:text-[16px] text-white/80 lg:text-[#6B7280] max-w-[480px] mb-8 font-normal leading-relaxed">
+                                Stop settling for random roommates. Match with people who share your habits, schedule, and living preferences. Your perfect living situation starts here.
+                            </motion.p>
+                            
+                            <motion.div variants={fadeUp} className="flex flex-col sm:flex-row gap-4 mb-10 w-full sm:w-[80%] lg:w-auto">
+                                <Link to="/auth" className="flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl bg-[#F97316] text-white font-medium text-[15px] hover:bg-[#EA580C] shadow-sm transition-all text-center">
+                                    Get Started Free <ChevronRight className="w-5 h-5 ml-1" />
+                                </Link>
+                                <button onClick={() => scrollTo('how-it-works')} className="px-8 py-3.5 rounded-xl bg-white lg:bg-white text-[#0F172A] border border-slate-200 font-medium text-[15px] hover:border-slate-300 shadow-sm transition-all text-center">
+                                    See How It Works
+                                </button>
+                            </motion.div>
+    
+                            <motion.div variants={fadeUp} className="flex flex-col sm:flex-row items-center sm:items-start gap-4">
+                                <div className="flex -space-x-3">
+                                    <div className="w-10 h-10 rounded-full border-2 border-white bg-gradient-to-br from-[#f3ead1] to-[#e7ebdb]"></div>
+                                    <div className="w-10 h-10 rounded-full border-2 border-white bg-gradient-to-br from-[#f1edd1] to-[#e9f1e1]"></div>
+                                    <div className="w-10 h-10 rounded-full border-2 border-white bg-gradient-to-br from-[#eef2cf] to-[#e4f3de]"></div>
+                                    <div className="w-10 h-10 rounded-full border-2 border-white bg-gradient-to-br from-[#e8f3cc] to-[#dbf3e1]"></div>
+                                </div>
+                                <div className="flex flex-col justify-center">
+                                    <span className="text-[13px] font-bold text-white lg:text-[#0F172A]">Join early access</span>
+                                    <span className="text-[12px] font-normal text-white/70 lg:text-slate-500">Be among the first to find better matches</span>
+                                </div>
+                            </motion.div>
                         </motion.div>
-                    </motion.div>
-
-                    <motion.div initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.8 }} className="relative flex justify-center lg:justify-end items-center h-full">
-                        <img src="/Group discussion-bro.png" alt="Students Talking" className="w-full lg:w-[120%] max-w-[750px] object-contain h-auto lg:h-[600px] relative select-none pointer-events-none" />
-                    </motion.div>
+    
+                        <motion.div initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.8 }} className="hidden lg:flex justify-center lg:justify-end items-center h-full">
+                            <img src="/Group discussion-bro.png" alt="Students Talking" className="w-full lg:w-[120%] max-w-[750px] object-contain h-auto lg:h-[600px] relative select-none pointer-events-none" />
+                        </motion.div>
+                    </div>
                 </section>
 
                 {/* 3. BENTO FEATURES */}
@@ -299,7 +308,7 @@ export function LandingPage() {
                 </section>
 
                 {/* 5. TAGS SECTION */}
-                <section className="w-full py-16 md:py-24 bg-slate-50 border-t border-slate-100">
+                <section id="methodology" className="w-full py-16 md:py-24 bg-slate-50 border-t border-slate-100">
                     <div className="max-w-5xl mx-auto px-6 text-center">
                         <h2 className="text-[32px] md:text-[42px] font-bold text-[#0F172A] mb-4 tracking-tight">We match on what <span className="text-[#F97316]">really matters</span></h2>
                         <p className="text-[15px] sm:text-[16px] font-normal text-slate-500 mb-12 max-w-2xl mx-auto leading-relaxed">Our algorithm considers dozens of distinct compatibility factors to find your ideal match.</p>
@@ -320,7 +329,7 @@ export function LandingPage() {
                 </section>
 
                 {/* 6. TESTIMONIAL */}
-                <section className="w-full py-16 md:py-24 bg-slate-50/40">
+                <section id="testimonials" className="w-full py-16 md:py-24 bg-slate-50/40">
                     <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
                         <div className="relative flex justify-center items-center h-[350px] md:h-[450px]">
                             <img src="/Texting-amico.png" alt="Student texting illustration" className="w-[100%] max-w-[450px] object-contain select-none pointer-events-none" />
@@ -379,7 +388,7 @@ export function LandingPage() {
                 </section>
 
                 {/* 8. CTA */}
-                <section className="w-full py-20 md:py-28 relative overflow-hidden bg-white">
+                <section id="get-started" className="w-full pt-16 md:pt-24 pb-0 relative overflow-hidden bg-slate-50">
                     <div className="absolute inset-0 bg-gradient-to-tr from-orange-100/60 via-white to-emerald-100/60 opacity-100"></div>
                     <div className="max-w-6xl mx-auto px-6 relative z-10">
                         <div className="bg-white rounded-[2.5rem] p-12 md:p-20 text-center shadow-[0_40px_80px_-15px_rgba(0,0,0,0.15)] border border-slate-100/50">
@@ -436,27 +445,28 @@ export function LandingPage() {
                         <div className="md:col-span-2">
                             <h4 className="text-[14px] font-black text-white mb-8 uppercase tracking-widest">Product</h4>
                             <ul className="space-y-5 text-[15px] font-bold text-[#94A3B8]">
+                                <li><button onClick={() => scrollTo('hero')} className="hover:text-white transition-colors">Home</button></li>
                                 <li><button onClick={() => scrollTo('how-it-works')} className="hover:text-white transition-colors">How it works</button></li>
                                 <li><button onClick={() => scrollTo('features')} className="hover:text-white transition-colors">Features</button></li>
-                                <li><button onClick={() => scrollTo('faq')} className="hover:text-white transition-colors">Pricing</button></li>
+                                <li><button onClick={() => scrollTo('methodology')} className="hover:text-white transition-colors">Methodology</button></li>
                             </ul>
                         </div>
                         
                         <div className="md:col-span-2">
                             <h4 className="text-[14px] font-black text-white mb-8 uppercase tracking-widest">Company</h4>
                             <ul className="space-y-5 text-[15px] font-bold text-[#94A3B8]">
-                                <li><Link to="/about" className="hover:text-white transition-colors">About Us</Link></li>
-                                <li><Link to="/careers" className="hover:text-white transition-colors">Careers</Link></li>
-                                <li><Link to="/contact" className="hover:text-white transition-colors">Contact</Link></li>
+                                <li><button onClick={() => scrollTo('testimonials')} className="hover:text-white transition-colors">Testimonials</button></li>
+                                <li><button onClick={() => scrollTo('faq')} className="hover:text-white transition-colors">FAQ</button></li>
+                                <li><Link to="/support" className="hover:text-white transition-colors">Contact</Link></li>
+                                <li><Link to="/auth" className="hover:text-white transition-colors">Join Team</Link></li>
                             </ul>
                         </div>
 
                         <div className="md:col-span-2">
                             <h4 className="text-[14px] font-black text-white mb-8 uppercase tracking-widest">Legal</h4>
                             <ul className="space-y-5 text-[15px] font-bold text-[#94A3B8]">
-                                <li><Link to="/terms" className="hover:text-white transition-colors">Privacy Policy</Link></li>
+                                <li><Link to="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link></li>
                                 <li><Link to="/terms" className="hover:text-white transition-colors">Terms of Service</Link></li>
-                                <li><Link to="/terms" className="hover:text-white transition-colors">Guidelines</Link></li>
                             </ul>
                         </div>
                     </div>
